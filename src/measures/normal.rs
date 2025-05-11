@@ -10,19 +10,17 @@
 //! use measures::{Normal, LebesgueMeasure, HasDensity};
 //!
 //! let normal = Normal::new(0.0, 1.0); // Standard normal distribution
-//! let lebesgue = LebesgueMeasure::new();
 //!
 //! // Compute density at x = 0
-//! let density: f64 = normal.density(0.0).wrt(&lebesgue).into();
+//! let density: f64 = normal.density(&0.0).into();
 //!
 //! // Compute log-density (more efficient)
-//! let log_density: f64 = normal.log_density(0.0).wrt(&lebesgue).into();
+//! let log_density: f64 = normal.log_density(&0.0).into();
 //! ```
 
 use crate::measures::lebesgue::LebesgueMeasure;
-use crate::traits::{Density,  LogDensity,  Measure, PrimitiveMeasure};
+use crate::traits::{Density, LogDensity, Measure, PrimitiveMeasure};
 use num_traits::Float;
-use std::f64::consts::PI;
 
 /// A normal (Gaussian) distribution.
 ///
@@ -53,6 +51,9 @@ impl<T: Float> Normal<T> {
     }
 }
 
+const SQRT_2_PI: f64 = 2.506_628_274_631_000_7;
+const LOG_SQRT_2_PI: f64 = 0.918_938_533_204_672_8;
+
 impl<T: Float> PrimitiveMeasure<T> for Normal<T> {}
 
 impl<T: Float> Measure<T> for Normal<T> {
@@ -74,7 +75,7 @@ impl<T: Float> From<Density<'_, T, Normal<T>>> for f64 {
         let std_dev = val.measure.std_dev.to_f64().unwrap();
 
         let z = (x - mean) / std_dev;
-        (1.0 / (std_dev * (2.0 * PI).sqrt())) * (-0.5 * z * z).exp()
+        (1.0 / (std_dev * SQRT_2_PI)) * (-0.5 * z * z).exp()
     }
 }
 
@@ -85,7 +86,7 @@ impl<T: Float> From<Density<'_, T, Normal<T>, LebesgueMeasure<T>>> for f64 {
         let std_dev = val.measure.std_dev.to_f64().unwrap();
 
         let z = (x - mean) / std_dev;
-        (1.0 / (std_dev * (2.0 * PI).sqrt())) * (-0.5 * z * z).exp()
+        (1.0 / (std_dev * SQRT_2_PI)) * (-0.5 * z * z).exp()
     }
 }
 
@@ -96,7 +97,7 @@ impl<T: Float> From<LogDensity<'_, T, Normal<T>>> for f64 {
         let std_dev = val.measure.std_dev.to_f64().unwrap();
 
         let z = (x - mean) / std_dev;
-        -0.5 * z * z - (std_dev * (2.0 * PI).sqrt()).ln()
+        -0.5 * z * z - LOG_SQRT_2_PI - std_dev.ln()
     }
 }
 
@@ -107,6 +108,6 @@ impl<T: Float> From<LogDensity<'_, T, Normal<T>, LebesgueMeasure<T>>> for f64 {
         let std_dev = val.measure.std_dev.to_f64().unwrap();
 
         let z = (x - mean) / std_dev;
-        -0.5 * z * z - (std_dev * (2.0 * PI).sqrt()).ln()
+        -0.5 * z * z - LOG_SQRT_2_PI - std_dev.ln()
     }
 }

@@ -27,6 +27,12 @@ impl<T: PartialEq + Clone> Measure<T> for Dirac<T> {
 }
 
 // Implement specific density calculations for Dirac measure
+impl<T: PartialEq + Clone> From<Density<'_, T, Dirac<T>>> for f64 {
+    fn from(val: Density<'_, T, Dirac<T>>) -> Self {
+        if val.measure.x == *val.x { 1.0 } else { 0.0 }
+    }
+}
+
 impl<T: PartialEq + Clone> From<Density<'_, T, Dirac<T>, CountingMeasure<T>>> for f64 {
     fn from(val: Density<'_, T, Dirac<T>, CountingMeasure<T>>) -> Self {
         if val.measure.x == *val.x { 1.0 } else { 0.0 }

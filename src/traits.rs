@@ -17,16 +17,15 @@
 //! # Example
 //!
 //! ```rust
-//! use measures::{Normal, LebesgueMeasure, HasDensity};
+//! use measures::{Normal, HasDensity};
 //!
 //! let normal = Normal::new(0.0, 1.0);
-//! let lebesgue = LebesgueMeasure::new();
 //!
 //! // Compute density
-//! let density: f64 = normal.density(0.0).wrt(&lebesgue).into();
+//! let density: f64 = normal.density(&0.0).into();
 //!
 //! // Compute log-density (more efficient)
-//! let log_density: f64 = normal.log_density(0.0).wrt(&lebesgue).into();
+//! let log_density: f64 = normal.log_density(&0.0).into();
 //! ```
 
 use num_traits::Float;
@@ -73,10 +72,10 @@ pub struct Density<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone 
 impl<'a, T: Clone, M1: Measure<T> + Clone> Density<'a, T, M1> {
     /// Create a new density computation.
     pub fn new(measure: &'a M1, x: &'a T) -> Self {
-        Self { 
-            measure, 
+        Self {
+            measure,
             base_measure: None,
-            x 
+            x,
         }
     }
 
@@ -93,11 +92,12 @@ impl<'a, T: Clone, M1: Measure<T> + Clone> Density<'a, T, M1> {
     }
 }
 
-impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> Density<'a, T, M1, M2> {
+impl<T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> Density<'_, T, M1, M2> {
     /// Compute the log of this density.
     ///
     /// This is less efficient than computing the log-density directly,
     /// but is provided for convenience.
+    #[must_use]
     pub fn log(&self) -> f64
     where
         Self: Into<f64> + Clone,
@@ -125,10 +125,10 @@ pub struct LogDensity<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clo
 impl<'a, T: Clone, M1: Measure<T> + Clone> LogDensity<'a, T, M1> {
     /// Create a new log-density computation.
     pub fn new(measure: &'a M1, x: &'a T) -> Self {
-        Self { 
-            measure, 
+        Self {
+            measure,
             base_measure: None,
-            x 
+            x,
         }
     }
 
@@ -145,11 +145,12 @@ impl<'a, T: Clone, M1: Measure<T> + Clone> LogDensity<'a, T, M1> {
     }
 }
 
-impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> LogDensity<'a, T, M1, M2> {
+impl<T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> LogDensity<'_, T, M1, M2> {
     /// Compute the exponential of this log-density to get the regular density.
     ///
     /// This is provided for convenience when you need the regular density
     /// but have already computed the log-density.
+    #[must_use]
     pub fn exp(&self) -> f64
     where
         Self: Into<f64> + Clone,

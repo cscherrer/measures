@@ -1,5 +1,5 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use measures::{HasDensity, LebesgueMeasure, Normal};
+use measures::{HasDensity, Normal};
 use rv::dist::Gaussian;
 use rv::traits::ContinuousDistr;
 

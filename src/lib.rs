@@ -5,9 +5,7 @@ pub use measures::counting::CountingMeasure;
 pub use measures::dirac::Dirac;
 pub use measures::lebesgue::LebesgueMeasure;
 pub use measures::normal::Normal;
-pub use traits::{
-    Density,  HasDensity, LogDensity,  Measure, PrimitiveMeasure,
-};
+pub use traits::{Density, HasDensity, LogDensity, Measure, PrimitiveMeasure};
 
 #[cfg(test)]
 mod tests {
@@ -19,9 +17,9 @@ mod tests {
         let counting = CountingMeasure::new();
 
         // These are all equivalent:
-        let density1: f64 = dirac.density(&5).wrt(&counting).into();
+        let density1: f64 = dirac.density(&5).into();
         let density2 = Into::<f64>::into(dirac.density(&5).wrt(&counting));
-        let log_density = dirac.density(&5).wrt(&counting).log();
+        let log_density = dirac.density(&5).log();
 
         assert_eq!(density1, 1.0);
         assert_eq!(density2, 1.0);
