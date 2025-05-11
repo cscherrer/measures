@@ -1,4 +1,4 @@
-use crate::traits::{PrimitiveMeasure, Measure, DensityBuilder, DensityWithRespectTo};
+use crate::traits::{PrimitiveMeasure, Measure, Density, DensityWRT};
 use crate::measures::counting::CountingMeasure;
 
 #[derive(Clone)]
@@ -27,7 +27,7 @@ impl<T: PartialEq + Clone> Measure<T> for Dirac<T> {
 }
 
 // Implement specific density calculations for Dirac measure
-impl<'a, T: PartialEq + Clone> Into<f64> for DensityBuilder<'a, T, Dirac<T>> {
+impl<'a, T: PartialEq + Clone> Into<f64> for Density<'a, T, Dirac<T>> {
     fn into(self) -> f64 {
         if self.measure.x == self.x {
             1.0
@@ -37,7 +37,7 @@ impl<'a, T: PartialEq + Clone> Into<f64> for DensityBuilder<'a, T, Dirac<T>> {
     }
 }
 
-impl<'a, T: PartialEq + Clone> Into<f64> for DensityWithRespectTo<'a, T, Dirac<T>, CountingMeasure<T>> {
+impl<'a, T: PartialEq + Clone> Into<f64> for DensityWRT<'a, T, Dirac<T>, CountingMeasure<T>> {
     fn into(self) -> f64 {
         if self.measure.x == self.x {
             1.0

@@ -1,7 +1,7 @@
 mod traits;
 pub mod measures;
 
-use traits::{PrimitiveMeasure, Measure, HasDensity, DensityBuilder, DensityWithRespectTo};
+use traits::{PrimitiveMeasure, Measure, HasDensity, Density, DensityWRT};
 use measures::{LebesgueMeasure, CountingMeasure, Dirac};
 
 #[cfg(test)]
