@@ -1,59 +1,25 @@
 mod traits;
-use traits::{PrimitiveMeasure, Measure, Density};
-use num_traits::Float;
+pub mod measures;
 
-#[derive(Clone)]
-pub struct LebesgueMeasure<T: Clone> {
-    phantom: std::marker::PhantomData<T>,
-}
+use traits::{PrimitiveMeasure, Measure, HasDensity, DensityBuilder, DensityWithRespectTo};
+use measures::{LebesgueMeasure, CountingMeasure, Dirac};
 
-impl<T: Float> PrimitiveMeasure<T> for LebesgueMeasure<T> {}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[derive(Clone)]
-pub struct CountingMeasure<T: Clone> {
-    phantom: std::marker::PhantomData<T>,
-}
+    #[test]
+    fn test_dirac_density() {
+        let dirac = Dirac::new(5);
+        let counting = CountingMeasure::new();
 
-impl<T: Clone> PrimitiveMeasure<T> for CountingMeasure<T> {}
+        // These are all equivalent:
+        let density1: f64 = dirac.density(5).wrt(&counting).into();
+        let density2 = Into::<f64>::into(dirac.density(5).wrt(&counting));
+        let log_density = dirac.density(5).wrt(&counting).log();
 
-impl<T, P: PrimitiveMeasure<T>> Measure<T> for P {
-    type RootMeasure = Self;
-
-    fn in_support(&self, x: T) -> bool {
-        true
+        assert_eq!(density1, 1.0);
+        assert_eq!(density2, 1.0);
+        assert_eq!(log_density, 0.0);
     }
-
-    fn root_measure(&self) -> Self::RootMeasure {
-        self.clone()
-    }
-}
-
-pub struct Dirac<T: PartialEq> {
-    x: T,
-}
-
-impl<T: PartialEq + Clone> Measure<T> for Dirac<T> {
-    type RootMeasure = CountingMeasure<T>;
-
-    fn in_support(&self, x: T) -> bool {
-        self.x == x
-    }
-
-    fn root_measure(&self) -> Self::RootMeasure {
-        CountingMeasure::<T> {
-            phantom: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<T: PartialEq + Clone> Density<T> for Dirac<T> {
-    type BaseMeasure = CountingMeasure<T>;
-
-    fn log_density(&self, x: T) -> f64 {
-        0.0
-    }
-
-    fn density(&self, x: T) -> f64 {
-        1.0
-    }
-}
+} 
