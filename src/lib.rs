@@ -1,28 +1,20 @@
+mod traits;
+use traits::{PrimitiveMeasure, Measure, Density};
 use num_traits::Float;
 
-trait PrimitiveMeasure<T>: Clone {}
-
 #[derive(Clone)]
-struct LebesgueMeasure<T: Clone> {
+pub struct LebesgueMeasure<T: Clone> {
     phantom: std::marker::PhantomData<T>,
 }
 
 impl<T: Float> PrimitiveMeasure<T> for LebesgueMeasure<T> {}
 
 #[derive(Clone)]
-struct CountingMeasure<T: Clone> {
+pub struct CountingMeasure<T: Clone> {
     phantom: std::marker::PhantomData<T>,
 }
 
 impl<T: Clone> PrimitiveMeasure<T> for CountingMeasure<T> {}
-
-trait Measure<T> {
-    type RootMeasure: Measure<T>;
-
-    fn in_support(&self, x: T) -> bool;
-
-    fn root_measure(&self) -> Self::RootMeasure;
-}
 
 impl<T, P: PrimitiveMeasure<T>> Measure<T> for P {
     type RootMeasure = Self;
@@ -36,19 +28,7 @@ impl<T, P: PrimitiveMeasure<T>> Measure<T> for P {
     }
 }
 
-trait Density<T> {
-    type BaseMeasure: Measure<T>;
-
-    fn log_density(&self, x: T) -> f64 {
-        self.density(x).ln()
-    }
-
-    fn density(&self, x: T) -> f64 {
-        self.log_density(x).exp()
-    }
-}
-
-struct Dirac<T: PartialEq> {
+pub struct Dirac<T: PartialEq> {
     x: T,
 }
 
