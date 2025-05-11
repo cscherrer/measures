@@ -1,12 +1,13 @@
-use crate::traits::{PrimitiveMeasure, Measure};
+use crate::traits::{Measure, PrimitiveMeasure};
 use num_traits::Float;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct LebesgueMeasure<T: Clone> {
     phantom: std::marker::PhantomData<T>,
 }
 
 impl<T: Float> LebesgueMeasure<T> {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             phantom: std::marker::PhantomData,
@@ -26,4 +27,4 @@ impl<T: Float> Measure<T> for LebesgueMeasure<T> {
     fn root_measure(&self) -> Self::RootMeasure {
         self.clone()
     }
-} 
+}

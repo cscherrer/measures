@@ -1,11 +1,12 @@
-use crate::traits::{PrimitiveMeasure, Measure};
+use crate::traits::{Measure, PrimitiveMeasure};
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct CountingMeasure<T: Clone> {
     phantom: std::marker::PhantomData<T>,
 }
 
 impl<T: Clone> CountingMeasure<T> {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             phantom: std::marker::PhantomData,
@@ -25,4 +26,4 @@ impl<T: Clone> Measure<T> for CountingMeasure<T> {
     fn root_measure(&self) -> Self::RootMeasure {
         self.clone()
     }
-} 
+}

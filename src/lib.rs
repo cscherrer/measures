@@ -1,8 +1,13 @@
-mod traits;
 pub mod measures;
+mod traits;
 
-use traits::{PrimitiveMeasure, Measure, HasDensity, Density, DensityWRT};
-use measures::{LebesgueMeasure, CountingMeasure, Dirac};
+pub use measures::counting::CountingMeasure;
+pub use measures::dirac::Dirac;
+pub use measures::lebesgue::LebesgueMeasure;
+pub use measures::normal::Normal;
+pub use traits::{
+    Density, DensityWRT, HasDensity, LogDensity, LogDensityWRT, Measure, PrimitiveMeasure,
+};
 
 #[cfg(test)]
 mod tests {
@@ -22,4 +27,4 @@ mod tests {
         assert_eq!(density2, 1.0);
         assert_eq!(log_density, 0.0);
     }
-} 
+}
