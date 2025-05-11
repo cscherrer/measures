@@ -12,7 +12,7 @@ fn test_density_comparison() {
     let test_points = [-2.0, -1.0, 0.0, 1.0, 2.0];
 
     for x in test_points {
-        let our_density: f64 = our_normal.density(x).wrt(&lebesgue).into();
+        let our_density: f64 = our_normal.density(&x).wrt(&lebesgue).into();
         let rv_density = rv_normal.pdf(&x);
         
         // Compare densities (should be very close)
@@ -31,7 +31,7 @@ fn test_log_density_comparison() {
     let test_points = [-2.0, -1.0, 0.0, 1.0, 2.0];
 
     for x in test_points {
-        let our_log_density: f64 = our_normal.log_density(x).wrt(&lebesgue).into();
+        let our_log_density: f64 = our_normal.log_density(&x).wrt(&lebesgue).into();
         let rv_log_density = rv_normal.ln_pdf(&x);
         
         // Compare log densities (should be very close)
@@ -58,14 +58,14 @@ fn test_different_parameters() {
         let test_points = [-2.0, -1.0, 0.0, 1.0, 2.0];
 
         for x in test_points {
-            let our_density: f64 = our_normal.density(x).wrt(&lebesgue).into();
+            let our_density: f64 = our_normal.density(&x).wrt(&lebesgue).into();
             let rv_density = rv_normal.pdf(&x);
             
             assert!((our_density - rv_density).abs() < 1e-10,
                 "Density mismatch at x={} for μ={}, σ={}: our={}, rv={}", 
                 x, mu, sigma, our_density, rv_density);
 
-            let our_log_density: f64 = our_normal.log_density(x).wrt(&lebesgue).into();
+            let our_log_density: f64 = our_normal.log_density(&x).wrt(&lebesgue).into();
             let rv_log_density = rv_normal.ln_pdf(&x);
             
             assert!((our_log_density - rv_log_density).abs() < 1e-10,

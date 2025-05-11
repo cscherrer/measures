@@ -19,9 +19,9 @@ mod tests {
         let counting = CountingMeasure::new();
 
         // These are all equivalent:
-        let density1: f64 = dirac.density(5).wrt(&counting).into();
-        let density2 = Into::<f64>::into(dirac.density(5).wrt(&counting));
-        let log_density = dirac.density(5).wrt(&counting).log();
+        let density1: f64 = dirac.density(&5).wrt(&counting).into();
+        let density2 = Into::<f64>::into(dirac.density(&5).wrt(&counting));
+        let log_density = dirac.density(&5).wrt(&counting).log();
 
         assert_eq!(density1, 1.0);
         assert_eq!(density2, 1.0);

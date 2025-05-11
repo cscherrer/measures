@@ -11,7 +11,7 @@ fn bench_density(c: &mut Criterion) {
 
     group.bench_function("our_normal", |b| {
         b.iter(|| {
-            let density: f64 = our_normal.density(black_box(0.0)).into();
+            let density: f64 = our_normal.density(&black_box(0.0)).into();
             black_box(density)
         });
     });
@@ -31,7 +31,7 @@ fn bench_log_density(c: &mut Criterion) {
 
     group.bench_function("our_normal", |b| {
         b.iter(|| {
-            let log_density: f64 = our_normal.log_density(black_box(0.0)).into();
+            let log_density: f64 = our_normal.log_density(&black_box(0.0)).into();
             black_box(log_density)
         });
     });
@@ -53,7 +53,7 @@ fn bench_density_batch(c: &mut Criterion) {
     group.bench_function("our_normal", |b| {
         b.iter(|| {
             for &x in &xs {
-                let density: f64 = our_normal.density(black_box(x)).into();
+                let density: f64 = our_normal.density(&black_box(x)).into();
                 black_box(density);
             }
         });
@@ -80,7 +80,7 @@ fn bench_log_density_batch(c: &mut Criterion) {
     group.bench_function("our_normal", |b| {
         b.iter(|| {
             for &x in &xs {
-                let log_density: f64 = our_normal.log_density(black_box(x)).into();
+                let log_density: f64 = our_normal.log_density(&black_box(x)).into();
                 black_box(log_density);
             }
         });

@@ -67,12 +67,12 @@ pub struct Density<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone 
     /// The base measure with respect to which we're computing the density
     pub base_measure: Option<&'a M2>,
     /// The point at which to compute the density
-    pub x: T,
+    pub x: &'a T,
 }
 
 impl<'a, T: Clone, M1: Measure<T> + Clone> Density<'a, T, M1> {
     /// Create a new density computation.
-    pub fn new(measure: &'a M1, x: T) -> Self {
+    pub fn new(measure: &'a M1, x: &'a T) -> Self {
         Self { 
             measure, 
             base_measure: None,
@@ -119,12 +119,12 @@ pub struct LogDensity<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clo
     /// The base measure with respect to which we're computing the log-density
     pub base_measure: Option<&'a M2>,
     /// The point at which to compute the log-density
-    pub x: T,
+    pub x: &'a T,
 }
 
 impl<'a, T: Clone, M1: Measure<T> + Clone> LogDensity<'a, T, M1> {
     /// Create a new log-density computation.
-    pub fn new(measure: &'a M1, x: T) -> Self {
+    pub fn new(measure: &'a M1, x: &'a T) -> Self {
         Self { 
             measure, 
             base_measure: None,
@@ -180,7 +180,7 @@ pub trait HasDensity<T>: Measure<T> {
     ///
     /// Returns a builder that can be used to specify the base measure and
     /// then compute the actual density value.
-    fn density(&self, x: T) -> Density<'_, T, Self>
+    fn density<'a>(&'a self, x: &'a T) -> Density<'a, T, Self>
     where
         Self: Sized + Clone,
         T: Clone,
@@ -196,7 +196,7 @@ pub trait HasDensity<T>: Measure<T> {
     /// The default implementation computes the density and takes its log,
     /// but measures should override this with a more efficient implementation
     /// when possible.
-    fn log_density(&self, x: T) -> LogDensity<'_, T, Self>
+    fn log_density<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
     where
         Self: Sized + Clone,
         T: Clone,
