@@ -6,6 +6,14 @@ pub struct LebesgueMeasure<T: Clone> {
     phantom: std::marker::PhantomData<T>,
 }
 
+impl<T: Float> LebesgueMeasure<T> {
+    pub fn new() -> Self {
+        Self {
+            phantom: std::marker::PhantomData,
+        }
+    }
+}
+
 impl<T: Float> PrimitiveMeasure<T> for LebesgueMeasure<T> {}
 
 impl<T: Float> Measure<T> for LebesgueMeasure<T> {
