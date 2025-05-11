@@ -19,8 +19,9 @@
 //! ```
 
 use crate::measures::lebesgue::LebesgueMeasure;
-use crate::traits::{Density, LogDensity, Measure, PrimitiveMeasure};
-use num_traits::Float;
+use crate::traits::{Density, LogDensity, Measure, PrimitiveMeasure, HasDensity};
+use crate::traits::exponential_family::{ExponentialFamily, DotProduct};
+use num_traits::{Float, FloatConst};
 
 /// A normal (Gaussian) distribution.
 ///
@@ -63,51 +64,61 @@ impl<T: Float> Measure<T> for Normal<T> {
         true
     }
 
-    fn root_measure(&self) -> Self::RootMeasure {
+    fn root_measure(&self) -> <Self as Measure<T>>::RootMeasure {
         LebesgueMeasure::<T>::new()
     }
 }
 
-impl<T: Float> From<Density<'_, T, Normal<T>>> for f64 {
+// Implement DotProduct for natural parameters
+impl<T: Float> DotProduct<(T, T), T> for (T, T) {
+    fn dot(lhs: &Self, rhs: &(T, T)) -> T {
+        lhs.0 * rhs.0 + lhs.1 * rhs.1
+    }
+}
+
+impl<T: Float + FloatConst> ExponentialFamily<T> for Normal<T> {
+    type NaturalParam = (T, T); // (η₁, η₂) = (μ/σ², -1/(2σ²))
+    type SufficientStat = (T, T); // (x, x²)
+    
+    fn from_natural(param: <Self as ExponentialFamily<T>>::NaturalParam) -> Self {
+        let (eta1, eta2) = param;
+        let sigma2 = -T::one() / (T::from(2.0).unwrap() * eta2);
+        let mu = eta1 * sigma2;
+        Self::new(mu, sigma2.sqrt())
+    }
+    
+    fn to_natural(&self) -> <Self as ExponentialFamily<T>>::NaturalParam {
+        let sigma2 = self.std_dev * self.std_dev;
+        (self.mean / sigma2, -T::one() / (T::from(2.0).unwrap() * sigma2))
+    }
+    
+    fn log_partition(&self) -> T {
+        let sigma2 = self.std_dev * self.std_dev;
+        let mu2 = self.mean * self.mean;
+        (T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap() 
+            + mu2 / (T::from(2.0).unwrap() * sigma2)
+    }
+    
+    fn sufficient_statistic(&self, x: &T) -> <Self as ExponentialFamily<T>>::SufficientStat {
+        (*x, *x * *x)
+    }
+    
+    fn carrier_measure(&self, _x: &T) -> T {
+        T::one()
+    }
+}
+
+// Implement From for Density to f64
+impl<T: Float + FloatConst> From<Density<'_, T, Normal<T>>> for f64 {
     fn from(val: Density<'_, T, Normal<T>>) -> Self {
-        let x = val.x.to_f64().unwrap();
-        let mean = val.measure.mean.to_f64().unwrap();
-        let std_dev = val.measure.std_dev.to_f64().unwrap();
-
-        let z = (x - mean) / std_dev;
-        (1.0 / (std_dev * SQRT_2_PI)) * (-0.5 * z * z).exp()
+        let log_density: f64 = LogDensity::new(val.measure, val.x).into();
+        log_density.exp()
     }
 }
 
-impl<T: Float> From<Density<'_, T, Normal<T>, LebesgueMeasure<T>>> for f64 {
+impl<T: Float + FloatConst> From<Density<'_, T, Normal<T>, LebesgueMeasure<T>>> for f64 {
     fn from(val: Density<'_, T, Normal<T>, LebesgueMeasure<T>>) -> Self {
-        let x = val.x.to_f64().unwrap();
-        let mean = val.measure.mean.to_f64().unwrap();
-        let std_dev = val.measure.std_dev.to_f64().unwrap();
-
-        let z = (x - mean) / std_dev;
-        (1.0 / (std_dev * SQRT_2_PI)) * (-0.5 * z * z).exp()
-    }
-}
-
-impl<T: Float> From<LogDensity<'_, T, Normal<T>>> for f64 {
-    fn from(val: LogDensity<'_, T, Normal<T>>) -> Self {
-        let x = val.x.to_f64().unwrap();
-        let mean = val.measure.mean.to_f64().unwrap();
-        let std_dev = val.measure.std_dev.to_f64().unwrap();
-
-        let z = (x - mean) / std_dev;
-        -0.5 * z * z - LOG_SQRT_2_PI - std_dev.ln()
-    }
-}
-
-impl<T: Float> From<LogDensity<'_, T, Normal<T>, LebesgueMeasure<T>>> for f64 {
-    fn from(val: LogDensity<'_, T, Normal<T>, LebesgueMeasure<T>>) -> Self {
-        let x = val.x.to_f64().unwrap();
-        let mean = val.measure.mean.to_f64().unwrap();
-        let std_dev = val.measure.std_dev.to_f64().unwrap();
-
-        let z = (x - mean) / std_dev;
-        -0.5 * z * z - LOG_SQRT_2_PI - std_dev.ln()
+        let log_density: f64 = LogDensity::new(val.measure, val.x).into();
+        log_density.exp()
     }
 }

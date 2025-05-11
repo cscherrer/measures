@@ -28,6 +28,9 @@
 //! let log_density: f64 = normal.log_density(&0.0).into();
 //! ```
 
+pub mod exponential_family;
+pub use exponential_family::{ExponentialFamily, DotProduct};
+
 use num_traits::Float;
 
 /// A primitive measure that serves as a building block for more complex measures.
@@ -36,6 +39,9 @@ use num_traits::Float;
 /// They are typically simple measures like Lebesgue measure or counting measure
 /// that can be used to construct more complex measures.
 pub trait PrimitiveMeasure<T>: Clone {}
+
+// Implement HasDensity for primitive measures
+// impl<T: Float + Clone, M: PrimitiveMeasure<T> + Measure<T>> HasDensity<T> for M {}
 
 /// A measure that can compute its density with respect to some base measure.
 ///
@@ -204,7 +210,4 @@ pub trait HasDensity<T>: Measure<T> {
     {
         LogDensity::new(self, x)
     }
-}
-
-// Implement HasDensity for all measures that can compute densities
-impl<T: Clone, M: Measure<T> + Clone> HasDensity<T> for M {}
+} 
