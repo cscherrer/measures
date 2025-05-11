@@ -29,7 +29,6 @@
 //! ```
 
 pub mod exponential_family;
-pub use exponential_family::{ExponentialFamily, DotProduct};
 
 use num_traits::Float;
 
@@ -210,4 +209,4 @@ pub trait HasDensity<T>: Measure<T> {
     {
         LogDensity::new(self, x)
     }
-} 
+}

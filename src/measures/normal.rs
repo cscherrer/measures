@@ -19,8 +19,8 @@
 //! ```
 
 use crate::measures::lebesgue::LebesgueMeasure;
-use crate::traits::{Density, LogDensity, Measure, PrimitiveMeasure, HasDensity};
-use crate::traits::exponential_family::{ExponentialFamily, DotProduct};
+use crate::traits::exponential_family::{DotProduct, ExponentialFamily};
+use crate::traits::{Density, LogDensity, Measure, PrimitiveMeasure};
 use num_traits::{Float, FloatConst};
 
 /// A normal (Gaussian) distribution.
@@ -79,30 +79,33 @@ impl<T: Float> DotProduct<(T, T), T> for (T, T) {
 impl<T: Float + FloatConst> ExponentialFamily<T> for Normal<T> {
     type NaturalParam = (T, T); // (η₁, η₂) = (μ/σ², -1/(2σ²))
     type SufficientStat = (T, T); // (x, x²)
-    
+
     fn from_natural(param: <Self as ExponentialFamily<T>>::NaturalParam) -> Self {
         let (eta1, eta2) = param;
         let sigma2 = -T::one() / (T::from(2.0).unwrap() * eta2);
         let mu = eta1 * sigma2;
         Self::new(mu, sigma2.sqrt())
     }
-    
+
     fn to_natural(&self) -> <Self as ExponentialFamily<T>>::NaturalParam {
         let sigma2 = self.std_dev * self.std_dev;
-        (self.mean / sigma2, -T::one() / (T::from(2.0).unwrap() * sigma2))
+        (
+            self.mean / sigma2,
+            -T::one() / (T::from(2.0).unwrap() * sigma2),
+        )
     }
-    
+
     fn log_partition(&self) -> T {
         let sigma2 = self.std_dev * self.std_dev;
         let mu2 = self.mean * self.mean;
-        (T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap() 
+        (T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap()
             + mu2 / (T::from(2.0).unwrap() * sigma2)
     }
-    
+
     fn sufficient_statistic(&self, x: &T) -> <Self as ExponentialFamily<T>>::SufficientStat {
         (*x, *x * *x)
     }
-    
+
     fn carrier_measure(&self, _x: &T) -> T {
         T::one()
     }
