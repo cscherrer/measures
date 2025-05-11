@@ -6,7 +6,7 @@ pub use measures::dirac::Dirac;
 pub use measures::lebesgue::LebesgueMeasure;
 pub use measures::normal::Normal;
 pub use traits::{
-    Density, DensityWRT, HasDensity, LogDensity, LogDensityWRT, Measure, PrimitiveMeasure,
+    Density,  HasDensity, LogDensity,  Measure, PrimitiveMeasure,
 };
 
 #[cfg(test)]

@@ -20,7 +20,7 @@
 //! ```
 
 use crate::measures::lebesgue::LebesgueMeasure;
-use crate::traits::{Density, DensityWRT, LogDensity, LogDensityWRT, Measure, PrimitiveMeasure};
+use crate::traits::{Density,  LogDensity,  Measure, PrimitiveMeasure};
 use num_traits::Float;
 use std::f64::consts::PI;
 
@@ -78,8 +78,8 @@ impl<T: Float> From<Density<'_, T, Normal<T>>> for f64 {
     }
 }
 
-impl<T: Float> From<DensityWRT<'_, T, Normal<T>, LebesgueMeasure<T>>> for f64 {
-    fn from(val: DensityWRT<'_, T, Normal<T>, LebesgueMeasure<T>>) -> Self {
+impl<T: Float> From<Density<'_, T, Normal<T>, LebesgueMeasure<T>>> for f64 {
+    fn from(val: Density<'_, T, Normal<T>, LebesgueMeasure<T>>) -> Self {
         let x = val.x.to_f64().unwrap();
         let mean = val.measure.mean.to_f64().unwrap();
         let std_dev = val.measure.std_dev.to_f64().unwrap();
@@ -100,8 +100,8 @@ impl<T: Float> From<LogDensity<'_, T, Normal<T>>> for f64 {
     }
 }
 
-impl<T: Float> From<LogDensityWRT<'_, T, Normal<T>, LebesgueMeasure<T>>> for f64 {
-    fn from(val: LogDensityWRT<'_, T, Normal<T>, LebesgueMeasure<T>>) -> Self {
+impl<T: Float> From<LogDensity<'_, T, Normal<T>, LebesgueMeasure<T>>> for f64 {
+    fn from(val: LogDensity<'_, T, Normal<T>, LebesgueMeasure<T>>) -> Self {
         let x = val.x.to_f64().unwrap();
         let mean = val.measure.mean.to_f64().unwrap();
         let std_dev = val.measure.std_dev.to_f64().unwrap();

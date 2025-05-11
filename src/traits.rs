@@ -57,85 +57,43 @@ pub trait Measure<T> {
 
 /// A builder for computing densities of a measure.
 ///
-/// This type is used to build up density computations. It doesn't compute
-/// the density directly, but rather provides a way to specify the base measure
-/// and then compute the density.
+/// This type is used to build up density computations. It can be in two states:
+/// 1. Initial state: just the measure and point
+/// 2. Final state: includes the base measure and can be converted to a f64
 #[derive(Clone)]
-pub struct Density<'a, T: Clone, M: Measure<T> + Clone> {
-    /// The measure whose density we're computing
-    pub measure: &'a M,
-    /// The point at which to compute the density
-    pub x: T,
-}
-
-/// A builder for computing densities of a measure with respect to a specific base measure.
-///
-/// This type represents a density computation that has been fully specified,
-/// including the base measure. It can be converted into a f64 to get the actual
-/// density value.
-#[derive(Clone)]
-pub struct DensityWRT<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> {
+pub struct Density<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone = M1> {
     /// The measure whose density we're computing
     pub measure: &'a M1,
     /// The base measure with respect to which we're computing the density
-    pub base_measure: &'a M2,
+    pub base_measure: Option<&'a M2>,
     /// The point at which to compute the density
     pub x: T,
 }
 
-/// A builder for computing log-densities of a measure.
-///
-/// Similar to `Density`, but for log-densities. This type is used to build up
-/// log-density computations. It doesn't compute the log-density directly, but
-/// rather provides a way to specify the base measure and then compute the log-density.
-#[derive(Clone)]
-pub struct LogDensity<'a, T: Clone, M: Measure<T> + Clone> {
-    /// The measure whose log-density we're computing
-    pub measure: &'a M,
-    /// The point at which to compute the log-density
-    pub x: T,
-}
-
-/// A builder for computing log-densities of a measure with respect to a specific base measure.
-///
-/// This type represents a log-density computation that has been fully specified,
-/// including the base measure. It can be converted into a f64 to get the actual
-/// log-density value.
-#[derive(Clone)]
-pub struct LogDensityWRT<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> {
-    /// The measure whose log-density we're computing
-    pub measure: &'a M1,
-    /// The base measure with respect to which we're computing the log-density
-    pub base_measure: &'a M2,
-    /// The point at which to compute the log-density
-    pub x: T,
-}
-
-impl<'a, T: Clone, M: Measure<T> + Clone> Density<'a, T, M> {
+impl<'a, T: Clone, M1: Measure<T> + Clone> Density<'a, T, M1> {
     /// Create a new density computation.
-    pub fn new(measure: &'a M, x: T) -> Self {
-        Self { measure, x }
+    pub fn new(measure: &'a M1, x: T) -> Self {
+        Self { 
+            measure, 
+            base_measure: None,
+            x 
+        }
     }
 
     /// Specify the base measure for this density computation.
     ///
     /// Returns a builder that can be converted into a f64 to get the actual
     /// density value.
-    pub fn wrt<M2: Measure<T> + Clone>(self, base_measure: &'a M2) -> DensityWRT<'a, T, M, M2> {
-        DensityWRT::new(self.measure, base_measure, self.x)
+    pub fn wrt<M2: Measure<T> + Clone>(self, base_measure: &'a M2) -> Density<'a, T, M1, M2> {
+        Density {
+            measure: self.measure,
+            base_measure: Some(base_measure),
+            x: self.x,
+        }
     }
 }
 
-impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> DensityWRT<'a, T, M1, M2> {
-    /// Create a new density computation with respect to a base measure.
-    pub fn new(measure: &'a M1, base_measure: &'a M2, x: T) -> Self {
-        Self {
-            measure,
-            base_measure,
-            x,
-        }
-    }
-
+impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> Density<'a, T, M1, M2> {
     /// Compute the log of this density.
     ///
     /// This is less efficient than computing the log-density directly,
@@ -149,31 +107,45 @@ impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> DensityWRT<'a
     }
 }
 
-impl<'a, T: Clone, M: Measure<T> + Clone> LogDensity<'a, T, M> {
+/// A builder for computing log-densities of a measure.
+///
+/// This type is used to build up log-density computations. It can be in two states:
+/// 1. Initial state: just the measure and point
+/// 2. Final state: includes the base measure and can be converted to a f64
+#[derive(Clone)]
+pub struct LogDensity<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone = M1> {
+    /// The measure whose log-density we're computing
+    pub measure: &'a M1,
+    /// The base measure with respect to which we're computing the log-density
+    pub base_measure: Option<&'a M2>,
+    /// The point at which to compute the log-density
+    pub x: T,
+}
+
+impl<'a, T: Clone, M1: Measure<T> + Clone> LogDensity<'a, T, M1> {
     /// Create a new log-density computation.
-    pub fn new(measure: &'a M, x: T) -> Self {
-        Self { measure, x }
+    pub fn new(measure: &'a M1, x: T) -> Self {
+        Self { 
+            measure, 
+            base_measure: None,
+            x 
+        }
     }
 
     /// Specify the base measure for this log-density computation.
     ///
     /// Returns a builder that can be converted into a f64 to get the actual
     /// log-density value.
-    pub fn wrt<M2: Measure<T> + Clone>(self, base_measure: &'a M2) -> LogDensityWRT<'a, T, M, M2> {
-        LogDensityWRT::new(self.measure, base_measure, self.x)
+    pub fn wrt<M2: Measure<T> + Clone>(self, base_measure: &'a M2) -> LogDensity<'a, T, M1, M2> {
+        LogDensity {
+            measure: self.measure,
+            base_measure: Some(base_measure),
+            x: self.x,
+        }
     }
 }
 
-impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> LogDensityWRT<'a, T, M1, M2> {
-    /// Create a new log-density computation with respect to a base measure.
-    pub fn new(measure: &'a M1, base_measure: &'a M2, x: T) -> Self {
-        Self {
-            measure,
-            base_measure,
-            x,
-        }
-    }
-
+impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> LogDensity<'a, T, M1, M2> {
     /// Compute the exponential of this log-density to get the regular density.
     ///
     /// This is provided for convenience when you need the regular density
