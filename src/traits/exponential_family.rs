@@ -30,16 +30,12 @@ pub trait ExponentialFamily<T: Float> {
     fn carrier_measure(&self, x: &T) -> T;
 
     /// Compute the log density in exponential family form
-    fn log_density_ef(&self, x: &T) -> T
+    fn log_density_ef<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
     where
-        Self::NaturalParam: DotProduct<Self::SufficientStat, T>,
+        Self: Sized + Clone + Measure<T>,
+        T: Clone,
     {
-        let eta = self.to_natural();
-        let t = self.sufficient_statistic(x);
-        let a = self.log_partition();
-        let h = self.carrier_measure(x);
-
-        <Self::NaturalParam as DotProduct<Self::SufficientStat, T>>::dot(&eta, &t) - a + h.ln()
+        LogDensity::new(self, x)
     }
 }
 
@@ -49,9 +45,10 @@ pub trait DotProduct<Rhs, T> {
 }
 
 pub trait ExpFamLogDensity<T: Float>: ExponentialFamily<T> {
-    fn log_density(&self, x: &T) -> T
+    fn log_density<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
     where
-        Self::NaturalParam: DotProduct<Self::SufficientStat, T>,
+        Self: Sized + Clone + Measure<T>,
+        T: Clone,
     {
         self.log_density_ef(x)
     }
@@ -64,17 +61,47 @@ where
     M::NaturalParam: DotProduct<M::SufficientStat, T>,
 {
     fn log_density<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self> {
-        LogDensity::new(self, x)
+        self.log_density_ef(x)
     }
 }
 
-// Implement From for LogDensity to f64 for exponential family distributions
-impl<T: Float, M> From<LogDensity<'_, T, M>> for f64
+// Implement a newtype wrapper for exponential family log density values
+#[derive(Debug, Clone, Copy)]
+pub struct ExpFamLogDensityValue<F: Float>(pub F);
+
+impl<F: Float> ExpFamLogDensityValue<F> {
+    /// Unwrap the inner value
+    pub fn value(self) -> F {
+        self.0
+    }
+}
+
+// Implement From for LogDensity to ExpFamLogDensityValue<F> where F is any Float
+impl<'a, T: Float, M, F: Float> From<LogDensity<'a, T, M>> for ExpFamLogDensityValue<F>
 where
-    M: ExponentialFamily<T> + Measure<T> + Clone,
+    M: ExponentialFamily<T> + Measure<T> + Clone + ExpFamLogDensity<T>,
     M::NaturalParam: DotProduct<M::SufficientStat, T>,
 {
-    fn from(val: LogDensity<'_, T, M>) -> Self {
-        val.measure.log_density_ef(val.x).to_f64().unwrap()
+    fn from(val: LogDensity<'a, T, M>) -> Self {
+        let eta = val.measure.to_natural();
+        let t = val.measure.sufficient_statistic(val.x);
+        let a = val.measure.log_partition();
+        let h = val.measure.carrier_measure(val.x);
+
+        let result =
+            <M::NaturalParam as DotProduct<M::SufficientStat, T>>::dot(&eta, &t) - a + h.ln();
+        ExpFamLogDensityValue(F::from(result.to_f64().unwrap()).unwrap())
+    }
+}
+
+// For compatibility, keep direct conversion to f64
+impl<'a, T: Float, M> From<LogDensity<'a, T, M>> for f64
+where
+    M: ExponentialFamily<T> + Measure<T> + Clone + ExpFamLogDensity<T>,
+    M::NaturalParam: DotProduct<M::SufficientStat, T>,
+{
+    fn from(val: LogDensity<'a, T, M>) -> Self {
+        let wrapper: ExpFamLogDensityValue<f64> = val.into();
+        wrapper.0
     }
 }
