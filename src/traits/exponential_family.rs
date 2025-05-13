@@ -48,6 +48,15 @@ pub trait DotProduct<Rhs, T> {
     fn dot(lhs: &Self, rhs: &Rhs) -> T;
 }
 
+pub trait ExpFamLogDensity<T: Float>: ExponentialFamily<T> {
+    fn log_density(&self, x: &T) -> T
+    where
+        Self::NaturalParam: DotProduct<Self::SufficientStat, T>,
+    {
+        self.log_density_ef(x)
+    }
+}
+
 // Implement HasDensity for all exponential family distributions
 impl<T: Float, M> HasDensity<T> for M
 where

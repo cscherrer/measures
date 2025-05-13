@@ -19,6 +19,7 @@
 //! ```
 
 use crate::measures::lebesgue::LebesgueMeasure;
+use crate::traits::exponential_family::ExpFamLogDensity;
 use crate::traits::exponential_family::{DotProduct, ExponentialFamily};
 use crate::traits::{Density, LogDensity, Measure};
 use num_traits::{Float, FloatConst};
@@ -34,6 +35,8 @@ pub struct Normal<T: Float> {
     /// The standard deviation of the distribution
     pub std_dev: T,
 }
+
+impl<T: Float + FloatConst> ExpFamLogDensity<T> for Normal<T> {}
 
 impl<T: Float> Normal<T> {
     /// Create a new normal distribution with the given mean and standard deviation.
