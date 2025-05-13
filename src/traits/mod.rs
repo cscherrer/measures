@@ -28,19 +28,32 @@
 //! let log_density: f64 = normal.log_density(&0.0).into();
 //! ```
 
+use crate::measures::{CountingMeasure, LebesgueMeasure};
+
 pub mod exponential_family;
 
-use num_traits::Float;
+/// Private module for sealed traits
+mod private {
+    use num_traits::Float;
+    
+    /// Marker trait to seal primitive measure implementations
+    pub trait Sealed {}
+    
+    // Implement Sealed for our primitive measure types
+    impl<T: Clone> Sealed for crate::measures::LebesgueMeasure<T> {}
+    impl<T: Clone> Sealed for crate::measures::CountingMeasure<T> {}
+}
 
 /// A primitive measure that serves as a building block for more complex measures.
 ///
 /// Primitive measures are the basic building blocks of our measure system.
 /// They are typically simple measures like Lebesgue measure or counting measure
 /// that can be used to construct more complex measures.
-pub trait PrimitiveMeasure<T>: Clone {}
+/// 
+/// This trait is sealed and can only be implemented for types within this crate.
+pub trait PrimitiveMeasure<T>: Clone + private::Sealed {}
 
-// Implement HasDensity for primitive measures
-// impl<T: Float + Clone, M: PrimitiveMeasure<T> + Measure<T>> HasDensity<T> for M {}
+
 
 /// A measure that can compute its density with respect to some base measure.
 ///

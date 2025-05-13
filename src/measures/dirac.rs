@@ -1,5 +1,5 @@
 use crate::measures::counting::CountingMeasure;
-use crate::traits::{Density, Measure, PrimitiveMeasure};
+use crate::traits::{ Density, Measure, PrimitiveMeasure};
 
 #[derive(Clone)]
 pub struct Dirac<T: PartialEq> {
@@ -12,7 +12,6 @@ impl<T: PartialEq + Clone> Dirac<T> {
     }
 }
 
-impl<T: PartialEq + Clone> PrimitiveMeasure<T> for Dirac<T> {}
 
 impl<T: PartialEq + Clone> Measure<T> for Dirac<T> {
     type RootMeasure = CountingMeasure<T>;

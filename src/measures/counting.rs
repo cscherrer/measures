@@ -19,7 +19,7 @@ impl<T: Clone> PrimitiveMeasure<T> for CountingMeasure<T> {}
 impl<T: Clone> Measure<T> for CountingMeasure<T> {
     type RootMeasure = Self;
 
-    fn in_support(&self, x: T) -> bool {
+    fn in_support(&self, _x: T) -> bool {
         true
     }
 

@@ -20,7 +20,7 @@
 
 use crate::measures::lebesgue::LebesgueMeasure;
 use crate::traits::exponential_family::{DotProduct, ExponentialFamily};
-use crate::traits::{Density, LogDensity, Measure, PrimitiveMeasure};
+use crate::traits::{ Density, LogDensity, Measure, PrimitiveMeasure};
 use num_traits::{Float, FloatConst};
 
 /// A normal (Gaussian) distribution.
@@ -51,11 +51,6 @@ impl<T: Float> Normal<T> {
         Self { mean, std_dev }
     }
 }
-
-const SQRT_2_PI: f64 = 2.506_628_274_631_000_7;
-const LOG_SQRT_2_PI: f64 = 0.918_938_533_204_672_8;
-
-impl<T: Float> PrimitiveMeasure<T> for Normal<T> {}
 
 impl<T: Float> Measure<T> for Normal<T> {
     type RootMeasure = LebesgueMeasure<T>;
