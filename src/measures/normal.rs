@@ -20,7 +20,7 @@
 
 use crate::measures::lebesgue::LebesgueMeasure;
 use crate::traits::exponential_family::{DotProduct, ExponentialFamily};
-use crate::traits::{ Density, LogDensity, Measure, PrimitiveMeasure};
+use crate::traits::{Density, LogDensity, Measure};
 use num_traits::{Float, FloatConst};
 
 /// A normal (Gaussian) distribution.
