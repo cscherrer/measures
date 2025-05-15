@@ -21,7 +21,7 @@
 use crate::measures::lebesgue::LebesgueMeasure;
 use crate::traits::exponential_family::ExpFamLogDensity;
 use crate::traits::exponential_family::{DotProduct, ExponentialFamily};
-use crate::traits::{Density, LogDensity, Measure};
+use crate::traits::{Density, False, LogDensity, Measure, MeasureMarker};
 use num_traits::{Float, FloatConst};
 
 /// A normal (Gaussian) distribution.
@@ -34,6 +34,10 @@ pub struct Normal<T: Float> {
     pub mean: T,
     /// The standard deviation of the distribution
     pub std_dev: T,
+}
+
+impl<T: Float> MeasureMarker for Normal<T> {
+    type IsPrimitive = False;
 }
 
 impl<T: Float + FloatConst> ExpFamLogDensity<T> for Normal<T> {}

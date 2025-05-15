@@ -1,4 +1,4 @@
-use crate::traits::{Measure, PrimitiveMeasure};
+use crate::traits::{MeasureMarker, PrimitiveMeasure, True};
 
 #[derive(Clone, Default)]
 pub struct CountingMeasure<T: Clone> {
@@ -14,16 +14,8 @@ impl<T: Clone> CountingMeasure<T> {
     }
 }
 
-impl<T: Clone> PrimitiveMeasure<T> for CountingMeasure<T> {}
-
-impl<T: Clone> Measure<T> for CountingMeasure<T> {
-    type RootMeasure = Self;
-
-    fn in_support(&self, _x: T) -> bool {
-        true
-    }
-
-    fn root_measure(&self) -> Self::RootMeasure {
-        self.clone()
-    }
+impl<T: Clone> MeasureMarker for CountingMeasure<T> {
+    type IsPrimitive = True;
 }
+
+impl<T: Clone> PrimitiveMeasure<T> for CountingMeasure<T> {}

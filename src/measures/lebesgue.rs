@@ -1,4 +1,4 @@
-use crate::traits::{Measure, PrimitiveMeasure};
+use crate::traits::{MeasureMarker, PrimitiveMeasure, True};
 use num_traits::Float;
 
 #[derive(Clone, Default)]
@@ -15,16 +15,8 @@ impl<T: Float> LebesgueMeasure<T> {
     }
 }
 
-impl<T: Float> PrimitiveMeasure<T> for LebesgueMeasure<T> {}
-
-impl<T: Float> Measure<T> for LebesgueMeasure<T> {
-    type RootMeasure = Self;
-
-    fn in_support(&self, x: T) -> bool {
-        true
-    }
-
-    fn root_measure(&self) -> Self::RootMeasure {
-        self.clone()
-    }
+impl<T: Float> MeasureMarker for LebesgueMeasure<T> {
+    type IsPrimitive = True;
 }
+
+impl<T: Float> PrimitiveMeasure<T> for LebesgueMeasure<T> {}

@@ -30,15 +30,26 @@
 
 pub mod exponential_family;
 
-/// Private module for sealed traits
-mod private {
+pub trait TypeLevelBool {
+    const VALUE: bool;
+}
 
-    /// Marker trait to seal primitive measure implementations
-    pub trait Sealed {}
+pub struct True;
 
-    // Implement Sealed for our primitive measure types
-    impl<T: Clone> Sealed for crate::measures::LebesgueMeasure<T> {}
-    impl<T: Clone> Sealed for crate::measures::CountingMeasure<T> {}
+pub struct False;
+
+impl TypeLevelBool for True {
+    const VALUE: bool = true;
+}
+
+impl TypeLevelBool for False {
+    const VALUE: bool = false;
+}
+
+/// A trait for measures that can indicate if they are primitive.
+pub trait MeasureMarker {
+    /// Type-level boolean indicating if this is a primitive measure.
+    type IsPrimitive: TypeLevelBool;
 }
 
 /// A primitive measure that serves as a building block for more complex measures.
@@ -46,9 +57,19 @@ mod private {
 /// Primitive measures are the basic building blocks of our measure system.
 /// They are typically simple measures like Lebesgue measure or counting measure
 /// that can be used to construct more complex measures.
-///
-/// This trait is sealed and can only be implemented for types within this crate.
-pub trait PrimitiveMeasure<T>: Clone + private::Sealed {}
+pub trait PrimitiveMeasure<T>: Clone + MeasureMarker<IsPrimitive = True> {}
+
+impl<P: PrimitiveMeasure<T>, T: Clone> Measure<T> for P {
+    type RootMeasure = Self;
+
+    fn in_support(&self, x: T) -> bool {
+        true
+    }
+
+    fn root_measure(&self) -> Self::RootMeasure {
+        self.clone()
+    }
+}
 
 /// A measure that can compute its density with respect to some base measure.
 ///
@@ -56,7 +77,7 @@ pub trait PrimitiveMeasure<T>: Clone + private::Sealed {}
 /// for computing densities. For example:
 /// - Normal distribution's root measure is Lebesgue measure
 /// - Dirac measure's root measure is counting measure
-pub trait Measure<T> {
+pub trait Measure<T>: MeasureMarker {
     /// The root measure for this measure
     type RootMeasure: Measure<T>;
 
@@ -155,21 +176,6 @@ impl<'a, T: Clone, M1: Measure<T> + Clone> LogDensity<'a, T, M1> {
             base_measure: Some(base_measure),
             x: self.x,
         }
-    }
-}
-
-impl<T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> LogDensity<'_, T, M1, M2> {
-    /// Compute the exponential of this log-density to get the regular density.
-    ///
-    /// This is provided for convenience when you need the regular density
-    /// but have already computed the log-density.
-    #[must_use]
-    pub fn exp(&self) -> f64
-    where
-        Self: Into<f64> + Clone,
-    {
-        let log_density = Into::<f64>::into(self.clone());
-        log_density.exp()
     }
 }
 
