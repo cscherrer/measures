@@ -1,4 +1,4 @@
-use crate::traits::{False, MeasureMarker, PrimitiveMeasure, True};
+use crate::core::{False, MeasureMarker, PrimitiveMeasure, True};
 
 #[derive(Clone, Default)]
 pub struct CountingMeasure<T: Clone> {

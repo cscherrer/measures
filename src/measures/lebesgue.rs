@@ -1,4 +1,4 @@
-use crate::traits::{False, MeasureMarker, PrimitiveMeasure, True};
+use crate::core::{False, MeasureMarker, PrimitiveMeasure, True};
 use num_traits::Float;
 
 #[derive(Clone, Default)]

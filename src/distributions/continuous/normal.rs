@@ -18,9 +18,9 @@
 //! let log_density: f64 = normal.log_density(&0.0).into();
 //! ```
 
+use crate::core::{Density, False, HasDensity, LogDensity, Measure, MeasureMarker, True};
+use crate::exponential_family::{DotProduct, ExpFamDensity, ExponentialFamily};
 use crate::measures::lebesgue::LebesgueMeasure;
-use crate::traits::exponential_family::{DotProduct, ExpFamDensity, ExponentialFamily};
-use crate::traits::{Density, False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use num_traits::{Float, FloatConst};
 
 /// A normal (Gaussian) distribution.
@@ -62,6 +62,7 @@ impl<T: Float> Normal<T> {
     /// # Panics
     ///
     /// Panics if `std_dev` is not positive.
+    #[must_use]
     pub fn new(mean: T, std_dev: T) -> Self {
         assert!(std_dev > T::zero(), "Standard deviation must be positive");
         Self { mean, std_dev }
