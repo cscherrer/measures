@@ -20,7 +20,7 @@
 
 use crate::core::{Density, False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
-    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, InnerProduct,
+    InnerProduct, ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure,
 };
 use crate::measures::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
