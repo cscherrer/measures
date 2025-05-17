@@ -1,5 +1,4 @@
 use crate::core::{False, MeasureMarker, PrimitiveMeasure, True};
-use num_traits::Float;
 
 #[derive(Clone, Default)]
 pub struct LebesgueMeasure<T: Clone> {
@@ -15,9 +14,9 @@ impl<T: Clone> LebesgueMeasure<T> {
     }
 }
 
-impl<T: Float> MeasureMarker for LebesgueMeasure<T> {
+impl<T: Clone> MeasureMarker for LebesgueMeasure<T> {
     type IsPrimitive = True;
     type IsExponentialFamily = False;
 }
 
-impl<T: Float> PrimitiveMeasure<T> for LebesgueMeasure<T> {}
+impl<T: Clone> PrimitiveMeasure<T> for LebesgueMeasure<T> {}

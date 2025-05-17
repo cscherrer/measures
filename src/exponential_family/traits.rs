@@ -2,11 +2,23 @@
 //!
 //! This module provides the core trait for exponential family distributions.
 
-use crate::core::{LogDensity, Measure};
+use crate::core::{LogDensity, Measure, True};
 use num_traits::Float;
 
-/// A trait for exponential family distributions
-pub trait ExponentialFamily<T: Float> {
+/// Trait for inner product operations between natural parameters and sufficient statistics.
+/// This replaces the more restrictive `DotProduct` with a more general operation.
+pub trait InnerProduct<Rhs, F: Float> {
+    /// Compute the inner product between self and rhs, returning a value in field F.
+    fn inner_product(&self, rhs: &Rhs) -> F;
+}
+
+/// A trait for exponential family distributions over space X with computations in field F.
+///
+/// This trait generalizes exponential families to work with:
+/// - Different spaces for the random variable (X)
+/// - Different spaces for the sufficient statistics
+/// - A common field (F) for numerical computations
+pub trait ExponentialFamily<X, F: Float> {
     /// The natural parameter type
     type NaturalParam;
 
@@ -20,40 +32,55 @@ pub trait ExponentialFamily<T: Float> {
     fn to_natural(&self) -> Self::NaturalParam;
 
     /// Compute the log partition function A(η)
-    fn log_partition(&self) -> T;
+    fn log_partition(&self) -> F;
 
     /// Compute the sufficient statistic T(x)
-    fn sufficient_statistic(&self, x: &T) -> Self::SufficientStat;
+    fn sufficient_statistic(&self, x: &X) -> Self::SufficientStat;
 
     /// Compute the carrier measure h(x)
-    fn carrier_measure(&self, x: &T) -> T;
+    fn carrier_measure(&self, x: &X) -> F;
 
     /// Compute the log density in exponential family form
-    fn log_density_ef<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
+    fn log_density_ef<'a>(&'a self, x: &'a X) -> LogDensity<'a, X, Self>
     where
-        Self: Sized + Clone + Measure<T>,
-        T: Clone,
+        Self: Sized + Clone + Measure<X>,
+        X: Clone,
     {
         LogDensity::new(self, x)
     }
 }
 
-/// Extension trait for dot product operations
-pub trait DotProduct<Rhs, T> {
-    fn dot(lhs: &Self, rhs: &Rhs) -> T;
+/// Implementation for array-based inner products of any dimension
+impl<F: Float, const N: usize> InnerProduct<[F; N], F> for [F; N] {
+    fn inner_product(&self, rhs: &[F; N]) -> F {
+        let mut sum = F::zero();
+        for i in 0..N {
+            sum = sum + self[i] * rhs[i];
+        }
+        sum
+    }
 }
 
 /// A helper trait for exponential family distributions to compute densities
 /// Types can use this to implement `HasDensity` without repetitive code.
-pub trait ExpFamDensity<T: Float>: ExponentialFamily<T> + Measure<T> {
+pub trait ExpFamDensity<X, F: Float>: ExponentialFamily<X, F> + Measure<X> {
     /// Compute log-density using exponential family form
-    fn compute_log_density<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
+    fn compute_log_density<'a>(&'a self, x: &'a X) -> LogDensity<'a, X, Self>
     where
         Self: Sized + Clone,
-        Self::NaturalParam: DotProduct<Self::SufficientStat, T>,
-        T: Clone,
+        Self::NaturalParam: InnerProduct<Self::SufficientStat, F>,
+        X: Clone,
     {
         // Return the LogDensity directly
         self.log_density_ef(x)
     }
+}
+
+/// A marker trait for measures that are exponential families
+///
+/// This trait serves as a marker to identify exponential family distributions
+/// and enables specialized implementations for density calculations.
+pub trait ExponentialFamilyMeasure<X, F: Float>:
+    Measure<X, IsExponentialFamily = True> + ExponentialFamily<X, F> + Clone
+{
 }

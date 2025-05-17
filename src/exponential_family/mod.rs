@@ -10,12 +10,16 @@
 //! - T(x) are the sufficient statistics
 //! - A(η) is the log-partition function
 //! - h(x) is the carrier measure
+//!
+//! The framework supports exponential families over different spaces:
+//! - The space X where the random variable lives (could be ints, vectors, etc.)
+//! - The field F for numerical computations (always some Float type)
 
 pub mod implementations;
 pub mod traits;
 
 // Re-export key types
 pub use implementations::{
-    ExponentialFamilyDensity, compute_exp_fam_log_density, exp_fam_log_density,
+    ExpFam, ExponentialFamilyDensity, compute_exp_fam_log_density, exp_fam_log_density,
 };
-pub use traits::{DotProduct, ExpFamDensity, ExponentialFamily};
+pub use traits::{ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, InnerProduct};

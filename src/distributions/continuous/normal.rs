@@ -19,7 +19,9 @@
 //! ```
 
 use crate::core::{Density, False, HasDensity, LogDensity, Measure, MeasureMarker, True};
-use crate::exponential_family::{DotProduct, ExpFamDensity, ExponentialFamily};
+use crate::exponential_family::{
+    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, InnerProduct,
+};
 use crate::measures::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
@@ -49,7 +51,9 @@ impl<T: Float> MeasureMarker for Normal<T> {
     type IsExponentialFamily = True;
 }
 
-impl<T: Float + FloatConst> ExpFamDensity<T> for Normal<T> {}
+impl<T: Float + FloatConst> ExpFamDensity<T, T> for Normal<T> {}
+
+impl<T: Float + FloatConst> ExponentialFamilyMeasure<T, T> for Normal<T> {}
 
 impl<T: Float> Normal<T> {
     /// Create a new normal distribution with the given mean and standard deviation.
@@ -93,25 +97,25 @@ impl<T: Float + FloatConst> HasDensity<T> for Normal<T> {
     }
 }
 
-// Implement DotProduct for natural parameters
-impl<T: Float> DotProduct<(T, T), T> for (T, T) {
-    fn dot(lhs: &Self, rhs: &(T, T)) -> T {
-        lhs.0 * rhs.0 + lhs.1 * rhs.1
+// Implement InnerProduct for natural parameters
+impl<T: Float> InnerProduct<(T, T), T> for (T, T) {
+    fn inner_product(&self, rhs: &(T, T)) -> T {
+        self.0 * rhs.0 + self.1 * rhs.1
     }
 }
 
-impl<T: Float + FloatConst> ExponentialFamily<T> for Normal<T> {
+impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
     type NaturalParam = (T, T); // (η₁, η₂) = (μ/σ², -1/(2σ²))
     type SufficientStat = (T, T); // (x, x²)
 
-    fn from_natural(param: <Self as ExponentialFamily<T>>::NaturalParam) -> Self {
+    fn from_natural(param: <Self as ExponentialFamily<T, T>>::NaturalParam) -> Self {
         let (eta1, eta2) = param;
         let sigma2 = -T::one() / (T::from(2.0).unwrap() * eta2);
         let mu = eta1 * sigma2;
         Self::new(mu, sigma2.sqrt())
     }
 
-    fn to_natural(&self) -> <Self as ExponentialFamily<T>>::NaturalParam {
+    fn to_natural(&self) -> <Self as ExponentialFamily<T, T>>::NaturalParam {
         let sigma2 = self.std_dev * self.std_dev;
         (
             self.mean / sigma2,
@@ -126,7 +130,7 @@ impl<T: Float + FloatConst> ExponentialFamily<T> for Normal<T> {
             + mu2 / (T::from(2.0).unwrap() * sigma2)
     }
 
-    fn sufficient_statistic(&self, x: &T) -> <Self as ExponentialFamily<T>>::SufficientStat {
+    fn sufficient_statistic(&self, x: &T) -> <Self as ExponentialFamily<T, T>>::SufficientStat {
         (*x, *x * *x)
     }
 

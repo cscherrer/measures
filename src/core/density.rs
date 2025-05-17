@@ -97,3 +97,29 @@ impl<'a, T: Clone, M1: Measure<T> + Clone> LogDensity<'a, T, M1> {
         }
     }
 }
+
+impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> LogDensity<'a, T, M1, M2> {
+    /// Compute the log-density using the exponential family form, if the
+    /// measure is an exponential family measure.
+    ///
+    /// This is a performance optimization that allows specialized computation
+    /// when we know we're working with an exponential family.
+    #[must_use]
+    pub fn compute_exp_fam_form(self) -> f64
+    where
+        T: num_traits::Float,
+        M1: crate::exponential_family::ExponentialFamilyMeasure<T, T>,
+        M1::NaturalParam: crate::exponential_family::InnerProduct<M1::SufficientStat, T>,
+        M2: Default,
+    {
+        // We need to convert from LogDensity<'a, T, M1, M2> to LogDensity<'a, T, M1>
+        // which is what the compute_exp_fam_log_density function expects
+        let log_density = LogDensity::<'a, T, M1> {
+            measure: self.measure,
+            base_measure: None,
+            x: self.x,
+        };
+
+        crate::exponential_family::compute_exp_fam_log_density(log_density)
+    }
+}
