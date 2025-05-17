@@ -1,7 +1,4 @@
-use measures::{
-    HasDensity, Normal,
-    exponential_family::{ExpFam, ExponentialFamilyMeasure},
-};
+use measures::{HasDensity, Normal, exponential_family::ExpFam};
 
 #[test]
 fn test_normal_exp_fam_wrapper() {

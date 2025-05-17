@@ -6,4 +6,5 @@
 pub mod multinormal;
 
 // Re-export common distributions
-pub use multinormal::{Matrix, MultivariateNormal, Vector};
+pub use multinormal::MultivariateNormal;
+pub use nalgebra::{DMatrix, DVector};

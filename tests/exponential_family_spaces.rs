@@ -1,11 +1,9 @@
 use measures::{
     HasDensity,
-    distributions::{
-        discrete::poisson::Poisson,
-        multivariate::multinormal::{Matrix, MultivariateNormal, Vector},
-    },
-    exponential_family::{ExpFam, ExponentialFamilyMeasure, InnerProduct},
+    distributions::{discrete::poisson::Poisson, multivariate::multinormal::MultivariateNormal},
+    exponential_family::{ExpFam, InnerProduct},
 };
+use nalgebra::{DMatrix, DVector};
 
 #[test]
 fn test_poisson_with_different_field_types() {
@@ -32,14 +30,13 @@ fn test_poisson_with_different_field_types() {
 #[test]
 fn test_multivariate_normal_vector_space() {
     // Create a 2D multivariate normal distribution
-    let mean = Vector::new(vec![1.0, 2.0]);
-    let cov_data = vec![vec![1.0, 0.5], vec![0.5, 2.0]];
-    let cov = Matrix::new(cov_data);
+    let mean = DVector::from_vec(vec![1.0, 2.0]);
+    let cov = DMatrix::from_row_slice(2, 2, &[1.0, 0.5, 0.5, 2.0]);
 
     let mvn = MultivariateNormal::new(mean, cov);
 
     // Test point in the vector space
-    let x = Vector::new(vec![0.0, 0.0]);
+    let x = DVector::from_vec(vec![0.0, 0.0]);
 
     // Compute log density
     let log_density: f64 = mvn.log_density(&x).into();

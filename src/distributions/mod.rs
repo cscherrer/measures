@@ -12,4 +12,5 @@ pub mod multivariate;
 // Re-export common distributions
 pub use continuous::Normal;
 pub use discrete::poisson::Poisson;
-pub use multivariate::multinormal::{Matrix, MultivariateNormal, Vector};
+pub use multivariate::multinormal::MultivariateNormal;
+pub use nalgebra::{DMatrix, DVector};
