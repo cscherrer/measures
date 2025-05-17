@@ -17,7 +17,7 @@
 //! # Example
 //!
 //! ```rust
-//! use measures::{Normal, HasDensity};
+//! use measures::{Normal, Measure, HasDensity};
 //!
 //! let normal = Normal::new(0.0, 1.0);
 //!
@@ -62,7 +62,7 @@ pub trait PrimitiveMeasure<T>: Clone + MeasureMarker<IsPrimitive = True> {}
 impl<P: PrimitiveMeasure<T>, T: Clone> Measure<T> for P {
     type RootMeasure = Self;
 
-    fn in_support(&self, x: T) -> bool {
+    fn in_support(&self, _x: T) -> bool {
         true
     }
 
@@ -88,13 +88,49 @@ pub trait Measure<T>: MeasureMarker {
     fn root_measure(&self) -> Self::RootMeasure;
 }
 
+/// A trait for measures that can compute their density and log-density.
+///
+/// This trait extends `Measure` to add methods for density computation.
+/// Separating this from `Measure` allows for specialized implementation strategies
+/// like exponential family computations.
+pub trait HasDensity<T>: Measure<T> {
+    /// Compute the density of this measure at a point.
+    ///
+    /// Returns a builder that can be used to specify the base measure and
+    /// then compute the actual density value.
+    fn density<'a>(&'a self, x: &'a T) -> Density<'a, T, Self>
+    where
+        Self: Sized + Clone,
+        T: Clone,
+    {
+        Density::new(self, x)
+    }
+
+    /// Compute the log-density of this measure at a point.
+    ///
+    /// Returns a builder that can be used to specify the base measure and
+    /// then compute the actual log-density value.
+    ///
+    /// The default implementation computes the density and takes its log,
+    /// but measures should override this with a more efficient implementation
+    /// when possible.
+    fn log_density<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
+    where
+        Self: Sized + Clone,
+        T: Clone,
+    {
+        LogDensity::new(self, x)
+    }
+}
+
 /// A builder for computing densities of a measure.
 ///
 /// This type is used to build up density computations. It can be in two states:
 /// 1. Initial state: just the measure and point
 /// 2. Final state: includes the base measure and can be converted to a f64
 #[derive(Clone)]
-pub struct Density<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone = M1> {
+pub struct 
+Density<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone = M1> {
     /// The measure whose density we're computing
     pub measure: &'a M1,
     /// The base measure with respect to which we're computing the density
@@ -124,20 +160,25 @@ impl<'a, T: Clone, M1: Measure<T> + Clone> Density<'a, T, M1> {
             x: self.x,
         }
     }
+    
+    /// Convert a density to its logarithm
+    pub fn log(self) -> LogDensity<'a, T, M1> {
+        LogDensity {
+            measure: self.measure,
+            base_measure: None,
+            x: self.x,
+        }
+    }
 }
 
-impl<T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> Density<'_, T, M1, M2> {
-    /// Compute the log of this density.
-    ///
-    /// This is less efficient than computing the log-density directly,
-    /// but is provided for convenience.
-    #[must_use]
-    pub fn log(&self) -> f64
-    where
-        Self: Into<f64> + Clone,
-    {
-        let density = Into::<f64>::into(self.clone());
-        density.ln()
+impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> Density<'a, T, M1, M2> {
+    /// Convert a density with respect to a base measure to its logarithm
+    pub fn log_wrt(self) -> LogDensity<'a, T, M1, M2> {
+        LogDensity {
+            measure: self.measure,
+            base_measure: self.base_measure,
+            x: self.x,
+        }
     }
 }
 
@@ -176,51 +217,5 @@ impl<'a, T: Clone, M1: Measure<T> + Clone> LogDensity<'a, T, M1> {
             base_measure: Some(base_measure),
             x: self.x,
         }
-    }
-}
-
-/// A trait for measures that can compute their density and log-density.
-///
-/// This trait provides methods to compute both the density and log-density of a measure.
-/// The density/log-density is returned as a builder type that can be used to specify
-/// the base measure and then compute the actual value.
-///
-/// # Implementation Note
-///
-/// Measures should implement this trait when they can compute their density or log-density.
-/// If a measure can compute its density, it can always compute its log-density by taking
-/// the log of the density. Similarly, if a measure can compute its log-density, it can
-/// always compute its density by taking the exp of the log-density.
-///
-/// However, for efficiency, measures should implement the most efficient computation
-/// path. For example, the normal distribution can compute its log-density directly
-/// without computing the full density first.
-pub trait HasDensity<T>: Measure<T> {
-    /// Compute the density of this measure at a point.
-    ///
-    /// Returns a builder that can be used to specify the base measure and
-    /// then compute the actual density value.
-    fn density<'a>(&'a self, x: &'a T) -> Density<'a, T, Self>
-    where
-        Self: Sized + Clone,
-        T: Clone,
-    {
-        Density::new(self, x)
-    }
-
-    /// Compute the log-density of this measure at a point.
-    ///
-    /// Returns a builder that can be used to specify the base measure and
-    /// then compute the actual log-density value.
-    ///
-    /// The default implementation computes the density and takes its log,
-    /// but measures should override this with a more efficient implementation
-    /// when possible.
-    fn log_density<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
-    where
-        Self: Sized + Clone,
-        T: Clone,
-    {
-        LogDensity::new(self, x)
     }
 }

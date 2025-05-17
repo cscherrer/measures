@@ -19,9 +19,8 @@
 //! ```
 
 use crate::measures::lebesgue::LebesgueMeasure;
-use crate::traits::exponential_family::ExpFamLogDensity;
-use crate::traits::exponential_family::{DotProduct, ExponentialFamily};
-use crate::traits::{Density, False, LogDensity, Measure, MeasureMarker};
+use crate::traits::exponential_family::{DotProduct, ExpFamDensity, ExponentialFamily};
+use crate::traits::{Density, False, HasDensity, LogDensity, Measure, MeasureMarker};
 use num_traits::{Float, FloatConst};
 
 /// A normal (Gaussian) distribution.
@@ -36,11 +35,20 @@ pub struct Normal<T: Float> {
     pub std_dev: T,
 }
 
+impl<T: Float> Default for Normal<T> {
+    fn default() -> Self {
+        Self {
+            mean: T::zero(),
+            std_dev: T::one(),
+        }
+    }
+}
+
 impl<T: Float> MeasureMarker for Normal<T> {
     type IsPrimitive = False;
 }
 
-impl<T: Float + FloatConst> ExpFamLogDensity<T> for Normal<T> {}
+impl<T: Float + FloatConst> ExpFamDensity<T> for Normal<T> {}
 
 impl<T: Float> Normal<T> {
     /// Create a new normal distribution with the given mean and standard deviation.
@@ -68,6 +76,18 @@ impl<T: Float> Measure<T> for Normal<T> {
 
     fn root_measure(&self) -> <Self as Measure<T>>::RootMeasure {
         LebesgueMeasure::<T>::new()
+    }
+}
+
+// Implement HasDensity using the ExponentialFamily structure
+impl<T: Float + FloatConst> HasDensity<T> for Normal<T> {
+    fn log_density<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
+    where
+        Self: Sized + Clone,
+        T: Clone,
+    {
+        // Use the exponential family form directly
+        self.log_density_ef(x)
     }
 }
 
@@ -125,5 +145,29 @@ impl<T: Float + FloatConst> From<Density<'_, T, Normal<T>, LebesgueMeasure<T>>> 
     fn from(val: Density<'_, T, Normal<T>, LebesgueMeasure<T>>) -> Self {
         let log_density: f64 = LogDensity::new(val.measure, val.x).into();
         log_density.exp()
+    }
+}
+
+// Implement From for LogDensity to f64
+impl<T: Float + FloatConst> From<LogDensity<'_, T, Normal<T>>> for f64 {
+    fn from(val: LogDensity<'_, T, Normal<T>>) -> Self {
+        let x = *val.x;
+        let mu = val.measure.mean;
+        let sigma = val.measure.std_dev;
+        let sigma2 = sigma * sigma;
+        
+        let diff = x - mu;
+        let norm_constant = -(T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap();
+        let exponent = -(diff * diff) / (T::from(2.0).unwrap() * sigma2);
+        
+        (norm_constant + exponent).to_f64().unwrap()
+    }
+}
+
+impl<T: Float + FloatConst> From<LogDensity<'_, T, Normal<T>, LebesgueMeasure<T>>> for f64 {
+    fn from(val: LogDensity<'_, T, Normal<T>, LebesgueMeasure<T>>) -> Self {
+        // For Normal distribution, the log-density with respect to Lebesgue measure
+        // is the same as the log-density with respect to itself
+        From::<LogDensity<'_, T, Normal<T>>>::from(LogDensity::new(val.measure, val.x))
     }
 }
