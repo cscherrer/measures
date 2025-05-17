@@ -19,9 +19,7 @@
 //! ```
 
 use crate::core::{Density, False, HasDensity, LogDensity, Measure, MeasureMarker, True};
-use crate::exponential_family::{
-    InnerProduct, ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure,
-};
+use crate::exponential_family::{ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure};
 use crate::measures::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
@@ -97,19 +95,12 @@ impl<T: Float + FloatConst> HasDensity<T> for Normal<T> {
     }
 }
 
-// Implement InnerProduct for natural parameters
-impl<T: Float> InnerProduct<(T, T), T> for (T, T) {
-    fn inner_product(&self, rhs: &(T, T)) -> T {
-        self.0 * rhs.0 + self.1 * rhs.1
-    }
-}
-
 impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
-    type NaturalParam = (T, T); // (η₁, η₂) = (μ/σ², -1/(2σ²))
-    type SufficientStat = (T, T); // (x, x²)
+    type NaturalParam = [T; 2]; // (η₁, η₂) = (μ/σ², -1/(2σ²))
+    type SufficientStat = [T; 2]; // (x, x²)
 
     fn from_natural(param: <Self as ExponentialFamily<T, T>>::NaturalParam) -> Self {
-        let (eta1, eta2) = param;
+        let [eta1, eta2] = param;
         let sigma2 = -T::one() / (T::from(2.0).unwrap() * eta2);
         let mu = eta1 * sigma2;
         Self::new(mu, sigma2.sqrt())
@@ -117,10 +108,10 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
 
     fn to_natural(&self) -> <Self as ExponentialFamily<T, T>>::NaturalParam {
         let sigma2 = self.std_dev * self.std_dev;
-        (
+        [
             self.mean / sigma2,
             -T::one() / (T::from(2.0).unwrap() * sigma2),
-        )
+        ]
     }
 
     fn log_partition(&self) -> T {
@@ -131,7 +122,7 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
     }
 
     fn sufficient_statistic(&self, x: &T) -> <Self as ExponentialFamily<T, T>>::SufficientStat {
-        (*x, *x * *x)
+        [*x, *x * *x]
     }
 
     fn carrier_measure(&self, _x: &T) -> T {

@@ -1,6 +1,20 @@
 //! Exponential family trait definitions.
 //!
-//! This module provides the core trait for exponential family distributions.
+//! This module provides the core traits for exponential family distributions.
+//! The framework is designed to support exponential families over different spaces:
+//!
+//! - `X`: The space where random variables live (could be reals, integers, vectors, etc.)
+//! - `F`: The field used for numerical computations (always some Float type)
+//!
+//! The exponential family is represented by the standard form:
+//!
+//! p(x|θ) = h(x) exp(η(θ)·T(x) - A(η(θ)))
+//!
+//! where:
+//! - η(θ) are the natural parameters
+//! - T(x) are the sufficient statistics
+//! - A(η) is the log-partition function
+//! - h(x) is the carrier measure
 
 use crate::core::{LogDensity, Measure, True};
 use num_traits::Float;
@@ -51,13 +65,12 @@ pub trait ExponentialFamily<X, F: Float> {
 }
 
 /// Implementation for array-based inner products of any dimension
-impl<F: Float, const N: usize> InnerProduct<[F; N], F> for [F; N] {
+impl<F, const N: usize> InnerProduct<[F; N], F> for [F; N]
+where
+    F: Float + std::iter::Sum,
+{
     fn inner_product(&self, rhs: &[F; N]) -> F {
-        let mut sum = F::zero();
-        for i in 0..N {
-            sum = sum + self[i] * rhs[i];
-        }
-        sum
+        self.iter().zip(rhs.iter()).map(|(a, b)| *a * *b).sum()
     }
 }
 

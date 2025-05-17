@@ -70,9 +70,12 @@ impl<F: Float> Matrix<F> {
     #[must_use]
     pub fn identity(n: usize) -> Self {
         let mut data = vec![vec![F::zero(); n]; n];
-        for i in 0..n {
-            data[i][i] = F::one();
+
+        // Use iterator pattern with enumerate instead of range-based loop
+        for (i, row) in data.iter_mut().enumerate().take(n) {
+            row[i] = F::one();
         }
+
         Self {
             data,
             rows: n,
@@ -89,11 +92,14 @@ impl<F: Float> Matrix<F> {
             "Matrix columns must match vector length"
         );
         let mut result = vec![F::zero(); self.rows];
-        for i in 0..self.rows {
-            for j in 0..self.cols {
-                result[i] = result[i] + self.data[i][j] * v.data[j];
+
+        // Use enumerate with iterator for both dimensions
+        for (i, row) in self.data.iter().enumerate().take(self.rows) {
+            for (j, &val) in row.iter().enumerate().take(self.cols) {
+                result[i] = result[i] + val * v.data[j];
             }
         }
+
         Vector { data: result }
     }
 
@@ -291,11 +297,14 @@ impl<F: Float + FloatConst> ExponentialFamily<Vector<F>, F> for MultivariateNorm
         // Second component: xx^T (outer product)
         let n = x.len();
         let mut t2_data = vec![vec![F::zero(); n]; n];
-        for i in 0..n {
-            for j in 0..n {
-                t2_data[i][j] = x.data[i] * x.data[j];
+
+        // Use enumerate for both dimensions
+        for (i, &xi) in x.data.iter().enumerate().take(n) {
+            for (j, &xj) in x.data.iter().enumerate().take(n) {
+                t2_data[i][j] = xi * xj;
             }
         }
+
         let t2 = Matrix::new(t2_data);
 
         (t1, t2)
