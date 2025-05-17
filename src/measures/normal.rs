@@ -20,7 +20,7 @@
 
 use crate::measures::lebesgue::LebesgueMeasure;
 use crate::traits::exponential_family::{DotProduct, ExpFamDensity, ExponentialFamily};
-use crate::traits::{Density, False, HasDensity, LogDensity, Measure, MeasureMarker};
+use crate::traits::{Density, False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use num_traits::{Float, FloatConst};
 
 /// A normal (Gaussian) distribution.
@@ -46,6 +46,7 @@ impl<T: Float> Default for Normal<T> {
 
 impl<T: Float> MeasureMarker for Normal<T> {
     type IsPrimitive = False;
+    type IsExponentialFamily = True;
 }
 
 impl<T: Float + FloatConst> ExpFamDensity<T> for Normal<T> {}
@@ -155,11 +156,12 @@ impl<T: Float + FloatConst> From<LogDensity<'_, T, Normal<T>>> for f64 {
         let mu = val.measure.mean;
         let sigma = val.measure.std_dev;
         let sigma2 = sigma * sigma;
-        
+
         let diff = x - mu;
-        let norm_constant = -(T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap();
+        let norm_constant =
+            -(T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap();
         let exponent = -(diff * diff) / (T::from(2.0).unwrap() * sigma2);
-        
+
         (norm_constant + exponent).to_f64().unwrap()
     }
 }

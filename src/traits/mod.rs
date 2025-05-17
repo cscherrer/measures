@@ -50,6 +50,9 @@ impl TypeLevelBool for False {
 pub trait MeasureMarker {
     /// Type-level boolean indicating if this is a primitive measure.
     type IsPrimitive: TypeLevelBool;
+
+    /// Type-level boolean indicating if this is an exponential family.
+    type IsExponentialFamily: TypeLevelBool;
 }
 
 /// A primitive measure that serves as a building block for more complex measures.
@@ -129,8 +132,7 @@ pub trait HasDensity<T>: Measure<T> {
 /// 1. Initial state: just the measure and point
 /// 2. Final state: includes the base measure and can be converted to a f64
 #[derive(Clone)]
-pub struct 
-Density<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone = M1> {
+pub struct Density<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone = M1> {
     /// The measure whose density we're computing
     pub measure: &'a M1,
     /// The base measure with respect to which we're computing the density
@@ -160,8 +162,9 @@ impl<'a, T: Clone, M1: Measure<T> + Clone> Density<'a, T, M1> {
             x: self.x,
         }
     }
-    
+
     /// Convert a density to its logarithm
+    #[must_use]
     pub fn log(self) -> LogDensity<'a, T, M1> {
         LogDensity {
             measure: self.measure,
@@ -173,6 +176,7 @@ impl<'a, T: Clone, M1: Measure<T> + Clone> Density<'a, T, M1> {
 
 impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> Density<'a, T, M1, M2> {
     /// Convert a density with respect to a base measure to its logarithm
+    #[must_use]
     pub fn log_wrt(self) -> LogDensity<'a, T, M1, M2> {
         LogDensity {
             measure: self.measure,

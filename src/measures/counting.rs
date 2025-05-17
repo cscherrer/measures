@@ -1,4 +1,4 @@
-use crate::traits::{MeasureMarker, PrimitiveMeasure, True};
+use crate::traits::{False, MeasureMarker, PrimitiveMeasure, True};
 
 #[derive(Clone, Default)]
 pub struct CountingMeasure<T: Clone> {
@@ -16,6 +16,7 @@ impl<T: Clone> CountingMeasure<T> {
 
 impl<T: Clone> MeasureMarker for CountingMeasure<T> {
     type IsPrimitive = True;
+    type IsExponentialFamily = False;
 }
 
 impl<T: Clone> PrimitiveMeasure<T> for CountingMeasure<T> {}
