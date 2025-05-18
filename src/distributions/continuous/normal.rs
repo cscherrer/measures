@@ -172,17 +172,17 @@ mod tests {
 
         // Method 3: Manual calculation using the standard formula
         let x_f64 = x;
-        let mu = normal.mean as f64;
-        let sigma = normal.std_dev as f64;
+        let mu = normal.mean ;
+        let sigma = normal.std_dev ;
         let sigma2 = sigma * sigma;
         let norm_constant = 1.0 / (2.0 * std::f64::consts::PI * sigma2).sqrt();
         let exponent = -((x_f64 - mu) * (x_f64 - mu)) / (2.0 * sigma2);
         let log_density_direct = exponent + norm_constant.ln();
 
         // Compare the results
-        println!("Density via exponential family: {}", log_density_ef);
-        println!("Density from From impl: {}", log_density_from);
-        println!("Density via direct calculation: {}", log_density_direct);
+        println!("Log-density via exponential family: {log_density_ef}");
+        println!("Log-density from From impl: {log_density_from}");
+        println!("Log-density via direct calculation: {log_density_direct}");
 
         assert_relative_eq!(log_density_ef, log_density_from, epsilon = 1e-10);
         assert_relative_eq!(log_density_from, log_density_direct, epsilon = 1e-10);
