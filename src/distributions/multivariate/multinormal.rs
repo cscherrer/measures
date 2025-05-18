@@ -59,9 +59,8 @@ where
         );
 
         // Compute matrix inverse - using nalgebra's built-in functions
-        let precision = match covariance.clone().try_inverse() {
-            Some(p) => p,
-            None => panic!("Covariance matrix is not invertible"),
+        let Some(precision) = covariance.clone().try_inverse() else {
+            panic!("Covariance matrix is not invertible")
         };
 
         // Compute determinant efficiently
@@ -132,9 +131,8 @@ where
         let precision_matrix = eta2.map(|x| neg_two * x);
 
         // Compute covariance as inverse of precision
-        let covariance_matrix = match precision_matrix.clone().try_inverse() {
-            Some(cov) => cov,
-            None => panic!("Precision matrix is not invertible"),
+        let Some(covariance_matrix) = precision_matrix.clone().try_inverse() else {
+            panic!("Precision matrix is not invertible")
         };
 
         // Solve for mean: Σ^-1 μ = η₁, so μ = Σ η₁

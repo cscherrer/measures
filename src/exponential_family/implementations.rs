@@ -39,8 +39,7 @@ where
         let a = val.measure.log_partition();
         let h = val.measure.carrier_measure(val.x);
 
-        let result = eta.inner_product(&t) - a + h.ln();
-        result.to_f64().unwrap()
+        (eta.inner_product(&t) - a + h.ln()).to_f64().unwrap()
     }
 }
 

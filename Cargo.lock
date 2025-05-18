@@ -366,6 +366,7 @@ name = "measures"
 version = "0.1.0"
 dependencies = [
  "alga",
+ "approx 0.5.1",
  "criterion",
  "nalgebra",
  "num-traits",
