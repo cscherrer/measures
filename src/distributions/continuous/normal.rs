@@ -106,13 +106,13 @@ impl<T: Float + FloatConst> HasDensity<T> for Normal<T> {
     }
 }
 
-// Implement From for LogDensity to f64 - use a single implementation 
+// Implement From for LogDensity to f64 - use a single implementation
 // that works with any base measure
 impl<T: Float + FloatConst, M: Measure<T>> From<LogDensity<'_, T, Normal<T>, M>> for f64 {
     fn from(val: LogDensity<'_, T, Normal<T>, M>) -> Self {
         let normal = val.measure;
         let x = val.x;
-        
+
         compute_normal_log_density(normal.mean, normal.std_dev, *x)
     }
 }
