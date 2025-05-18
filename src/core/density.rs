@@ -1,4 +1,5 @@
 use super::measure::Measure;
+use super::types::{ExponentialFamily as ExponentialFamilyMethod, Specialized};
 
 /// A builder for computing log-densities of a measure.
 ///
@@ -6,7 +7,12 @@ use super::measure::Measure;
 /// 1. Initial state: just the measure and point
 /// 2. Final state: includes the base measure and can be converted to a f64
 #[derive(Clone)]
-pub struct LogDensity<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone = M1> {
+pub struct LogDensity<
+    'a,
+    T: Clone,
+    M1: Measure<T> + Clone,
+    M2: Measure<T> + Clone = <M1 as Measure<T>>::RootMeasure,
+> {
     /// The measure whose log-density we're computing
     pub measure: &'a M1,
     /// The base measure with respect to which we're computing the log-density
@@ -15,9 +21,14 @@ pub struct LogDensity<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clo
     pub x: &'a T,
 }
 
-impl<'a, T: Clone, M1: Measure<T> + Clone> LogDensity<'a, T, M1> {
+impl<'a, T, M, R> LogDensity<'a, T, M, R>
+where
+    T: Clone,
+    M: Measure<T, RootMeasure = R>,
+    R: Measure<T>,
+{
     /// Create a new log-density computation.
-    pub fn new(measure: &'a M1, x: &'a T) -> Self {
+    pub fn new(measure: &'a M, x: &'a T) -> Self {
         Self {
             measure,
             base_measure: None,
@@ -29,13 +40,53 @@ impl<'a, T: Clone, M1: Measure<T> + Clone> LogDensity<'a, T, M1> {
     ///
     /// Returns a builder that can be converted into a f64 to get the actual
     /// log-density value.
-    pub fn wrt<M2: Measure<T> + Clone>(self, base_measure: &'a M2) -> LogDensity<'a, T, M1, M2> {
+    pub fn wrt<M2: Measure<T> + Clone>(self, base_measure: &'a M2) -> LogDensity<'a, T, M, M2> {
         LogDensity {
             measure: self.measure,
             base_measure: Some(base_measure),
             x: self.x,
         }
     }
+
+    /// Force using the specialized implementation for this computation.
+    ///
+    /// This is useful for benchmarking or testing when you want to compare
+    /// different implementation methods.
+    #[must_use]
+    pub fn use_specialized(self) -> LogDensityWithMethod<'a, T, M, R, Specialized> {
+        LogDensityWithMethod {
+            log_density: self,
+            _marker: std::marker::PhantomData,
+        }
+    }
+
+    /// Force using the exponential family implementation for this computation.
+    ///
+    /// This is useful for benchmarking or testing when you want to compare
+    /// different implementation methods.
+    #[must_use]
+    pub fn use_exp_fam(self) -> LogDensityWithMethod<'a, T, M, R, ExponentialFamilyMethod> {
+        LogDensityWithMethod {
+            log_density: self,
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
+/// A log density computation with a specified method.
+///
+/// This is used to force a particular computation method for the log density.
+pub struct LogDensityWithMethod<
+    'a,
+    T: Clone,
+    M1: Measure<T> + Clone,
+    M2: Measure<T> + Clone,
+    Method,
+> {
+    /// The underlying log density computation
+    pub log_density: LogDensity<'a, T, M1, M2>,
+    /// Marker for the method to use
+    _marker: std::marker::PhantomData<Method>,
 }
 
 impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> LogDensity<'a, T, M1, M2> {

@@ -41,8 +41,6 @@ fn test_different_parameters() {
         let test_points = [-2.0, -1.0, 0.0, 1.0, 2.0];
 
         for x in test_points {
-
-
             // Get log-density as a LogDensity object first, then convert to f64
             let log_density = our_normal.log_density(&x);
             let our_log_density: f64 = log_density.into();

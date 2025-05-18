@@ -3,7 +3,7 @@
 //! This module provides utility functions for computing log-densities in a
 //! consistent, non-redundant way across different distribution types.
 
-use crate::exponential_family::{ ExponentialFamilyMeasure, InnerProduct};
+use crate::exponential_family::{ExponentialFamilyMeasure, InnerProduct};
 use nalgebra::{ComplexField, RealField, Scalar};
 use nalgebra::{DMatrix, DVector};
 use num_traits::{Float, FloatConst};

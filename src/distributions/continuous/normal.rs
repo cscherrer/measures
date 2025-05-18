@@ -12,12 +12,13 @@
 //! let normal = Normal::new(0.0, 1.0); // Standard normal distribution
 //!
 //! // Compute density at x = 0
-//! let density: f64 = normal.density(&0.0).into();
+//! let density: f64 = normal.log_density(&0.0).into();
 //!
 //! // Compute log-density (more efficient)
 //! let log_density: f64 = normal.log_density(&0.0).into();
 //! ```
 
+use crate::core::types::ExponentialFamily as EFMethod;
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
     ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, compute_normal_log_density,
@@ -49,6 +50,7 @@ impl<T: Float> Default for Normal<T> {
 impl<T: Float> MeasureMarker for Normal<T> {
     type IsPrimitive = False;
     type IsExponentialFamily = True;
+    type PreferredLogDensityMethod = EFMethod;
 }
 
 impl<T: Float + FloatConst> ExpFamDensity<T, T> for Normal<T> {}
@@ -73,6 +75,13 @@ impl<T: Float> Normal<T> {
     }
 }
 
+impl<T: Float + FloatConst> Normal<T> {
+    /// Compute the log density directly
+    pub fn compute_log_density(&self, x: &T) -> f64 {
+        compute_normal_log_density(self.mean, self.std_dev, *x)
+    }
+}
+
 impl<T: Float> Measure<T> for Normal<T> {
     type RootMeasure = LebesgueMeasure<T>;
 
@@ -93,7 +102,18 @@ impl<T: Float + FloatConst> HasDensity<T> for Normal<T> {
         T: Clone,
     {
         // Use the exponential family form directly
-        self.log_density_ef(x)
+        crate::core::measure::HasDensity::log_density_ef(self, x)
+    }
+}
+
+// Implement From for LogDensity to f64 - use a single implementation 
+// that works with any base measure
+impl<T: Float + FloatConst, M: Measure<T>> From<LogDensity<'_, T, Normal<T>, M>> for f64 {
+    fn from(val: LogDensity<'_, T, Normal<T>, M>) -> Self {
+        let normal = val.measure;
+        let x = val.x;
+        
+        compute_normal_log_density(normal.mean, normal.std_dev, *x)
     }
 }
 
@@ -132,25 +152,6 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
     }
 }
 
-// Implement From for LogDensity to f64
-impl<T: Float + FloatConst> From<LogDensity<'_, T, Normal<T>>> for f64 {
-    fn from(val: LogDensity<'_, T, Normal<T>>) -> Self {
-        let x = *val.x;
-        let mu = val.measure.mean;
-        let sigma = val.measure.std_dev;
-
-        compute_normal_log_density(mu, sigma, x)
-    }
-}
-
-impl<T: Float + FloatConst> From<LogDensity<'_, T, Normal<T>, LebesgueMeasure<T>>> for f64 {
-    fn from(val: LogDensity<'_, T, Normal<T>, LebesgueMeasure<T>>) -> Self {
-        // For Normal distribution, the log-density with respect to Lebesgue measure
-        // is the same as the log-density with respect to itself
-        From::<LogDensity<'_, T, Normal<T>>>::from(LogDensity::new(val.measure, val.x))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -172,8 +173,8 @@ mod tests {
 
         // Method 3: Manual calculation using the standard formula
         let x_f64 = x;
-        let mu = normal.mean ;
-        let sigma = normal.std_dev ;
+        let mu = normal.mean;
+        let sigma = normal.std_dev;
         let sigma2 = sigma * sigma;
         let norm_constant = 1.0 / (2.0 * std::f64::consts::PI * sigma2).sqrt();
         let exponent = -((x_f64 - mu) * (x_f64 - mu)) / (2.0 * sigma2);

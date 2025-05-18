@@ -1,3 +1,4 @@
+use crate::core::types::Default as DefaultMethod;
 use crate::core::{False, MeasureMarker, PrimitiveMeasure, True};
 
 #[derive(Clone, Default)]
@@ -17,6 +18,7 @@ impl<T: Clone> CountingMeasure<T> {
 impl<T: Clone> MeasureMarker for CountingMeasure<T> {
     type IsPrimitive = True;
     type IsExponentialFamily = False;
+    type PreferredLogDensityMethod = DefaultMethod;
 }
 
 impl<T: Clone> PrimitiveMeasure<T> for CountingMeasure<T> {}

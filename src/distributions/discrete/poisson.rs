@@ -4,6 +4,7 @@
 //! distribution that expresses the probability of a given number of events occurring
 //! in a fixed interval of time or space.
 
+use crate::core::types::{ExponentialFamily as EFMethod, Specialized};
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{ExponentialFamily, ExponentialFamilyMeasure, InnerProduct};
 use crate::measures::counting::CountingMeasure;
@@ -39,6 +40,7 @@ impl<F: Float> Poisson<F> {
 impl<F: Float> MeasureMarker for Poisson<F> {
     type IsPrimitive = False;
     type IsExponentialFamily = True;
+    type PreferredLogDensityMethod = Specialized;
 }
 
 impl<F: Float> Measure<u64> for Poisson<F> {
@@ -100,7 +102,22 @@ impl<F: Float + FloatConst> HasDensity<u64> for Poisson<F> {
     where
         Self: Sized + Clone,
     {
-        self.log_density_ef(x)
+        self.log_density_specialized(x)
+    }
+
+    fn log_density_specialized<'a>(&'a self, x: &'a u64) -> LogDensity<'a, u64, Self>
+    where
+        Self: Sized + Clone,
+    {
+        LogDensity::new(self, x)
+    }
+
+    fn log_density_ef<'a>(&'a self, x: &'a u64) -> LogDensity<'a, u64, Self>
+    where
+        Self: Sized + Clone,
+    {
+        // Invoke the base Log density creation
+        LogDensity::new(self, x)
     }
 }
 
@@ -120,6 +137,82 @@ impl<F: Float + FloatConst> From<LogDensity<'_, u64, Poisson<F>>> for f64 {
         }
 
         let result = -lambda + k_f * lambda.ln() - log_factorial;
+        result.to_f64().unwrap()
+    }
+}
+
+// Implement specialized From for LogDensityWithMethod<_, _, _, _, Specialized>
+impl<F: Float + FloatConst>
+    From<
+        crate::core::density::LogDensityWithMethod<
+            '_,
+            u64,
+            Poisson<F>,
+            CountingMeasure<u64>,
+            Specialized,
+        >,
+    > for f64
+{
+    fn from(
+        val: crate::core::density::LogDensityWithMethod<
+            '_,
+            u64,
+            Poisson<F>,
+            CountingMeasure<u64>,
+            Specialized,
+        >,
+    ) -> Self {
+        // Use the specialized implementation
+        let inner = val.log_density;
+        let k = *inner.x;
+        let lambda = inner.measure.lambda;
+
+        let k_f = F::from(k).unwrap();
+
+        // PMF: P(X = k) = (e^-λ * λ^k) / k!
+        // Log-PMF: -λ + k*log(λ) - log(k!)
+        let mut log_factorial = F::zero();
+        for i in 1..=k {
+            log_factorial = log_factorial + F::from(i).unwrap().ln();
+        }
+
+        let result = -lambda + k_f * lambda.ln() - log_factorial;
+        result.to_f64().unwrap()
+    }
+}
+
+// Implement exponential family From for LogDensityWithMethod<_, _, _, _, ExponentialFamily>
+impl<F: Float + FloatConst>
+    From<
+        crate::core::density::LogDensityWithMethod<
+            '_,
+            u64,
+            Poisson<F>,
+            CountingMeasure<u64>,
+            EFMethod,
+        >,
+    > for f64
+{
+    fn from(
+        val: crate::core::density::LogDensityWithMethod<
+            '_,
+            u64,
+            Poisson<F>,
+            CountingMeasure<u64>,
+            EFMethod,
+        >,
+    ) -> Self {
+        // Use the exponential family implementation
+        let inner = val.log_density;
+        let poisson = inner.measure;
+        let x = inner.x;
+
+        let eta = poisson.to_natural();
+        let t = poisson.sufficient_statistic(x);
+        let a = poisson.log_partition();
+        let h = poisson.carrier_measure(x);
+
+        let result = eta.inner_product(&t) - a + h.ln();
         result.to_f64().unwrap()
     }
 }

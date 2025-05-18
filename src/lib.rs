@@ -16,7 +16,7 @@
 //! let normal = Normal::new(0.0, 1.0);
 //!
 //! // Compute density
-//! let density: f64 = normal.density(&0.0).into();
+//! let density: f64 = normal.log_density(&0.0).into();
 //!
 //! // Compute log-density (more efficient)
 //! let log_density: f64 = normal.log_density(&0.0).into();
@@ -39,7 +39,6 @@ pub use measures::lebesgue::LebesgueMeasure;
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn test_working_with_log_density() {

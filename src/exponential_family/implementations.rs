@@ -4,6 +4,7 @@ use num_traits::Float;
 use std::marker::PhantomData;
 
 use super::traits::{ExponentialFamily, ExponentialFamilyMeasure, InnerProduct};
+use crate::core::types::ExponentialFamily as EFMethod;
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 
 // Helper function to calculate log-density for any exponential family measure
@@ -100,6 +101,7 @@ where
 {
     type IsPrimitive = False;
     type IsExponentialFamily = True;
+    type PreferredLogDensityMethod = EFMethod;
 }
 
 impl<X, F, M> HasDensity<X> for ExpFam<M, F>

@@ -1,4 +1,4 @@
-use super::types::{True, TypeLevelBool};
+use super::types::{LogDensityMethod, True, TypeLevelBool};
 
 /// A trait for measures that can indicate if they are primitive.
 pub trait MeasureMarker {
@@ -7,6 +7,9 @@ pub trait MeasureMarker {
 
     /// Type-level boolean indicating if this is an exponential family.
     type IsExponentialFamily: TypeLevelBool;
+
+    /// Type-level enum indicating the preferred method for log density computation.
+    type PreferredLogDensityMethod: LogDensityMethod;
 }
 
 /// A primitive measure that serves as a building block for more complex measures.
@@ -34,7 +37,7 @@ impl<P: PrimitiveMeasure<T>, T: Clone> Measure<T> for P {
 /// for computing densities. For example:
 /// - Normal distribution's root measure is Lebesgue measure
 /// - Dirac measure's root measure is counting measure
-pub trait Measure<T>: MeasureMarker {
+pub trait Measure<T>: MeasureMarker + Clone {
     /// The root measure for this measure
     type RootMeasure: Measure<T>;
 
@@ -51,19 +54,50 @@ pub trait Measure<T>: MeasureMarker {
 /// Separating this from `Measure` allows for specialized implementation strategies
 /// like exponential family computations.
 pub trait HasDensity<T>: Measure<T> {
-    /// Compute the log-density of this measure at a point.
+    /// Compute the log-density of this measure at a point using the default method.
     ///
     /// Returns a builder that can be used to specify the base measure and
     /// then compute the actual log-density value.
-    ///
-    /// The default implementation computes the density and takes its log,
-    /// but measures should override this with a more efficient implementation
-    /// when possible.
-    fn log_density<'a>(&'a self, x: &'a T) -> super::density::LogDensity<'a, T, Self>
+    fn log_density<'a>(
+        &'a self,
+        x: &'a T,
+    ) -> super::density::LogDensity<'a, T, Self, Self::RootMeasure>
     where
         Self: Sized + Clone,
         T: Clone,
     {
+        // Default implementation just creates a new log density object
+        super::density::LogDensity::new(self, x)
+    }
+
+    /// Compute the log-density using the specialized implementation.
+    ///
+    /// This should be overridden by distributions that have specialized
+    /// log-density computations.
+    fn log_density_specialized<'a>(
+        &'a self,
+        x: &'a T,
+    ) -> super::density::LogDensity<'a, T, Self, Self::RootMeasure>
+    where
+        Self: Sized + Clone,
+        T: Clone,
+    {
+        // Default implementation falls back to the default behavior
+        super::density::LogDensity::new(self, x)
+    }
+
+    /// Compute the log-density using the exponential family form.
+    ///
+    /// This should be used by distributions that are exponential families.
+    fn log_density_ef<'a>(
+        &'a self,
+        x: &'a T,
+    ) -> super::density::LogDensity<'a, T, Self, Self::RootMeasure>
+    where
+        Self: Sized + Clone,
+        T: Clone,
+    {
+        // Default implementation falls back to the default behavior
         super::density::LogDensity::new(self, x)
     }
 }

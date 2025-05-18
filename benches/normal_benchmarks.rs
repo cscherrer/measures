@@ -3,7 +3,6 @@ use measures::{HasDensity, Normal};
 use rv::dist::Gaussian;
 use rv::traits::ContinuousDistr;
 
-
 fn bench_log_density(c: &mut Criterion) {
     let our_normal = Normal::new(0.0, 1.0);
     let rv_normal = Gaussian::new(0.0, 1.0).unwrap();
@@ -23,7 +22,6 @@ fn bench_log_density(c: &mut Criterion) {
 
     group.finish();
 }
-
 
 fn bench_log_density_batch(c: &mut Criterion) {
     let our_normal = Normal::new(0.0, 1.0);
@@ -52,9 +50,5 @@ fn bench_log_density_batch(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(
-    benches,
-    bench_log_density,
-    bench_log_density_batch
-);
+criterion_group!(benches, bench_log_density, bench_log_density_batch);
 criterion_main!(benches);

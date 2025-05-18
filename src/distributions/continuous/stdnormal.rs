@@ -5,6 +5,7 @@
 //! distribution that is particularly optimized for computations.
 
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
+use crate::core::types::Specialized;
 use crate::exponential_family::{
     ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, compute_stdnormal_log_density,
 };
@@ -29,9 +30,17 @@ impl<T: Float> StdNormal<T> {
     }
 }
 
+impl<T: Float + FloatConst> StdNormal<T> {
+    /// Compute the log density directly
+    pub fn compute_log_density(&self, x: &T) -> f64 {
+        compute_stdnormal_log_density(*x)
+    }
+}
+
 impl<T: Float> MeasureMarker for StdNormal<T> {
     type IsPrimitive = False;
     type IsExponentialFamily = True;
+    type PreferredLogDensityMethod = Specialized;
 }
 
 impl<T: Float + FloatConst> ExpFamDensity<T, T> for StdNormal<T> {}
@@ -62,6 +71,13 @@ impl<T: Float + FloatConst> HasDensity<T> for StdNormal<T> {
     }
 }
 
+// Implement From for LogDensity to f64 for StdNormal
+impl<T: Float + FloatConst, M: Measure<T>> From<LogDensity<'_, T, StdNormal<T>, M>> for f64 {
+    fn from(val: LogDensity<'_, T, StdNormal<T>, M>) -> Self {
+        compute_stdnormal_log_density(*val.x)
+    }
+}
+
 impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
     type NaturalParam = [T; 2]; // (η₁, η₂) = (0, -1/2)
     type SufficientStat = [T; 2]; // (x, x²)
@@ -88,21 +104,5 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
 
     fn carrier_measure(&self, _x: &T) -> T {
         T::one()
-    }
-}
-
-// Implement From for LogDensity to f64 - optimized for StdNormal
-impl<T: Float + FloatConst> From<LogDensity<'_, T, StdNormal<T>>> for f64 {
-    fn from(val: LogDensity<'_, T, StdNormal<T>>) -> Self {
-        compute_stdnormal_log_density(*val.x)
-    }
-}
-
-// Similarly for Lebesgue measure
-impl<T: Float + FloatConst> From<LogDensity<'_, T, StdNormal<T>, LebesgueMeasure<T>>> for f64 {
-    fn from(val: LogDensity<'_, T, StdNormal<T>, LebesgueMeasure<T>>) -> Self {
-        // For StdNormal, the log-density with respect to Lebesgue measure
-        // is the same as the log-density with respect to itself
-        compute_stdnormal_log_density(*val.x)
     }
 }

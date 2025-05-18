@@ -1,3 +1,4 @@
+use crate::core::types::Specialized;
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker};
 use crate::measures::counting::CountingMeasure;
 
@@ -16,6 +17,7 @@ impl<T: Clone> Dirac<T> {
 impl<T: Clone> MeasureMarker for Dirac<T> {
     type IsPrimitive = False;
     type IsExponentialFamily = False;
+    type PreferredLogDensityMethod = Specialized;
 }
 
 impl<T: Clone + PartialEq> Measure<T> for Dirac<T> {
@@ -36,18 +38,9 @@ impl<T: PartialEq + Clone> HasDensity<T> for Dirac<T> {
 }
 
 // Implement conversion from LogDensity to f64 for Dirac measure
-impl<T: PartialEq + Clone> From<LogDensity<'_, T, Dirac<T>>> for f64 {
-    fn from(val: LogDensity<'_, T, Dirac<T>>) -> Self {
-        if val.measure.point == *val.x {
-            0.0
-        } else {
-            f64::NEG_INFINITY
-        }
-    }
-}
-
-impl<T: PartialEq + Clone> From<LogDensity<'_, T, Dirac<T>, CountingMeasure<T>>> for f64 {
-    fn from(val: LogDensity<'_, T, Dirac<T>, CountingMeasure<T>>) -> Self {
+// We only need one implementation that works for both cases
+impl<T: PartialEq + Clone, M: Measure<T>> From<LogDensity<'_, T, Dirac<T>, M>> for f64 {
+    fn from(val: LogDensity<'_, T, Dirac<T>, M>) -> Self {
         if val.measure.point == *val.x {
             0.0
         } else {
