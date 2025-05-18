@@ -4,7 +4,7 @@
 //! distribution that expresses the probability of a given number of events occurring
 //! in a fixed interval of time or space.
 
-use crate::core::{Density, False, HasDensity, LogDensity, Measure, MeasureMarker, True};
+use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{ExponentialFamily, ExponentialFamilyMeasure, InnerProduct};
 use crate::measures::counting::CountingMeasure;
 use num_traits::{Float, FloatConst};
@@ -101,14 +101,6 @@ impl<F: Float + FloatConst> HasDensity<u64> for Poisson<F> {
         Self: Sized + Clone,
     {
         self.log_density_ef(x)
-    }
-}
-
-// Implement From for Density to f64
-impl<F: Float + FloatConst> From<Density<'_, u64, Poisson<F>>> for f64 {
-    fn from(val: Density<'_, u64, Poisson<F>>) -> Self {
-        let log_density: f64 = LogDensity::new(val.measure, val.x).into();
-        log_density.exp()
     }
 }
 

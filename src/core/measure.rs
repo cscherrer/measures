@@ -51,18 +51,6 @@ pub trait Measure<T>: MeasureMarker {
 /// Separating this from `Measure` allows for specialized implementation strategies
 /// like exponential family computations.
 pub trait HasDensity<T>: Measure<T> {
-    /// Compute the density of this measure at a point.
-    ///
-    /// Returns a builder that can be used to specify the base measure and
-    /// then compute the actual density value.
-    fn density<'a>(&'a self, x: &'a T) -> super::density::Density<'a, T, Self>
-    where
-        Self: Sized + Clone,
-        T: Clone,
-    {
-        super::density::Density::new(self, x)
-    }
-
     /// Compute the log-density of this measure at a point.
     ///
     /// Returns a builder that can be used to specify the base measure and

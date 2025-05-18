@@ -8,6 +8,6 @@ pub mod measure;
 pub mod types;
 
 // Re-export key types for convenient use
-pub use density::{Density, LogDensity};
+pub use density::LogDensity;
 pub use measure::{HasDensity, Measure, MeasureMarker, PrimitiveMeasure};
 pub use types::{False, True, TypeLevelBool};

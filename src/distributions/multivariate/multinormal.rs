@@ -5,8 +5,7 @@
 
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
-    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, InnerProduct,
-    compute_mvn_log_density,
+    ExponentialFamily, ExponentialFamilyMeasure, InnerProduct, compute_mvn_log_density,
 };
 use crate::measures::lebesgue::LebesgueMeasure;
 use nalgebra::{ComplexField, DMatrix, DVector, RealField, Scalar};
@@ -235,13 +234,7 @@ where
     fn from(val: LogDensity<'_, DVector<F>, MultivariateNormal<F>>) -> Self {
         let x = val.x;
         let mvn = val.measure;
-        
-        compute_mvn_log_density(
-            &mvn.mean, 
-            &mvn.precision, 
-            mvn.det_covariance,
-            mvn.dim,
-            x
-        )
+
+        compute_mvn_log_density(&mvn.mean, &mvn.precision, mvn.det_covariance, mvn.dim, x)
     }
 }

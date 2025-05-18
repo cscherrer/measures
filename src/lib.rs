@@ -30,7 +30,7 @@ pub mod measures;
 pub mod statistics;
 
 // Re-export key types for convenient access
-pub use core::{Density, HasDensity, LogDensity, Measure, PrimitiveMeasure};
+pub use core::{HasDensity, LogDensity, Measure, PrimitiveMeasure};
 pub use distributions::Normal;
 pub use measures::counting::CountingMeasure;
 pub use measures::dirac::Dirac;
@@ -40,22 +40,6 @@ pub use measures::lebesgue::LebesgueMeasure;
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_dirac_density() {
-        let dirac = Dirac::new(5);
-        let counting = CountingMeasure::new();
-
-        // Compute densities
-        let density1: f64 = dirac.density(&5).into();
-        let density2 = Into::<f64>::into(dirac.density(&5).wrt(&counting));
-
-        // Compute log density directly
-        let log_density: f64 = dirac.log_density(&5).into();
-
-        assert_eq!(density1, 1.0);
-        assert_eq!(density2, 1.0);
-        assert_eq!(log_density, 0.0);
-    }
 
     #[test]
     fn test_working_with_log_density() {

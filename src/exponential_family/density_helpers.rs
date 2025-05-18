@@ -1,19 +1,19 @@
 //! Helper functions for computing log-densities
-//! 
-//! This module provides utility functions for computing log-densities in a 
+//!
+//! This module provides utility functions for computing log-densities in a
 //! consistent, non-redundant way across different distribution types.
 
-use crate::exponential_family::{ExponentialFamily, ExponentialFamilyMeasure, InnerProduct};
+use crate::exponential_family::{ ExponentialFamilyMeasure, InnerProduct};
+use nalgebra::{ComplexField, RealField, Scalar};
+use nalgebra::{DMatrix, DVector};
 use num_traits::{Float, FloatConst};
-use nalgebra::{DVector, DMatrix};
 use std::fmt::Debug;
-use nalgebra::{RealField, ComplexField, Scalar};
 
 /// Compute log-density for any exponential family measure
-/// 
+///
 /// This provides a common implementation that distributions can use instead of
 /// duplicating the calculation logic in each distribution.
-pub fn compute_ef_log_density<X, F, M>(measure: &M, x: &X) -> f64 
+pub fn compute_ef_log_density<X, F, M>(measure: &M, x: &X) -> f64
 where
     F: Float,
     X: Clone,
@@ -42,18 +42,18 @@ pub fn compute_normal_log_density<T: Float + FloatConst>(mean: T, std_dev: T, x:
 pub fn compute_stdnormal_log_density<T: Float + FloatConst>(x: T) -> f64 {
     let norm_constant = -(T::from(2.0).unwrap() * T::PI()).ln() / T::from(2.0).unwrap();
     let exponent = -(x * x) / T::from(2.0).unwrap();
-    
+
     (norm_constant + exponent).to_f64().unwrap()
 }
 
 /// Compute log-density for multivariate normal distribution
 pub fn compute_mvn_log_density<F>(
-    mean: &DVector<F>, 
-    precision: &DMatrix<F>, 
+    mean: &DVector<F>,
+    precision: &DMatrix<F>,
     det_covariance: F,
     dim: usize,
-    x: &DVector<F>
-) -> f64 
+    x: &DVector<F>,
+) -> f64
 where
     F: Float + FloatConst + RealField + ComplexField + Scalar + Debug + Clone,
 {
@@ -71,4 +71,4 @@ where
     let result = F::from(-0.5).unwrap() * (n * Float::ln(two_pi) + log_det_cov + quad_form);
 
     result.to_f64().unwrap()
-} 
+}

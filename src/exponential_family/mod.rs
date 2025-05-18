@@ -15,18 +15,16 @@
 //! - The space X where the random variable lives (could be ints, vectors, etc.)
 //! - The field F for numerical computations (always some Float type)
 
+pub mod density_helpers;
 pub mod implementations;
 pub mod traits;
-pub mod density_helpers;
 
 // Re-export key types
+pub use density_helpers::{
+    compute_ef_log_density, compute_mvn_log_density, compute_normal_log_density,
+    compute_stdnormal_log_density,
+};
 pub use implementations::{
     ExpFam, ExponentialFamilyDensity, compute_exp_fam_log_density, exp_fam_log_density,
 };
-pub use traits::{
-    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, InnerProduct,
-};
-pub use density_helpers::{
-    compute_ef_log_density, compute_normal_log_density, compute_stdnormal_log_density,
-    compute_mvn_log_density,
-};
+pub use traits::{ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, InnerProduct};

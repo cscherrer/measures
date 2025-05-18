@@ -4,10 +4,9 @@
 //! distribution with mean 0 and standard deviation 1. It's a special case of the Normal
 //! distribution that is particularly optimized for computations.
 
-use crate::core::{Density, False, HasDensity, LogDensity, Measure, MeasureMarker, True};
+use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
-    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure,
-    compute_stdnormal_log_density,
+    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, compute_stdnormal_log_density,
 };
 use crate::measures::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
@@ -67,7 +66,7 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
     type NaturalParam = [T; 2]; // (η₁, η₂) = (0, -1/2)
     type SufficientStat = [T; 2]; // (x, x²)
 
-    fn from_natural(param: <Self as ExponentialFamily<T, T>>::NaturalParam) -> Self {
+    fn from_natural(_param: <Self as ExponentialFamily<T, T>>::NaturalParam) -> Self {
         // For StdNormal, natural parameters are always (0, -1/2)
         // This implementation is included for completeness
         Self::new()
@@ -92,14 +91,6 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
     }
 }
 
-// Implement From for Density to f64 - optimized for StdNormal
-impl<T: Float + FloatConst> From<Density<'_, T, StdNormal<T>>> for f64 {
-    fn from(val: Density<'_, T, StdNormal<T>>) -> Self {
-        let log_density: f64 = LogDensity::new(val.measure, val.x).into();
-        log_density.exp()
-    }
-}
-
 // Implement From for LogDensity to f64 - optimized for StdNormal
 impl<T: Float + FloatConst> From<LogDensity<'_, T, StdNormal<T>>> for f64 {
     fn from(val: LogDensity<'_, T, StdNormal<T>>) -> Self {
@@ -115,24 +106,3 @@ impl<T: Float + FloatConst> From<LogDensity<'_, T, StdNormal<T>, LebesgueMeasure
         compute_stdnormal_log_density(*val.x)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use approx::assert_relative_eq;
-
-    #[test]
-    fn test_stdnormal_density() {
-        let stdnormal = StdNormal::<f64>::new();
-        
-        // Value at x = 0 should be 1/sqrt(2π) ≈ 0.3989
-        let density_at_zero: f64 = stdnormal.density(&0.0).into();
-        let expected_at_zero = 1.0 / (2.0 * std::f64::consts::PI).sqrt();
-        assert_relative_eq!(density_at_zero, expected_at_zero, epsilon = 1e-10);
-        
-        // Value at x = 1 should be exp(-0.5) / sqrt(2π) ≈ 0.2420
-        let density_at_one: f64 = stdnormal.density(&1.0).into();
-        let expected_at_one = (-0.5_f64).exp() / (2.0 * std::f64::consts::PI).sqrt();
-        assert_relative_eq!(density_at_one, expected_at_one, epsilon = 1e-10);
-    }
-} 
