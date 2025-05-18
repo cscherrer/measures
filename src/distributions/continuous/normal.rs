@@ -19,7 +19,10 @@
 //! ```
 
 use crate::core::{Density, False, HasDensity, LogDensity, Measure, MeasureMarker, True};
-use crate::exponential_family::{ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure};
+use crate::exponential_family::{
+    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure,
+    compute_normal_log_density,
+};
 use crate::measures::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
@@ -151,14 +154,8 @@ impl<T: Float + FloatConst> From<LogDensity<'_, T, Normal<T>>> for f64 {
         let x = *val.x;
         let mu = val.measure.mean;
         let sigma = val.measure.std_dev;
-        let sigma2 = sigma * sigma;
-
-        let diff = x - mu;
-        let norm_constant =
-            -(T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap();
-        let exponent = -(diff * diff) / (T::from(2.0).unwrap() * sigma2);
-
-        (norm_constant + exponent).to_f64().unwrap()
+        
+        compute_normal_log_density(mu, sigma, x)
     }
 }
 

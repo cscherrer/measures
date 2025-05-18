@@ -34,12 +34,8 @@ where
 {
     fn from(wrapper: ExponentialFamilyDensity<'a, X, F, M>) -> Self {
         let val = wrapper.0;
-        let eta = val.measure.to_natural();
-        let t = val.measure.sufficient_statistic(val.x);
-        let a = val.measure.log_partition();
-        let h = val.measure.carrier_measure(val.x);
-
-        (eta.inner_product(&t) - a + h.ln()).to_f64().unwrap()
+        // Use the compute_log_density method directly
+        val.measure.compute_log_density(val.x).to_f64().unwrap()
     }
 }
 

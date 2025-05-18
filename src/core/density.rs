@@ -123,3 +123,6 @@ impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> LogDensity<'a
         crate::exponential_family::compute_exp_fam_log_density(log_density)
     }
 }
+
+// General From implementation for exponential family measures removed
+// to avoid conflict with specific implementations

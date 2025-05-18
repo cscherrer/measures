@@ -4,7 +4,10 @@
 //! defined over n-dimensional real vectors.
 
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
-use crate::exponential_family::{ExponentialFamily, ExponentialFamilyMeasure, InnerProduct};
+use crate::exponential_family::{
+    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, InnerProduct,
+    compute_mvn_log_density,
+};
 use crate::measures::lebesgue::LebesgueMeasure;
 use nalgebra::{ComplexField, DMatrix, DVector, RealField, Scalar};
 use num_traits::{Float, FloatConst};
@@ -232,20 +235,13 @@ where
     fn from(val: LogDensity<'_, DVector<F>, MultivariateNormal<F>>) -> Self {
         let x = val.x;
         let mvn = val.measure;
-
-        // Centered vector: (x-μ)
-        let centered = x - &mvn.mean;
-
-        // Mahalanobis distance: (x-μ)ᵀΣ⁻¹(x-μ)
-        let quad_form = centered.dot(&(&mvn.precision * &centered));
-
-        // log(p(x)) = -0.5 * [n*log(2π) + log(|Σ|) + (x-μ)ᵀΣ⁻¹(x-μ)]
-        let n = F::from(mvn.dim).unwrap();
-        let two_pi = F::from(2.0).unwrap() * F::PI();
-        let log_det_cov = Float::ln(mvn.det_covariance);
-
-        let result = F::from(-0.5).unwrap() * (n * Float::ln(two_pi) + log_det_cov + quad_form);
-
-        result.to_f64().unwrap()
+        
+        compute_mvn_log_density(
+            &mvn.mean, 
+            &mvn.precision, 
+            mvn.det_covariance,
+            mvn.dim,
+            x
+        )
     }
 }

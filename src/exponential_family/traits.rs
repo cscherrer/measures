@@ -62,6 +62,22 @@ pub trait ExponentialFamily<X, F: Float> {
     {
         LogDensity::new(self, x)
     }
+    
+    /// Compute the log density directly from exponential family parameters
+    /// 
+    /// This provides a default implementation using the exponential family formula:
+    /// log p(x|θ) = log h(x) + η(θ)·T(x) - A(η(θ))
+    fn compute_log_density(&self, x: &X) -> F 
+    where
+        Self::NaturalParam: InnerProduct<Self::SufficientStat, F>,
+    {
+        let eta = self.to_natural();
+        let t = self.sufficient_statistic(x);
+        let a = self.log_partition();
+        let h = self.carrier_measure(x);
+        
+        eta.inner_product(&t) - a + h.ln()
+    }
 }
 
 /// Implementation for array-based inner products of any dimension

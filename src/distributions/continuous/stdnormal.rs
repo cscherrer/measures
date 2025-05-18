@@ -5,7 +5,10 @@
 //! distribution that is particularly optimized for computations.
 
 use crate::core::{Density, False, HasDensity, LogDensity, Measure, MeasureMarker, True};
-use crate::exponential_family::{ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure};
+use crate::exponential_family::{
+    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure,
+    compute_stdnormal_log_density,
+};
 use crate::measures::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
@@ -24,15 +27,6 @@ impl<T: Float> StdNormal<T> {
         Self {
             _phantom: std::marker::PhantomData,
         }
-    }
-}
-
-impl<T: Float + FloatConst> StdNormal<T> {
-    /// Calculate the log-density of the standard normal distribution at point x
-    fn calc_log_density(&self, x: &T) -> T {
-        let norm_constant = -(T::from(2.0).unwrap() * T::PI()).ln() / T::from(2.0).unwrap();
-        let exponent = -((*x) * (*x)) / T::from(2.0).unwrap();
-        norm_constant + exponent
     }
 }
 
@@ -109,7 +103,7 @@ impl<T: Float + FloatConst> From<Density<'_, T, StdNormal<T>>> for f64 {
 // Implement From for LogDensity to f64 - optimized for StdNormal
 impl<T: Float + FloatConst> From<LogDensity<'_, T, StdNormal<T>>> for f64 {
     fn from(val: LogDensity<'_, T, StdNormal<T>>) -> Self {
-        val.measure.calc_log_density(val.x).to_f64().unwrap()
+        compute_stdnormal_log_density(*val.x)
     }
 }
 
@@ -118,7 +112,7 @@ impl<T: Float + FloatConst> From<LogDensity<'_, T, StdNormal<T>, LebesgueMeasure
     fn from(val: LogDensity<'_, T, StdNormal<T>, LebesgueMeasure<T>>) -> Self {
         // For StdNormal, the log-density with respect to Lebesgue measure
         // is the same as the log-density with respect to itself
-        val.measure.calc_log_density(val.x).to_f64().unwrap()
+        compute_stdnormal_log_density(*val.x)
     }
 }
 
