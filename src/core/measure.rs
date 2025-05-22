@@ -1,4 +1,4 @@
-use super::types::{LogDensityMethod, True, TypeLevelBool};
+use super::types::{True, TypeLevelBool};
 
 /// A trait for measures that can indicate if they are primitive.
 pub trait MeasureMarker {

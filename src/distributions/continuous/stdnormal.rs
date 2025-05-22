@@ -4,10 +4,9 @@
 //! distribution with mean 0 and standard deviation 1. It's a special case of the Normal
 //! distribution that is particularly optimized for computations.
 
-use crate::core::types::Specialized;
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
-    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, compute_stdnormal_log_density,
+    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure,
 };
 use crate::measures::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};

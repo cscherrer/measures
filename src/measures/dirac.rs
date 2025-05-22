@@ -1,4 +1,3 @@
-use crate::core::types::Specialized;
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker};
 use crate::measures::counting::CountingMeasure;
 

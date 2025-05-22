@@ -3,10 +3,9 @@
 //! This module provides the Multivariate Normal (Gaussian) distribution, which is
 //! defined over n-dimensional real vectors.
 
-use crate::core::types::ExponentialFamily as EFMethod;
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
-    ExponentialFamily, ExponentialFamilyMeasure, InnerProduct, compute_mvn_log_density,
+    ExponentialFamily, ExponentialFamilyMeasure, InnerProduct,
 };
 use crate::measures::lebesgue::LebesgueMeasure;
 use nalgebra::{ComplexField, DMatrix, DVector, RealField, Scalar};

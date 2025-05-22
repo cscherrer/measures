@@ -18,7 +18,6 @@
 //! let log_density: f64 = normal.log_density(&0.0).into();
 //! ```
 
-use crate::core::types::ExponentialFamily as EFMethod;
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
     ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, compute_normal_log_density,

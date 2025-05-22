@@ -1,5 +1,19 @@
 use super::measure::Measure;
-use super::types::{ExponentialFamily as ExponentialFamilyMethod, Specialized};
+
+
+pub trait LogDensityTrait<T>
+{
+    type Measure: Measure<T>;
+    type BaseMeasure: Measure<T>;
+
+    fn measure(&self) -> &Self::Measure;
+    fn base_measure(&self) -> &Self::BaseMeasure;
+
+
+}
+
+
+
 
 /// A builder for computing log-densities of a measure.
 ///
@@ -48,29 +62,6 @@ where
         }
     }
 
-    /// Force using the specialized implementation for this computation.
-    ///
-    /// This is useful for benchmarking or testing when you want to compare
-    /// different implementation methods.
-    #[must_use]
-    pub fn use_specialized(self) -> LogDensityWithMethod<'a, T, M, R, Specialized> {
-        LogDensityWithMethod {
-            log_density: self,
-            _marker: std::marker::PhantomData,
-        }
-    }
-
-    /// Force using the exponential family implementation for this computation.
-    ///
-    /// This is useful for benchmarking or testing when you want to compare
-    /// different implementation methods.
-    #[must_use]
-    pub fn use_exp_fam(self) -> LogDensityWithMethod<'a, T, M, R, ExponentialFamilyMethod> {
-        LogDensityWithMethod {
-            log_density: self,
-            _marker: std::marker::PhantomData,
-        }
-    }
 }
 
 /// A log density computation with a specified method.

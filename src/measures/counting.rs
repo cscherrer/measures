@@ -1,4 +1,3 @@
-use crate::core::types::Default as DefaultMethod;
 use crate::core::{False, MeasureMarker, PrimitiveMeasure, True};
 
 #[derive(Clone, Default)]
