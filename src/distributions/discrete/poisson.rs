@@ -4,8 +4,8 @@
 //! distribution that expresses the probability of a given number of events occurring
 //! in a fixed interval of time or space.
 
-use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
-use crate::exponential_family::{ExponentialFamily, InnerProduct};
+use crate::core::{False, LogDensity, Measure, MeasureMarker, True};
+use crate::exponential_family::ExponentialFamily;
 use crate::measures::counting::CountingMeasure;
 use crate::measures::weighted::WeightedMeasure;
 use num_traits::{Float, FloatConst};
@@ -81,38 +81,6 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
         // We use a fixed log-weight of 0 as required by measure theory
         // The factorial term will be handled in the log-density calculation
         WeightedMeasure::new(CountingMeasure::<u64>::new(), F::zero())
-    }
-}
-
-// Implement inner product for scalar natural parameter and u64 sufficient statistic
-impl<F: Float> InnerProduct<u64, F> for F {
-    fn inner_product(&self, rhs: &u64) -> F {
-        *self * F::from(*rhs).unwrap()
-    }
-}
-
-// Implement HasDensity
-impl<F: Float + FloatConst> HasDensity<u64> for Poisson<F> {
-    fn log_density<'a>(&'a self, x: &'a u64) -> LogDensity<'a, u64, Self>
-    where
-        Self: Sized + Clone,
-    {
-        self.log_density_specialized(x)
-    }
-
-    fn log_density_specialized<'a>(&'a self, x: &'a u64) -> LogDensity<'a, u64, Self>
-    where
-        Self: Sized + Clone,
-    {
-        LogDensity::new(self, x)
-    }
-
-    fn log_density_ef<'a>(&'a self, x: &'a u64) -> LogDensity<'a, u64, Self>
-    where
-        Self: Sized + Clone,
-    {
-        // Invoke the base Log density creation
-        LogDensity::new(self, x)
     }
 }
 

@@ -3,7 +3,7 @@
 //! This module provides the Multivariate Normal (Gaussian) distribution, which is
 //! defined over n-dimensional real vectors.
 
-use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
+use crate::core::{False, Measure, MeasureMarker, True};
 use crate::exponential_family::{ExponentialFamily, InnerProduct};
 use crate::measures::lebesgue::LebesgueMeasure;
 use nalgebra::{ComplexField, DMatrix, DVector, RealField, Scalar};
@@ -203,18 +203,5 @@ where
         let term2 = eta2.component_mul(t2).sum();
 
         term1 + term2
-    }
-}
-
-// Implement HasDensity
-impl<F> HasDensity<DVector<F>> for MultivariateNormal<F>
-where
-    F: Float + FloatConst + RealField + ComplexField + Scalar + Debug + Clone,
-{
-    fn log_density<'a>(&'a self, x: &'a DVector<F>) -> LogDensity<'a, DVector<F>, Self>
-    where
-        Self: Sized + Clone,
-    {
-        crate::core::measure::HasDensity::log_density_ef(self, x)
     }
 }

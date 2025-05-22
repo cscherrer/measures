@@ -7,7 +7,7 @@
 //! # Example
 //!
 //! ```rust
-//! use measures::{Normal, LebesgueMeasure, HasDensity};
+//! use measures::{Normal, LebesgueMeasure};
 //!
 //! let normal = Normal::new(0.0, 1.0); // Standard normal distribution
 //!
@@ -18,7 +18,7 @@
 //! let log_density: f64 = normal.log_density(&0.0).into();
 //! ```
 
-use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
+use crate::core::{False, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
     ExponentialFamily, ExponentialFamilyMeasure, compute_normal_log_density,
 };
@@ -90,18 +90,6 @@ impl<T: Float> Measure<T> for Normal<T> {
     }
 }
 
-// Implement HasDensity using the ExponentialFamily structure
-impl<T: Float + FloatConst> HasDensity<T> for Normal<T> {
-    fn log_density<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
-    where
-        Self: Sized + Clone,
-        T: Clone,
-    {
-        // Use the exponential family form directly
-        crate::core::measure::HasDensity::log_density_ef(self, x)
-    }
-}
-
 // Implement From for LogDensity to f64 - use a single implementation
 // that works with any base measure
 impl<T: Float + FloatConst, M: Measure<T>> From<LogDensity<'_, T, Normal<T>, M>> for f64 {
@@ -146,43 +134,5 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
 
     fn base_measure(&self) -> Self::BaseMeasure {
         LebesgueMeasure::<T>::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::core::HasDensity;
-    use approx::assert_relative_eq;
-
-    #[test]
-    fn test_density_calculation_methods() {
-        // Create a normal distribution
-        let normal = Normal::new(1.5, 2.0);
-        let x = 3.0;
-
-        // Method 1: Using the exponential family form via log_density
-        let log_density = normal.log_density(&x);
-        let log_density_ef: f64 = log_density.into();
-
-        // Method 2: Direct computation through From implementation for LogDensity
-        let log_density_from = f64::from(LogDensity::new(&normal, &x));
-
-        // Method 3: Manual calculation using the standard formula
-        let x_f64 = x;
-        let mu = normal.mean;
-        let sigma = normal.std_dev;
-        let sigma2 = sigma * sigma;
-        let norm_constant = 1.0 / (2.0 * std::f64::consts::PI * sigma2).sqrt();
-        let exponent = -((x_f64 - mu) * (x_f64 - mu)) / (2.0 * sigma2);
-        let log_density_direct = exponent + norm_constant.ln();
-
-        // Compare the results
-        println!("Log-density via exponential family: {log_density_ef}");
-        println!("Log-density from From impl: {log_density_from}");
-        println!("Log-density via direct calculation: {log_density_direct}");
-
-        assert_relative_eq!(log_density_ef, log_density_from, epsilon = 1e-10);
-        assert_relative_eq!(log_density_from, log_density_direct, epsilon = 1e-10);
     }
 }

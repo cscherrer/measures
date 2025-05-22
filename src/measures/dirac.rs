@@ -1,4 +1,4 @@
-use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker};
+use crate::core::{False, Measure, MeasureMarker};
 use crate::measures::counting::CountingMeasure;
 
 #[derive(Clone)]
@@ -27,22 +27,5 @@ impl<T: Clone + PartialEq> Measure<T> for Dirac<T> {
 
     fn root_measure(&self) -> CountingMeasure<T> {
         CountingMeasure::new()
-    }
-}
-
-// Implement HasDensity for Dirac measure
-impl<T: PartialEq + Clone> HasDensity<T> for Dirac<T> {
-    // Empty implementation - functionality provided by the From impls below
-}
-
-// Implement conversion from LogDensity to f64 for Dirac measure
-// We only need one implementation that works for both cases
-impl<T: PartialEq + Clone, M: Measure<T>> From<LogDensity<'_, T, Dirac<T>, M>> for f64 {
-    fn from(val: LogDensity<'_, T, Dirac<T>, M>) -> Self {
-        if val.measure.point == *val.x {
-            0.0
-        } else {
-            f64::NEG_INFINITY
-        }
     }
 }

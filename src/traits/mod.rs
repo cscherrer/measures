@@ -92,41 +92,6 @@ pub trait Measure<T>: MeasureMarker {
     fn root_measure(&self) -> Self::RootMeasure;
 }
 
-/// A trait for measures that can compute their density and log-density.
-///
-/// This trait extends `Measure` to add methods for density computation.
-/// Separating this from `Measure` allows for specialized implementation strategies
-/// like exponential family computations.
-pub trait HasDensity<T>: Measure<T> {
-    /// Compute the density of this measure at a point.
-    ///
-    /// Returns a builder that can be used to specify the base measure and
-    /// then compute the actual density value.
-    fn density<'a>(&'a self, x: &'a T) -> Density<'a, T, Self>
-    where
-        Self: Sized + Clone,
-        T: Clone,
-    {
-        Density::new(self, x)
-    }
-
-    /// Compute the log-density of this measure at a point.
-    ///
-    /// Returns a builder that can be used to specify the base measure and
-    /// then compute the actual log-density value.
-    ///
-    /// The default implementation computes the density and takes its log,
-    /// but measures should override this with a more efficient implementation
-    /// when possible.
-    fn log_density<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
-    where
-        Self: Sized + Clone,
-        T: Clone,
-    {
-        LogDensity::new(self, x)
-    }
-}
-
 /// A builder for computing densities of a measure.
 ///
 /// This type is used to build up density computations. It can be in two states:

@@ -4,7 +4,7 @@
 //! distribution with mean 0 and standard deviation 1. It's a special case of the Normal
 //! distribution that is particularly optimized for computations.
 
-use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
+use crate::core::{False, Measure, MeasureMarker, True};
 use crate::exponential_family::ExponentialFamily;
 use crate::measures::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
@@ -41,18 +41,6 @@ impl<T: Float> Measure<T> for StdNormal<T> {
 
     fn root_measure(&self) -> <Self as Measure<T>>::RootMeasure {
         LebesgueMeasure::<T>::new()
-    }
-}
-
-// Implement HasDensity directly using our optimized calculation
-impl<T: Float + FloatConst> HasDensity<T> for StdNormal<T> {
-    fn log_density<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
-    where
-        Self: Sized + Clone,
-        T: Clone,
-    {
-        // Create the LogDensity normally, then modify the implementation of From trait
-        LogDensity::new(self, x)
     }
 }
 

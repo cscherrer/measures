@@ -17,7 +17,7 @@ to enable flexible computation of probabilities and likelihood functions.
 ### Basic Example
 
 ```rust
-use measures::{Normal, HasDensity};
+use measures::{Normal};
 
 // Create a standard normal distribution
 let normal = Normal::new(0.0, 1.0);

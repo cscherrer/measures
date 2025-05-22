@@ -9,7 +9,7 @@ pub mod types;
 
 // Re-export key types for convenient use
 pub use density::LogDensity;
-pub use measure::{HasDensity, Measure, MeasureMarker, PrimitiveMeasure};
+pub use measure::{Measure, MeasureMarker, PrimitiveMeasure};
 pub use types::{
     Default, ExponentialFamily, False, LogDensityMethod, Specialized, True, TypeLevelBool,
 };

@@ -4,7 +4,7 @@ use num_traits::Float;
 use std::marker::PhantomData;
 
 use super::traits::{ExponentialFamilyMeasure, InnerProduct};
-use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
+use crate::core::{False, LogDensity, Measure, MeasureMarker, True};
 
 // Helper for converting LogDensity to f64 for exponential family measures
 pub struct ExponentialFamilyDensity<'a, X, F, M>(pub LogDensity<'a, X, M>, PhantomData<(X, F)>)
@@ -63,14 +63,4 @@ where
 {
     type IsPrimitive = False;
     type IsExponentialFamily = True;
-}
-
-impl<X, F, M> HasDensity<X> for ExpFam<M, F>
-where
-    F: Float,
-    X: Clone,
-    M: ExponentialFamilyMeasure<X, F>,
-    M::NaturalParam: InnerProduct<M::SufficientStat, F>,
-{
-    // Empty implementation as the From impls below provide the actual computation
 }
