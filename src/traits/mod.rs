@@ -28,8 +28,10 @@
 //! let log_density: f64 = normal.log_density(&0.0).into();
 //! ```
 
-pub mod exponential_family;
 pub mod dot_product;
+pub mod exponential_family;
+
+pub use dot_product::DotProduct;
 
 pub trait TypeLevelBool {
     const VALUE: bool;

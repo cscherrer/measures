@@ -19,13 +19,6 @@
 use crate::core::{Measure, True};
 use num_traits::Float;
 
-/// Trait for inner product operations between natural parameters and sufficient statistics.
-/// This replaces the more restrictive `DotProduct` with a more general operation.
-pub trait InnerProduct<Rhs, F: Float> {
-    /// Compute the inner product between self and rhs, returning a value in field F.
-    fn inner_product(&self, rhs: &Rhs) -> F;
-}
-
 /// A trait for exponential family distributions over space X with computations in field F.
 ///
 /// This trait generalizes exponential families to work with:

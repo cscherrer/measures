@@ -4,8 +4,9 @@
 //! defined over n-dimensional real vectors.
 
 use crate::core::{False, Measure, MeasureMarker, True};
-use crate::exponential_family::{ExponentialFamily, InnerProduct};
+use crate::exponential_family::ExponentialFamily;
 use crate::measures::lebesgue::LebesgueMeasure;
+use crate::traits::DotProduct;
 use nalgebra::{ComplexField, DMatrix, DVector, RealField, Scalar};
 use num_traits::{Float, FloatConst};
 use std::fmt::Debug;
@@ -186,14 +187,16 @@ where
     }
 }
 
-// Implement inner product for the MVN natural parameters and sufficient statistics
-impl<F> InnerProduct<(DVector<F>, DMatrix<F>), F> for (DVector<F>, DMatrix<F>)
+// Implement DotProduct for the MVN natural parameters and sufficient statistics
+impl<F> DotProduct for (DVector<F>, DMatrix<F>)
 where
     F: Float + FloatConst + RealField + ComplexField + Scalar + Debug + Clone,
 {
-    fn inner_product(&self, rhs: &(DVector<F>, DMatrix<F>)) -> F {
+    type Output = F;
+
+    fn dot(&self, other: &Self) -> Self::Output {
         let (eta1, eta2) = self;
-        let (t1, t2) = rhs;
+        let (t1, t2) = other;
 
         // η₁ᵀT₁: dot product of first components
         let term1 = eta1.dot(t1);

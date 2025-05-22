@@ -28,6 +28,7 @@ pub mod distributions;
 pub mod exponential_family;
 pub mod measures;
 pub mod statistics;
+pub mod traits;
 
 // Re-export key types for convenient access
 pub use core::{LogDensity, Measure, PrimitiveMeasure};
@@ -35,3 +36,4 @@ pub use distributions::Normal;
 pub use measures::counting::CountingMeasure;
 pub use measures::dirac::Dirac;
 pub use measures::lebesgue::LebesgueMeasure;
+pub use traits::DotProduct;
