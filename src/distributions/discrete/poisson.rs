@@ -7,6 +7,7 @@
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{ExponentialFamily, InnerProduct};
 use crate::measures::counting::CountingMeasure;
+use crate::measures::weighted::WeightedMeasure;
 use num_traits::{Float, FloatConst};
 
 /// A Poisson distribution.
@@ -57,6 +58,7 @@ impl<F: Float> Measure<u64> for Poisson<F> {
 impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
     type NaturalParam = F; // η = log(λ)
     type SufficientStat = u64; // T(x) = x
+    type BaseMeasure = WeightedMeasure<CountingMeasure<u64>, F>;
 
     fn from_natural(param: Self::NaturalParam) -> Self {
         Self::new(param.exp())
@@ -74,13 +76,11 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
         *x
     }
 
-    fn carrier_measure(&self, x: &u64) -> F {
-        // h(x) = 1/x!
-        let mut factorial = F::one();
-        for i in 1..=*x {
-            factorial = factorial * F::from(i).unwrap();
-        }
-        F::one() / factorial
+    fn base_measure(&self) -> Self::BaseMeasure {
+        // The base measure is a weighted counting measure
+        // We use a fixed log-weight of 0 as required by measure theory
+        // The factorial term will be handled in the log-density calculation
+        WeightedMeasure::new(CountingMeasure::<u64>::new(), F::zero())
     }
 }
 

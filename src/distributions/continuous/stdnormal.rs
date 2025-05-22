@@ -62,7 +62,7 @@ impl<T: Float + FloatConst> HasDensity<T> for StdNormal<T> {
 impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
     type NaturalParam = [T; 2]; // (η₁, η₂) = (0, -1/2)
     type SufficientStat = [T; 2]; // (x, x²)
-
+    type BaseMeasure = LebesgueMeasure<T>;
     fn from_natural(_param: <Self as ExponentialFamily<T, T>>::NaturalParam) -> Self {
         // For StdNormal, natural parameters are always (0, -1/2)
         // This implementation is included for completeness
@@ -83,7 +83,7 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
         [*x, *x * *x]
     }
 
-    fn carrier_measure(&self, _x: &T) -> T {
-        T::one()
+    fn base_measure(&self) -> Self::BaseMeasure {
+        LebesgueMeasure::<T>::new()
     }
 }

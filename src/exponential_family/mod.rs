@@ -21,10 +21,10 @@ pub mod traits;
 
 // Re-export key types
 pub use density_helpers::{
-    compute_ef_log_density, compute_mvn_log_density, compute_normal_log_density,
+    compute_mvn_log_density, compute_normal_log_density,
     compute_stdnormal_log_density,
 };
 pub use implementations::{
-    ExpFam, ExponentialFamilyDensity, compute_exp_fam_log_density, exp_fam_log_density,
+    ExpFam, ExponentialFamilyDensity,  
 };
 pub use traits::{ ExponentialFamily, ExponentialFamilyMeasure, InnerProduct};

@@ -3,30 +3,10 @@
 //! This module provides utility functions for computing log-densities in a
 //! consistent, non-redundant way across different distribution types.
 
-use crate::exponential_family::{ExponentialFamilyMeasure, InnerProduct};
 use nalgebra::{ComplexField, RealField, Scalar};
 use nalgebra::{DMatrix, DVector};
 use num_traits::{Float, FloatConst};
 use std::fmt::Debug;
-
-/// Compute log-density for any exponential family measure
-///
-/// This provides a common implementation that distributions can use instead of
-/// duplicating the calculation logic in each distribution.
-pub fn compute_ef_log_density<X, F, M>(measure: &M, x: &X) -> F
-where
-    F: Float,
-    X: Clone,
-    M: ExponentialFamilyMeasure<X, F>,
-    M::NaturalParam: InnerProduct<M::SufficientStat, F>,
-{
-    let eta = measure.to_natural();
-    let t = measure.sufficient_statistic(x);
-    let a = measure.log_partition();
-    let h = measure.carrier_measure(x);
-
-    eta.inner_product(&t) - a + h.ln()
-}
 
 /// Compute log-density for normal distribution
 pub fn compute_normal_log_density<T: Float + FloatConst>(mean: T, std_dev: T, x: T) -> T {

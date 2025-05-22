@@ -3,19 +3,8 @@
 use num_traits::Float;
 use std::marker::PhantomData;
 
-use super::traits::{ExponentialFamily, ExponentialFamilyMeasure, InnerProduct};
+use super::traits::{ExponentialFamilyMeasure, InnerProduct};
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
-
-// Helper function to calculate log-density for any exponential family measure
-pub fn exp_fam_log_density<'a, X, F, M>(measure: &'a M, x: &'a X) -> LogDensity<'a, X, M>
-where
-    F: Float,
-    X: Clone,
-    M: ExponentialFamily<X, F> + Measure<X> + Clone,
-    M::NaturalParam: InnerProduct<M::SufficientStat, F>,
-{
-    measure.log_density_ef(x)
-}
 
 // Helper for converting LogDensity to f64 for exponential family measures
 pub struct ExponentialFamilyDensity<'a, X, F, M>(pub LogDensity<'a, X, M>, PhantomData<(X, F)>)
@@ -25,31 +14,7 @@ where
     M: ExponentialFamilyMeasure<X, F>,
     M::NaturalParam: InnerProduct<M::SufficientStat, F>;
 
-impl<'a, X, F, M> From<ExponentialFamilyDensity<'a, X, F, M>> for f64
-where
-    F: Float,
-    X: Clone,
-    M: ExponentialFamilyMeasure<X, F>,
-    M::NaturalParam: InnerProduct<M::SufficientStat, F>,
-{
-    fn from(wrapper: ExponentialFamilyDensity<'a, X, F, M>) -> Self {
-        let val = wrapper.0;
-        // Use the compute_log_density method directly
-        val.measure.compute_log_density(val.x).to_f64().unwrap()
-    }
-}
 
-// Helper function to compute exponential family log density
-#[must_use]
-pub fn compute_exp_fam_log_density<X, F, M>(log_density: LogDensity<'_, X, M>) -> f64
-where
-    F: Float,
-    X: Clone,
-    M: ExponentialFamilyMeasure<X, F>,
-    M::NaturalParam: InnerProduct<M::SufficientStat, F>,
-{
-    ExponentialFamilyDensity::<X, F, M>(log_density, PhantomData).into()
-}
 
 /// A wrapper type for exponential family measures that provides specialized
 /// implementations optimized for exponential families.
@@ -110,24 +75,4 @@ where
     M::NaturalParam: InnerProduct<M::SufficientStat, F>,
 {
     // Empty implementation as the From impls below provide the actual computation
-}
-
-// Implement From for LogDensity to f64 (specialized computation)
-impl<X, F, M> From<LogDensity<'_, X, ExpFam<M, F>>> for f64
-where
-    F: Float,
-    X: Clone,
-    M: ExponentialFamilyMeasure<X, F>,
-    M::NaturalParam: InnerProduct<M::SufficientStat, F>,
-{
-    fn from(val: LogDensity<'_, X, ExpFam<M, F>>) -> Self {
-        // Compute using exponential family form for better performance
-        let eta = val.measure.measure.to_natural();
-        let t = val.measure.measure.sufficient_statistic(val.x);
-        let a = val.measure.measure.log_partition();
-        let h = val.measure.measure.carrier_measure(val.x);
-
-        let result = eta.inner_product(&t) - a + h.ln();
-        result.to_f64().unwrap()
-    }
 }

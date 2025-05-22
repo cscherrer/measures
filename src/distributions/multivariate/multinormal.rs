@@ -123,6 +123,7 @@ where
     // Using nalgebra types in the natural parameters and sufficient statistics
     type NaturalParam = (DVector<F>, DMatrix<F>); // (Σ^-1 μ, -0.5 Σ^-1)
     type SufficientStat = (DVector<F>, DMatrix<F>); // (x, xx^T)
+    type BaseMeasure = LebesgueMeasure<DVector<F>>;
 
     fn from_natural(param: Self::NaturalParam) -> Self {
         let (eta1, eta2) = param;
@@ -182,8 +183,8 @@ where
         (t1, t2)
     }
 
-    fn carrier_measure(&self, _x: &DVector<F>) -> F {
-        F::one() // h(x) = 1 for multivariate normal
+    fn base_measure(&self) -> Self::BaseMeasure {
+        LebesgueMeasure::new()
     }
 }
 

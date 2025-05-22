@@ -16,7 +16,7 @@
 //! - A(η) is the log-partition function
 //! - h(x) is the carrier measure
 
-use crate::core::{LogDensity, Measure, True};
+use crate::core::{Measure, True};
 use num_traits::Float;
 
 /// Trait for inner product operations between natural parameters and sufficient statistics.
@@ -39,6 +39,9 @@ pub trait ExponentialFamily<X, F: Float> {
     /// The sufficient statistic type
     type SufficientStat;
 
+    /// The base measure type
+    type BaseMeasure: Measure<X>;
+
     /// Convert from natural parameters to standard parameters
     fn from_natural(param: Self::NaturalParam) -> Self;
 
@@ -51,33 +54,8 @@ pub trait ExponentialFamily<X, F: Float> {
     /// Compute the sufficient statistic T(x)
     fn sufficient_statistic(&self, x: &X) -> Self::SufficientStat;
 
-    /// Compute the carrier measure h(x)
-    fn carrier_measure(&self, x: &X) -> F;
-
-    /// Compute the log density in exponential family form
-    fn log_density_ef<'a>(&'a self, x: &'a X) -> LogDensity<'a, X, Self>
-    where
-        Self: Sized + Clone + Measure<X>,
-        X: Clone,
-    {
-        LogDensity::new(self, x)
-    }
-
-    /// Compute the log density directly from exponential family parameters
-    ///
-    /// This provides a default implementation using the exponential family formula:
-    /// log p(x|θ) = log h(x) + η(θ)·T(x) - A(η(θ))
-    fn compute_log_density(&self, x: &X) -> F
-    where
-        Self::NaturalParam: InnerProduct<Self::SufficientStat, F>,
-    {
-        let eta = self.to_natural();
-        let t = self.sufficient_statistic(x);
-        let a = self.log_partition();
-        let h = self.carrier_measure(x);
-
-        eta.inner_product(&t) - a + h.ln()
-    }
+    /// Get the base measure for this exponential family
+    fn base_measure(&self) -> Self::BaseMeasure;
 }
 
 
@@ -90,8 +68,3 @@ pub trait ExponentialFamilyMeasure<X, F: Float>:
 {
 }
 
-impl<X, F: Float, M> ExponentialFamilyMeasure<X, F> for M
-where
-    M: Measure<X, IsExponentialFamily = True> + ExponentialFamily<X, F>,
-{
-}
