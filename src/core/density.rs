@@ -64,22 +64,6 @@ where
 
 }
 
-/// A log density computation with a specified method.
-///
-/// This is used to force a particular computation method for the log density.
-pub struct LogDensityWithMethod<
-    'a,
-    T: Clone,
-    M1: Measure<T> + Clone,
-    M2: Measure<T> + Clone,
-    Method,
-> {
-    /// The underlying log density computation
-    pub log_density: LogDensity<'a, T, M1, M2>,
-    /// Marker for the method to use
-    _marker: std::marker::PhantomData<Method>,
-}
-
 impl<'a, T: Clone, M1: Measure<T> + Clone, M2: Measure<T> + Clone> LogDensity<'a, T, M1, M2> {
     /// Compute the log-density using the exponential family form, if the
     /// measure is an exponential family measure.

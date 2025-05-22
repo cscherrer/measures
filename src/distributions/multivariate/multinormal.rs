@@ -5,7 +5,7 @@
 
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
-    ExponentialFamily, ExponentialFamilyMeasure, InnerProduct,
+    ExponentialFamily, InnerProduct,
 };
 use crate::measures::lebesgue::LebesgueMeasure;
 use nalgebra::{ComplexField, DMatrix, DVector, RealField, Scalar};
@@ -205,12 +205,6 @@ where
 
         term1 + term2
     }
-}
-
-// Mark MultivariateNormal as an exponential family measure
-impl<F> ExponentialFamilyMeasure<DVector<F>, F> for MultivariateNormal<F> where
-    F: Float + FloatConst + RealField + ComplexField + Scalar + Debug + Clone
-{
 }
 
 // Implement HasDensity

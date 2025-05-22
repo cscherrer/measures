@@ -27,4 +27,4 @@ pub use density_helpers::{
 pub use implementations::{
     ExpFam, ExponentialFamilyDensity, compute_exp_fam_log_density, exp_fam_log_density,
 };
-pub use traits::{ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, InnerProduct};
+pub use traits::{ ExponentialFamily, ExponentialFamilyMeasure, InnerProduct};

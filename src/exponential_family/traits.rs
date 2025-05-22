@@ -80,36 +80,18 @@ pub trait ExponentialFamily<X, F: Float> {
     }
 }
 
-/// Implementation for array-based inner products of any dimension
-impl<F, const N: usize> InnerProduct<[F; N], F> for [F; N]
-where
-    F: Float + std::iter::Sum,
-{
-    fn inner_product(&self, rhs: &[F; N]) -> F {
-        self.iter().zip(rhs.iter()).map(|(a, b)| *a * *b).sum()
-    }
-}
-
-/// A helper trait for exponential family distributions to compute densities
-/// Types can use this to implement `HasDensity` without repetitive code.
-pub trait ExpFamDensity<X, F: Float>: ExponentialFamily<X, F> + Measure<X> {
-    /// Compute log-density using exponential family form
-    fn compute_log_density<'a>(&'a self, x: &'a X) -> LogDensity<'a, X, Self>
-    where
-        Self: Sized + Clone,
-        Self::NaturalParam: InnerProduct<Self::SufficientStat, F>,
-        X: Clone,
-    {
-        // Return the LogDensity directly
-        self.log_density_ef(x)
-    }
-}
 
 /// A marker trait for measures that are exponential families
 ///
 /// This trait serves as a marker to identify exponential family distributions
 /// and enables specialized implementations for density calculations.
 pub trait ExponentialFamilyMeasure<X, F: Float>:
-    Measure<X, IsExponentialFamily = True> + ExponentialFamily<X, F> + Clone
+    Measure<X, IsExponentialFamily = True> + ExponentialFamily<X, F>
+{
+}
+
+impl<X, F: Float, M> ExponentialFamilyMeasure<X, F> for M
+where
+    M: Measure<X, IsExponentialFamily = True> + ExponentialFamily<X, F>,
 {
 }

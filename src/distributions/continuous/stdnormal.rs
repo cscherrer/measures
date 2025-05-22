@@ -5,9 +5,7 @@
 //! distribution that is particularly optimized for computations.
 
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
-use crate::exponential_family::{
-    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure,
-};
+use crate::exponential_family::ExponentialFamily;
 use crate::measures::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
@@ -34,9 +32,7 @@ impl<T: Float> MeasureMarker for StdNormal<T> {
     type IsExponentialFamily = True;
 }
 
-impl<T: Float + FloatConst> ExpFamDensity<T, T> for StdNormal<T> {}
 
-impl<T: Float + FloatConst> ExponentialFamilyMeasure<T, T> for StdNormal<T> {}
 
 impl<T: Float> Measure<T> for StdNormal<T> {
     type RootMeasure = LebesgueMeasure<T>;

@@ -20,7 +20,7 @@
 
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
-    ExpFamDensity, ExponentialFamily, ExponentialFamilyMeasure, compute_normal_log_density,
+     ExponentialFamily, compute_normal_log_density,
 };
 use crate::measures::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
@@ -51,9 +51,7 @@ impl<T: Float> MeasureMarker for Normal<T> {
     type IsExponentialFamily = True;
 }
 
-impl<T: Float + FloatConst> ExpFamDensity<T, T> for Normal<T> {}
 
-impl<T: Float + FloatConst> ExponentialFamilyMeasure<T, T> for Normal<T> {}
 
 impl<T: Float> Normal<T> {
     /// Create a new normal distribution with the given mean and standard deviation.
