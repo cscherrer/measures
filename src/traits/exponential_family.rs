@@ -4,6 +4,7 @@
 //! and implementations for various distributions.
 
 use crate::traits::{LogDensity, Measure, True};
+use crate::traits::dot_product::DotProduct;
 use num_traits::Float;
 use std::marker::PhantomData;
 
@@ -14,6 +15,9 @@ pub trait ExponentialFamily<T: Float> {
 
     /// The sufficient statistic type
     type SufficientStat;
+
+    /// The base measure type
+    type BaseMeasure: Measure<T>;
 
     /// Convert from natural parameters to standard parameters
     fn from_natural(param: Self::NaturalParam) -> Self;
@@ -27,22 +31,7 @@ pub trait ExponentialFamily<T: Float> {
     /// Compute the sufficient statistic T(x)
     fn sufficient_statistic(&self, x: &T) -> Self::SufficientStat;
 
-    /// Compute the carrier measure h(x)
-    fn carrier_measure(&self, x: &T) -> T;
-
-    /// Compute the log density in exponential family form
-    fn log_density_ef<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
-    where
-        Self: Sized + Clone + Measure<T>,
-        T: Clone,
-    {
-        LogDensity::new(self, x)
-    }
-}
-
-/// Extension trait for dot product operations
-pub trait DotProduct<Rhs, T> {
-    fn dot(lhs: &Self, rhs: &Rhs) -> T;
+    fn base_measure(&self) -> Self::BaseMeasure;
 }
 
 /// A helper trait for exponential family distributions to compute densities

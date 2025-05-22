@@ -29,6 +29,7 @@
 //! ```
 
 pub mod exponential_family;
+pub mod dot_product;
 
 pub trait TypeLevelBool {
     const VALUE: bool;
