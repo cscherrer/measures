@@ -13,7 +13,7 @@ use std::fmt::Debug;
 ///
 /// This provides a common implementation that distributions can use instead of
 /// duplicating the calculation logic in each distribution.
-pub fn compute_ef_log_density<X, F, M>(measure: &M, x: &X) -> f64
+pub fn compute_ef_log_density<X, F, M>(measure: &M, x: &X) -> F
 where
     F: Float,
     X: Clone,
@@ -25,25 +25,25 @@ where
     let a = measure.log_partition();
     let h = measure.carrier_measure(x);
 
-    (eta.inner_product(&t) - a + h.ln()).to_f64().unwrap()
+    eta.inner_product(&t) - a + h.ln()
 }
 
 /// Compute log-density for normal distribution
-pub fn compute_normal_log_density<T: Float + FloatConst>(mean: T, std_dev: T, x: T) -> f64 {
+pub fn compute_normal_log_density<T: Float + FloatConst>(mean: T, std_dev: T, x: T) -> T {
     let sigma2 = std_dev * std_dev;
     let diff = x - mean;
     let norm_constant = -(T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap();
     let exponent = -(diff * diff) / (T::from(2.0).unwrap() * sigma2);
 
-    (norm_constant + exponent).to_f64().unwrap()
+    norm_constant + exponent
 }
 
 /// Compute log-density for standard normal distribution
-pub fn compute_stdnormal_log_density<T: Float + FloatConst>(x: T) -> f64 {
+pub fn compute_stdnormal_log_density<T: Float + FloatConst>(x: T) -> T {
     let norm_constant = -(T::from(2.0).unwrap() * T::PI()).ln() / T::from(2.0).unwrap();
     let exponent = -(x * x) / T::from(2.0).unwrap();
 
-    (norm_constant + exponent).to_f64().unwrap()
+    norm_constant + exponent
 }
 
 /// Compute log-density for multivariate normal distribution
@@ -53,7 +53,7 @@ pub fn compute_mvn_log_density<F>(
     det_covariance: F,
     dim: usize,
     x: &DVector<F>,
-) -> f64
+) -> F
 where
     F: Float + FloatConst + RealField + ComplexField + Scalar + Debug + Clone,
 {
@@ -68,7 +68,5 @@ where
     let two_pi = F::from(2.0).unwrap() * F::PI();
     let log_det_cov = Float::ln(det_covariance);
 
-    let result = F::from(-0.5).unwrap() * (n * Float::ln(two_pi) + log_det_cov + quad_form);
-
-    result.to_f64().unwrap()
+    F::from(-0.5).unwrap() * (n * Float::ln(two_pi) + log_det_cov + quad_form)
 }

@@ -18,7 +18,6 @@ impl<T: Clone> CountingMeasure<T> {
 impl<T: Clone> MeasureMarker for CountingMeasure<T> {
     type IsPrimitive = True;
     type IsExponentialFamily = False;
-    type PreferredLogDensityMethod = DefaultMethod;
 }
 
 impl<T: Clone> PrimitiveMeasure<T> for CountingMeasure<T> {}

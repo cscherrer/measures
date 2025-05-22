@@ -18,7 +18,6 @@ impl<T: Clone> LebesgueMeasure<T> {
 impl<T: Clone> MeasureMarker for LebesgueMeasure<T> {
     type IsPrimitive = True;
     type IsExponentialFamily = False;
-    type PreferredLogDensityMethod = DefaultMethod;
 }
 
 impl<T: Clone> PrimitiveMeasure<T> for LebesgueMeasure<T> {}

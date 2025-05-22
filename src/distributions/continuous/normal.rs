@@ -50,7 +50,6 @@ impl<T: Float> Default for Normal<T> {
 impl<T: Float> MeasureMarker for Normal<T> {
     type IsPrimitive = False;
     type IsExponentialFamily = True;
-    type PreferredLogDensityMethod = EFMethod;
 }
 
 impl<T: Float + FloatConst> ExpFamDensity<T, T> for Normal<T> {}
@@ -77,7 +76,7 @@ impl<T: Float> Normal<T> {
 
 impl<T: Float + FloatConst> Normal<T> {
     /// Compute the log density directly
-    pub fn compute_log_density(&self, x: &T) -> f64 {
+    pub fn compute_log_density(&self, x: &T) -> T {
         compute_normal_log_density(self.mean, self.std_dev, *x)
     }
 }
@@ -113,7 +112,7 @@ impl<T: Float + FloatConst, M: Measure<T>> From<LogDensity<'_, T, Normal<T>, M>>
         let normal = val.measure;
         let x = val.x;
 
-        compute_normal_log_density(normal.mean, normal.std_dev, *x)
+        normal.compute_log_density(x).to_f64().unwrap()
     }
 }
 

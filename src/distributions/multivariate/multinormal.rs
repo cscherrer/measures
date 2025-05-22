@@ -98,7 +98,6 @@ where
 {
     type IsPrimitive = False;
     type IsExponentialFamily = True;
-    type PreferredLogDensityMethod = EFMethod;
 }
 
 impl<F> Measure<DVector<F>> for MultivariateNormal<F>
@@ -225,18 +224,5 @@ where
         Self: Sized + Clone,
     {
         crate::core::measure::HasDensity::log_density_ef(self, x)
-    }
-}
-
-// Implement From for LogDensity to f64
-impl<F> From<LogDensity<'_, DVector<F>, MultivariateNormal<F>>> for f64
-where
-    F: Float + FloatConst + RealField + ComplexField + Scalar + Debug + Clone,
-{
-    fn from(val: LogDensity<'_, DVector<F>, MultivariateNormal<F>>) -> Self {
-        let x = val.x;
-        let mvn = val.measure;
-
-        compute_mvn_log_density(&mvn.mean, &mvn.precision, mvn.det_covariance, mvn.dim, x)
     }
 }

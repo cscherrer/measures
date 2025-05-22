@@ -30,17 +30,9 @@ impl<T: Float> StdNormal<T> {
     }
 }
 
-impl<T: Float + FloatConst> StdNormal<T> {
-    /// Compute the log density directly
-    pub fn compute_log_density(&self, x: &T) -> f64 {
-        compute_stdnormal_log_density(*x)
-    }
-}
-
 impl<T: Float> MeasureMarker for StdNormal<T> {
     type IsPrimitive = False;
     type IsExponentialFamily = True;
-    type PreferredLogDensityMethod = Specialized;
 }
 
 impl<T: Float + FloatConst> ExpFamDensity<T, T> for StdNormal<T> {}
@@ -71,12 +63,6 @@ impl<T: Float + FloatConst> HasDensity<T> for StdNormal<T> {
     }
 }
 
-// Implement From for LogDensity to f64 for StdNormal
-impl<T: Float + FloatConst, M: Measure<T>> From<LogDensity<'_, T, StdNormal<T>, M>> for f64 {
-    fn from(val: LogDensity<'_, T, StdNormal<T>, M>) -> Self {
-        compute_stdnormal_log_density(*val.x)
-    }
-}
 
 impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
     type NaturalParam = [T; 2]; // (η₁, η₂) = (0, -1/2)

@@ -101,7 +101,6 @@ where
 {
     type IsPrimitive = False;
     type IsExponentialFamily = True;
-    type PreferredLogDensityMethod = EFMethod;
 }
 
 impl<X, F, M> HasDensity<X> for ExpFam<M, F>

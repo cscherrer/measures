@@ -17,7 +17,6 @@ impl<T: Clone> Dirac<T> {
 impl<T: Clone> MeasureMarker for Dirac<T> {
     type IsPrimitive = False;
     type IsExponentialFamily = False;
-    type PreferredLogDensityMethod = Specialized;
 }
 
 impl<T: Clone + PartialEq> Measure<T> for Dirac<T> {

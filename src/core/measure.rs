@@ -7,9 +7,6 @@ pub trait MeasureMarker {
 
     /// Type-level boolean indicating if this is an exponential family.
     type IsExponentialFamily: TypeLevelBool;
-
-    /// Type-level enum indicating the preferred method for log density computation.
-    type PreferredLogDensityMethod: LogDensityMethod;
 }
 
 /// A primitive measure that serves as a building block for more complex measures.

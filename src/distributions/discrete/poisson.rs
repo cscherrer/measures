@@ -40,7 +40,6 @@ impl<F: Float> Poisson<F> {
 impl<F: Float> MeasureMarker for Poisson<F> {
     type IsPrimitive = False;
     type IsExponentialFamily = True;
-    type PreferredLogDensityMethod = Specialized;
 }
 
 impl<F: Float> Measure<u64> for Poisson<F> {
