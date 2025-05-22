@@ -58,7 +58,6 @@ pub trait ExponentialFamily<X, F: Float> {
     fn base_measure(&self) -> Self::BaseMeasure;
 }
 
-
 /// A marker trait for measures that are exponential families
 ///
 /// This trait serves as a marker to identify exponential family distributions
@@ -67,4 +66,3 @@ pub trait ExponentialFamilyMeasure<X, F: Float>:
     Measure<X, IsExponentialFamily = True> + ExponentialFamily<X, F>
 {
 }
-

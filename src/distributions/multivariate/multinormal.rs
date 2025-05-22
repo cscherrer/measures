@@ -4,9 +4,7 @@
 //! defined over n-dimensional real vectors.
 
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
-use crate::exponential_family::{
-    ExponentialFamily, InnerProduct,
-};
+use crate::exponential_family::{ExponentialFamily, InnerProduct};
 use crate::measures::lebesgue::LebesgueMeasure;
 use nalgebra::{ComplexField, DMatrix, DVector, RealField, Scalar};
 use num_traits::{Float, FloatConst};

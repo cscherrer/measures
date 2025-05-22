@@ -91,7 +91,6 @@ impl<F: Float> InnerProduct<u64, F> for F {
     }
 }
 
-
 // Implement HasDensity
 impl<F: Float + FloatConst> HasDensity<u64> for Poisson<F> {
     fn log_density<'a>(&'a self, x: &'a u64) -> LogDensity<'a, u64, Self>
@@ -136,4 +135,3 @@ impl<F: Float + FloatConst> From<LogDensity<'_, u64, Poisson<F>>> for f64 {
         result.to_f64().unwrap()
     }
 }
-

@@ -1,9 +1,9 @@
-use crate::core::{False, MeasureMarker, Measure};
+use crate::core::{False, Measure, MeasureMarker};
 use num_traits::Float;
 use std::marker::PhantomData;
 
 /// A weighted measure that applies a weight function to a base measure.
-/// 
+///
 /// This is useful for measures that can be expressed as a weight function
 /// applied to a simpler base measure. The weight is expressed as a log-weight.
 #[derive(Clone)]
@@ -30,8 +30,8 @@ where
     /// Create a new weighted measure with the given base measure and log-weight.
     #[must_use]
     pub fn new(base_measure: M, log_weight: F) -> Self {
-        Self { 
-            base_measure, 
+        Self {
+            base_measure,
             log_weight,
             _phantom: PhantomData,
         }
@@ -63,4 +63,4 @@ where
     fn root_measure(&self) -> Self::RootMeasure {
         self.base_measure.root_measure()
     }
-} 
+}

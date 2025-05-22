@@ -32,8 +32,6 @@ impl<T: Float> MeasureMarker for StdNormal<T> {
     type IsExponentialFamily = True;
 }
 
-
-
 impl<T: Float> Measure<T> for StdNormal<T> {
     type RootMeasure = LebesgueMeasure<T>;
 
@@ -57,7 +55,6 @@ impl<T: Float + FloatConst> HasDensity<T> for StdNormal<T> {
         LogDensity::new(self, x)
     }
 }
-
 
 impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
     type NaturalParam = [T; 2]; // (η₁, η₂) = (0, -1/2)

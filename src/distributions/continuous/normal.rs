@@ -20,7 +20,7 @@
 
 use crate::core::{False, HasDensity, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
-     ExponentialFamily, ExponentialFamilyMeasure, compute_normal_log_density,
+    ExponentialFamily, ExponentialFamilyMeasure, compute_normal_log_density,
 };
 use crate::measures::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
@@ -50,7 +50,6 @@ impl<T: Float> MeasureMarker for Normal<T> {
     type IsPrimitive = False;
     type IsExponentialFamily = True;
 }
-
 
 impl<T: Float + FloatConst> ExponentialFamilyMeasure<T, T> for Normal<T> {}
 
@@ -118,7 +117,7 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
     type NaturalParam = [T; 2]; // (η₁, η₂) = (μ/σ², -1/(2σ²))
     type SufficientStat = [T; 2]; // (x, x²)
     type BaseMeasure = LebesgueMeasure<T>;
-    
+
     fn from_natural(param: <Self as ExponentialFamily<T, T>>::NaturalParam) -> Self {
         let [eta1, eta2] = param;
         let sigma2 = -T::one() / (T::from(2.0).unwrap() * eta2);

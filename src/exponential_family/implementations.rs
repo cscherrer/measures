@@ -14,8 +14,6 @@ where
     M: ExponentialFamilyMeasure<X, F>,
     M::NaturalParam: InnerProduct<M::SufficientStat, F>;
 
-
-
 /// A wrapper type for exponential family measures that provides specialized
 /// implementations optimized for exponential families.
 ///

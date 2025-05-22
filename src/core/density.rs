@@ -1,19 +1,12 @@
 use super::measure::Measure;
 
-
-pub trait LogDensityTrait<T>
-{
+pub trait LogDensityTrait<T> {
     type Measure: Measure<T>;
     type BaseMeasure: Measure<T>;
 
     fn measure(&self) -> &Self::Measure;
     fn base_measure(&self) -> &Self::BaseMeasure;
-
-
 }
-
-
-
 
 /// A builder for computing log-densities of a measure.
 ///
@@ -61,5 +54,4 @@ where
             x: self.x,
         }
     }
-
 }
