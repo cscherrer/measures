@@ -34,30 +34,6 @@ pub trait ExponentialFamily<T: Float> {
     fn base_measure(&self) -> Self::BaseMeasure;
 }
 
-/// A helper trait for exponential family distributions to compute densities
-/// Types can use this to implement `HasDensity` without repetitive code.
-pub trait ExpFamDensity<T: Float>: ExponentialFamily<T> + Measure<T> {
-    /// Compute log-density using exponential family form
-    fn compute_log_density<'a>(&'a self, x: &'a T) -> LogDensity<'a, T, Self>
-    where
-        Self: Sized + Clone,
-        Self::NaturalParam: DotProduct<Self::SufficientStat, T>,
-        T: Clone,
-    {
-        // Return the LogDensity directly
-        self.log_density_ef(x)
-    }
-}
-
-// Helper function to calculate log-density for any exponential family measure
-pub fn exp_fam_log_density<'a, T: Float, M>(measure: &'a M, x: &'a T) -> LogDensity<'a, T, M>
-where
-    M: ExponentialFamily<T> + Measure<T> + Clone,
-    M::NaturalParam: DotProduct<M::SufficientStat, T>,
-{
-    measure.log_density_ef(x)
-}
-
 
 
 
