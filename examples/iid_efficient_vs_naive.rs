@@ -15,7 +15,7 @@ fn main() {
 
     // Method 1: Naive approach (sum individual log-densities)
     println!("=== Method 1: Naive Summation ===");
-    let naive_result = iid_normal.compute_iid_log_density(&samples);
+    let naive_result: f64 = samples.iter().map(|&x| normal.log_density().at(&x)).sum();
     println!("Result: {naive_result:.10}");
 
     // Show the breakdown
@@ -33,7 +33,7 @@ fn main() {
 
     // Method 2: Efficient exponential family approach
     println!("=== Method 2: Efficient Exponential Family ===");
-    let efficient_result = iid_normal.efficient_iid_log_density(&samples);
+    let efficient_result = iid_normal.log_density(&samples);
     println!("Result: {efficient_result:.10}");
 
     // Show the efficient computation breakdown
@@ -68,41 +68,32 @@ fn main() {
     );
 
     // Verify they match
-    let difference = (naive_result - efficient_result).abs();
     println!("\n=== Verification ===");
-    println!("Naive approach:     {naive_result:.12}");
-    println!("Efficient approach: {efficient_result:.12}");
-    println!("Difference:         {difference:.2e}");
-    println!("✓ Methods agree: {}", difference < 1e-10);
+    println!("  Naive approach:     {naive_result:.10}");
+    println!("  Efficient approach: {efficient_result:.10}");
+    let difference = (naive_result - efficient_result).abs();
+    println!("  Difference:         {difference:.2e}");
+    println!("  ✓ Methods agree: {}", difference < 1e-10);
 
-    // Demonstrate efficiency with larger samples
     println!("\n=== Efficiency Demonstration ===");
-    let large_samples: Vec<f64> = (0..50000)
-        .map(|i| 0.5 + (f64::from(i) - 25000.0) * 0.0001)
-        .collect();
-
+    let large_samples: Vec<f64> = (0..50000).map(|i| 0.5 + f64::from(i) * 0.0001).collect();
     println!("Testing with {} samples...", large_samples.len());
 
-    // Time naive approach
+    // Naive approach timing
     let start = std::time::Instant::now();
-    let naive_large = iid_normal.compute_iid_log_density(&large_samples);
+    let naive_large: f64 = large_samples.iter().map(|&x| normal.log_density().at(&x)).sum();
     let naive_duration = start.elapsed();
 
-    // Time efficient approach
+    // Efficient approach timing  
     let start = std::time::Instant::now();
-    let efficient_large = iid_normal.efficient_iid_log_density(&large_samples);
+    let efficient_large = iid_normal.log_density(&large_samples);
     let efficient_duration = start.elapsed();
 
     println!("Naive time:     {naive_duration:?}");
     println!("Efficient time: {efficient_duration:?}");
-    println!(
-        "Speedup:        {:.1}x",
-        naive_duration.as_nanos() as f64 / efficient_duration.as_nanos() as f64
-    );
-    println!(
-        "Results match:  {}",
-        (naive_large - efficient_large).abs() < 1e-6
-    );
+    let speedup = naive_duration.as_nanos() as f64 / efficient_duration.as_nanos() as f64;
+    println!("Speedup:        {speedup:.1}x");
+    println!("Results match:  {}", (naive_large - efficient_large).abs() < 1e-8);
 
     println!("\n=== Summary ===");
     println!("✓ The efficient exponential family approach computes the same result");

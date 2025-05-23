@@ -20,6 +20,32 @@ use crate::core::{HasLogDensity, Measure, True};
 use crate::traits::DotProduct;
 use num_traits::Float;
 
+/// Helper trait for summing sufficient statistics.
+///
+/// This trait enables efficient computation of sufficient statistics for IID samples
+/// and other aggregate operations in exponential families.
+pub trait SumSufficientStats: Sized {
+    /// Sum a collection of sufficient statistics
+    fn sum_stats(stats: &[Self]) -> Self;
+}
+
+/// Implementation for array sufficient statistics [F; N]
+impl<F: Float, const N: usize> SumSufficientStats for [F; N] {
+    fn sum_stats(stats: &[Self]) -> Self {
+        if stats.is_empty() {
+            return [F::zero(); N];
+        }
+
+        let mut result = [F::zero(); N];
+        for stat in stats {
+            for (i, &val) in stat.iter().enumerate() {
+                result[i] = result[i] + val;
+            }
+        }
+        result
+    }
+}
+
 /// A trait for exponential family distributions over space X with computations in field F.
 ///
 /// This trait generalizes exponential families to work with:
@@ -202,29 +228,24 @@ pub trait ExponentialFamilyMeasure<X: Clone, F: Float>:
 /// Distributions can opt into this behavior by implementing this trait, or provide their own
 /// custom cache precomputation logic.
 pub trait PrecomputeCache<X: Clone, F: Float>: ExponentialFamily<X, F> {
-    /// Precompute and cache values for optimized density computation.
+    /// Precompute and cache expensive operations for efficient density evaluation.
     ///
-    /// This method should compute and store all expensive operations that are
-    /// independent of the data point x, such as:
+    /// This method should compute and store values that are used repeatedly
+    /// in density calculations, such as:
     /// - Natural parameters η
     /// - Log partition function A(η)
-    /// - Any intermediate values used in density computation
-    /// - Distribution-specific optimizations
-    ///
-    /// The cached values can then be reused across multiple density evaluations,
-    /// eliminating redundant computation for batch operations.
+    /// - Any intermediate computations
     fn precompute_cache(&self) -> Self::Cache;
 
-    /// Default implementation for distributions using `GenericExpFamCache`.
+    /// Default implementation using GenericExpFamCache.
     ///
-    /// This provided method can be called by distributions that want to use
-    /// the generic cache implementation. Distributions using custom caches
-    /// should implement `precompute_cache` directly.
+    /// Most distributions can use this default implementation, which provides
+    /// a generic cache that stores natural parameters and log partition.
     fn precompute_cache_default(&self) -> crate::exponential_family::GenericExpFamCache<Self, X, F>
     where
-        Self: GenericExpFamImpl<X, F>,
+        Self: Sized,
     {
-        self.precompute_generic_cache()
+        crate::exponential_family::GenericExpFamCache::new(self)
     }
 
     /// Compute log-density at multiple points efficiently using cached values.
@@ -250,6 +271,91 @@ pub trait PrecomputeCache<X: Clone, F: Float>: ExponentialFamily<X, F> {
         let distribution = (*self).clone();
         move |x: &X| distribution.cached_log_density(&cache, x)
     }
+}
+
+/// Central helper function for computing exponential family log-density.
+///
+/// This function implements the standard exponential family formula:
+/// log p(x|θ) = η·T(x) - A(η) + log h(x)
+///
+/// By centralizing this computation, we ensure consistency across all
+/// exponential family implementations and reduce code duplication.
+pub fn compute_exp_fam_log_density<D, X, F>(
+    distribution: &D,
+    x: &X,
+) -> F
+where
+    D: ExponentialFamily<X, F>,
+    X: Clone,
+    F: Float,
+    D::NaturalParam: DotProduct<D::SufficientStat, Output = F>,
+    D::BaseMeasure: HasLogDensity<X, F>,
+{
+    // Get exponential family components
+    let (natural_params, log_partition) = distribution.natural_and_log_partition();
+    let sufficient_stats = distribution.sufficient_statistic(x);
+    let base_measure = distribution.base_measure();
+
+    // Exponential family part: η·T(x) - A(η)
+    let exp_fam_part = natural_params.dot(&sufficient_stats) - log_partition;
+
+    // Chain rule part: log h(x) = log(d(base_measure)/d(root_measure))(x)
+    let chain_rule_part = base_measure.log_density_wrt_root(x);
+
+    // Complete log-density
+    exp_fam_part + chain_rule_part
+}
+
+/// Central helper function for computing IID exponential family log-density.
+///
+/// This function implements the efficient IID computation:
+/// log p(x₁,...,xₙ|θ) = η·∑ᵢT(xᵢ) - n·A(η) + ∑ᵢlog h(xᵢ)
+///
+/// This is more efficient than summing individual log-densities because it:
+/// - Computes natural parameters and log partition only once
+/// - Computes sufficient statistics sum directly
+/// - Scales the log partition by sample size
+pub fn compute_iid_exp_fam_log_density<D, X, F>(
+    distribution: &D,
+    xs: &[X],
+) -> F
+where
+    D: ExponentialFamily<X, F>,
+    X: Clone,
+    F: Float,
+    D::NaturalParam: DotProduct<D::SufficientStat, Output = F>,
+    D::SufficientStat: SumSufficientStats,
+    D::BaseMeasure: HasLogDensity<X, F>,
+{
+    let n = F::from(xs.len()).unwrap();
+    
+    // Handle empty case
+    if xs.is_empty() {
+        return F::zero();
+    }
+
+    // 1. Compute sufficient statistics: ∑ᵢT(xᵢ)
+    let individual_stats: Vec<D::SufficientStat> = xs
+        .iter()
+        .map(|x| distribution.sufficient_statistic(x))
+        .collect();
+    let sum_sufficient_stats = D::SufficientStat::sum_stats(&individual_stats);
+
+    // 2. Get natural parameters and log partition efficiently: (η, A(η))
+    let (natural_params, log_partition) = distribution.natural_and_log_partition();
+
+    // 3. Exponential family computation: η·∑ᵢT(xᵢ) - n·A(η)
+    let exp_fam_part = natural_params.dot(&sum_sufficient_stats) - n * log_partition;
+
+    // 4. Base measure part: ∑ᵢlog h(xᵢ)
+    let base_measure = distribution.base_measure();
+    let base_measure_part: F = xs
+        .iter()
+        .map(|x| base_measure.log_density_wrt_root(x))
+        .fold(F::zero(), |acc, x| acc + x);
+
+    // Complete log-density
+    exp_fam_part + base_measure_part
 }
 
 // Blanket implementation: any exponential family can use the generic implementations

@@ -100,7 +100,7 @@ fn test_iid_log_density_computation() {
     let samples = vec![0.0, 1.0, -1.0];
 
     // Compute IID log-density using our manual method
-    let iid_log_density: f64 = iid_normal.compute_iid_log_density(&samples);
+    let iid_log_density: f64 = iid_normal.log_density(&samples);
 
     // Compute individual log-densities and sum them manually for verification
     let individual_sum: f64 = samples.iter().map(|&x| normal.log_density().at(&x)).sum();
@@ -120,7 +120,7 @@ fn test_iid_empty_samples() {
     let iid_normal = normal.iid();
 
     let empty_samples: Vec<f64> = vec![];
-    let log_density = iid_normal.compute_iid_log_density(&empty_samples);
+    let log_density = iid_normal.log_density(&empty_samples);
 
     // Empty sample should have log-density 0 (probability 1)
     assert!(

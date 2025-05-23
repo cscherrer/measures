@@ -19,11 +19,11 @@ fn main() {
     println!("Samples: {samples:?}");
 
     // Method 1: Naive (backward compatible)
-    let naive_result: f64 = iid_normal.compute_iid_log_density(&samples);
+    let naive_result: f64 = iid_normal.log_density(&samples);
     println!("\nNaive approach: {naive_result:.8}");
 
     // Method 2: Efficient exponential family
-    let efficient_result: f64 = iid_normal.efficient_iid_log_density(&samples);
+    let efficient_result: f64 = iid_normal.log_density(&samples);
     println!("Efficient approach: {efficient_result:.8}");
 
     let difference = (naive_result - efficient_result).abs();
@@ -38,12 +38,12 @@ fn main() {
 
     // Time naive approach
     let start = std::time::Instant::now();
-    let _naive_large = iid_normal.compute_iid_log_density(&large_samples);
+    let _naive_large = iid_normal.log_density(&large_samples);
     let naive_time = start.elapsed();
 
     // Time efficient approach
     let start = std::time::Instant::now();
-    let _efficient_large = iid_normal.efficient_iid_log_density(&large_samples);
+    let _efficient_large = iid_normal.log_density(&large_samples);
     let efficient_time = start.elapsed();
 
     println!("Large sample (n={})", large_samples.len());
@@ -82,8 +82,8 @@ fn main() {
     let iid_poisson = poisson.clone().iid();
     let poisson_samples = vec![3, 3, 4]; // Simple case
 
-    let naive_poisson: f64 = iid_poisson.compute_iid_log_density(&poisson_samples);
-    let efficient_poisson: f64 = iid_poisson.efficient_iid_log_density(&poisson_samples);
+    let naive_poisson: f64 = iid_poisson.log_density(&poisson_samples);
+    let efficient_poisson: f64 = iid_poisson.log_density(&poisson_samples);
 
     println!("Poisson samples: {poisson_samples:?}");
     println!("  Naive:     {naive_poisson:.8}");

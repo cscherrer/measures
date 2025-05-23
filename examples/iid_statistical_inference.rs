@@ -31,7 +31,7 @@ fn main() {
         let iid_candidate = candidate_dist.iid();
 
         // Compute log-likelihood of observed data under this model
-        let log_likelihood = iid_candidate.compute_iid_log_density(&observed_data);
+        let log_likelihood = iid_candidate.log_density(&observed_data);
 
         println!("μ={mu:.1}, σ={sigma:.1}: log-likelihood = {log_likelihood:.6}");
 
@@ -53,7 +53,7 @@ fn main() {
     let iid_test = test_dist.clone().iid();
 
     // Method 1: Joint IID computation
-    let joint_log_likelihood: f64 = iid_test.compute_iid_log_density(&observed_data);
+    let joint_log_likelihood: f64 = iid_test.log_density(&observed_data);
 
     // Method 2: Sum of individual log-likelihoods
     let individual_sum: f64 = observed_data
@@ -97,7 +97,7 @@ fn main() {
     }
 
     let iid_sample = sample_dist.iid();
-    let iid_result: f64 = iid_sample.compute_iid_log_density(&small_sample);
+    let iid_result: f64 = iid_sample.log_density(&small_sample);
     println!("  IID computation result: {iid_result:.6}");
     let diff: f64 = (iid_result - running_sum).abs();
     println!("  ✓ Match: {}", diff < 1e-10);
@@ -118,7 +118,7 @@ fn main() {
     println!("\nModel comparison by log-likelihood:");
     for (name, model) in models {
         let iid_model = model.iid();
-        let log_likelihood = iid_model.compute_iid_log_density(&test_data);
+        let log_likelihood = iid_model.log_density(&test_data);
         println!("  {name}: {log_likelihood:.6}");
     }
 
@@ -137,7 +137,7 @@ fn main() {
             .collect();
 
         let iid_dist = base_dist.clone().iid();
-        let log_likelihood = iid_dist.compute_iid_log_density(&repeated_sample);
+        let log_likelihood = iid_dist.log_density(&repeated_sample);
 
         println!(
             "Sample size {}: log-likelihood = {:.6}",

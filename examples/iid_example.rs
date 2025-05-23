@@ -28,7 +28,7 @@ fn main() {
 
         if samples.is_empty() {
             println!("Empty sample case:");
-            let iid_log_density = iid_normal.compute_iid_log_density(samples);
+            let iid_log_density = iid_normal.log_density(samples);
             println!("  IID log-density: {iid_log_density}");
             println!("  Expected: 0.0 (log(1) = 0 for empty product)");
             println!("  ✓ Correct: {}\n", iid_log_density == 0.0);
@@ -36,7 +36,7 @@ fn main() {
         }
 
         // Method 1: Using the IID wrapper's manual computation
-        let iid_log_density = iid_normal.compute_iid_log_density(samples);
+        let iid_log_density = iid_normal.log_density(samples);
 
         // Method 2: Manual sum of individual log-densities (verification)
         let individual_sum: f64 = samples.iter().map(|&x| normal.log_density().at(&x)).sum();
@@ -77,7 +77,7 @@ fn main() {
 
     // Property 1: IID of single sample equals original distribution
     let single_sample = vec![1.5];
-    let iid_single = iid_normal.compute_iid_log_density(&single_sample);
+    let iid_single = iid_normal.log_density(&single_sample);
     let original_single = normal.log_density().at(&1.5);
     println!("Single sample property:");
     println!("  IID log p([1.5]) = {iid_single:.6}");
@@ -91,7 +91,7 @@ fn main() {
     let x = 0.8;
     let y = -1.2;
     let joint_samples = vec![x, y];
-    let joint_density = iid_normal.compute_iid_log_density(&joint_samples);
+    let joint_density = iid_normal.log_density(&joint_samples);
     let separate_sum = normal.log_density().at(&x) + normal.log_density().at(&y);
     println!("Additivity property:");
     println!("  log p([{x}, {y}]) = {joint_density:.6}");
@@ -104,8 +104,8 @@ fn main() {
     // Property 3: Scaling with sample size
     let base_sample = vec![0.0, 1.0];
     let extended_sample = vec![0.0, 1.0, 0.0, 1.0]; // Repeated pattern
-    let base_density = iid_normal.compute_iid_log_density(&base_sample);
-    let extended_density = iid_normal.compute_iid_log_density(&extended_sample);
+    let base_density = iid_normal.log_density(&base_sample);
+    let extended_density = iid_normal.log_density(&extended_sample);
     println!("Sample size scaling:");
     println!("  log p([0, 1]) = {base_density:.6}");
     println!("  log p([0, 1, 0, 1]) = {extended_density:.6}");

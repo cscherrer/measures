@@ -50,7 +50,7 @@ fn main() {
     println!("  Total (sum): {total_log_density:.6}");
 
     // IID analysis
-    let iid_log_density: f64 = iid_normal.compute_iid_log_density(&test_sample);
+    let iid_log_density: f64 = iid_normal.log_density(&test_sample);
     println!("\nIID analysis:");
     println!("  Joint log-density: {iid_log_density:.6}");
     let difference: f64 = (iid_log_density - total_log_density).abs();
@@ -87,7 +87,7 @@ fn main() {
     println!("  Total (sum): {poisson_total:.6}");
 
     // IID analysis for Poisson
-    let poisson_iid_log_density = iid_poisson.compute_iid_log_density(&poisson_sample);
+    let poisson_iid_log_density = iid_poisson.log_density(&poisson_sample);
     println!("\nIID analysis:");
     println!("  Joint log-density: {poisson_iid_log_density:.6}");
     println!(
@@ -134,7 +134,7 @@ fn main() {
     println!("Log-partition function scales as n·A(η) for n samples");
 
     let base_sample = vec![2.0, 2.5];
-    let base_log_likelihood = iid_normal.compute_iid_log_density(&base_sample);
+    let base_log_likelihood = iid_normal.log_density(&base_sample);
 
     println!("\nBase sample: {base_sample:?}");
     println!("Log-likelihood: {base_log_likelihood:.6}");
@@ -147,7 +147,7 @@ fn main() {
             .copied()
             .collect();
 
-        let repeated_log_likelihood = iid_normal.compute_iid_log_density(&repeated_sample);
+        let repeated_log_likelihood = iid_normal.log_density(&repeated_sample);
         let expected_scaling = base_log_likelihood * multiplier as f64;
 
         println!(
@@ -180,7 +180,7 @@ fn main() {
 
     for (name, model) in &models {
         let iid_model = model.clone().iid();
-        let log_likelihood = iid_model.compute_iid_log_density(&comparison_data);
+        let log_likelihood = iid_model.log_density(&comparison_data);
         log_likelihoods.push(log_likelihood);
         println!("{name}: log L = {log_likelihood:.6}");
     }

@@ -14,7 +14,7 @@
 //! - Log partition function: n times the original A(η)
 
 use crate::core::{False, HasLogDensity, Measure, MeasureMarker, True};
-use crate::exponential_family::ExponentialFamily;
+use crate::exponential_family::{ExponentialFamily, SumSufficientStats};
 use crate::measures::primitive::counting::CountingMeasure;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use crate::traits::DotProduct;
@@ -84,39 +84,33 @@ where
     }
 }
 
-/// Helper trait for summing sufficient statistics
-pub trait SumSufficientStats: Sized {
-    /// Sum a collection of sufficient statistics
-    fn sum_stats(stats: &[Self]) -> Self;
-}
-
-/// Implementation for array sufficient statistics [F; N]
-impl<F: Float, const N: usize> SumSufficientStats for [F; N] {
-    fn sum_stats(stats: &[Self]) -> Self {
-        if stats.is_empty() {
-            return [F::zero(); N];
-        }
-
-        let mut result = [F::zero(); N];
-        for stat in stats {
-            for (i, &val) in stat.iter().enumerate() {
-                result[i] = result[i] + val;
-            }
-        }
-        result
-    }
-}
-
 /// Helper trait for computing IID log-density manually (backward compatibility)
 impl<D> IID<D>
 where
     D: Clone,
 {
-    /// Compute IID log-density by summing individual log-densities.
+    /// Compute efficient IID log-density using exponential family structure.
     ///
-    /// NOTE: This is inefficient and kept only for comparison.
-    /// The goal is to implement the efficient exponential family approach.
-    pub fn compute_iid_log_density<X, F>(&self, xs: &[X]) -> F
+    /// This uses the proper exponential family approach: η·∑ᵢT(xᵢ) - n·A(η)
+    /// This is both mathematically correct and computationally efficient.
+    pub fn log_density<X, F>(&self, xs: &[X]) -> F
+    where
+        D: ExponentialFamily<X, F>,
+        F: Float,
+        D::NaturalParam: DotProduct<D::SufficientStat, Output = F>,
+        D::SufficientStat: SumSufficientStats,
+        D::BaseMeasure: HasLogDensity<X, F>,
+        X: Clone,
+    {
+        // Use the centralized computation function
+        crate::exponential_family::traits::compute_iid_exp_fam_log_density(&self.distribution, xs)
+    }
+
+    /// Compute IID log-density using fallback summation for non-exponential families.
+    ///
+    /// This method provides backward compatibility for distributions that don't
+    /// implement the exponential family trait.
+    pub fn log_density_fallback<X, F>(&self, xs: &[X]) -> F
     where
         D: HasLogDensity<X, F>,
         X: Clone,
@@ -125,33 +119,6 @@ where
         xs.iter()
             .map(|x| self.distribution.log_density_wrt_root(x))
             .fold(F::zero(), |acc, x| acc + x)
-    }
-
-    /// Compute efficient IID log-density using exponential family structure.
-    ///
-    /// This demonstrates the proper approach: η·∑ᵢT(xᵢ) - n·A(η)
-    pub fn efficient_iid_log_density<X, F>(&self, xs: &[X]) -> F
-    where
-        D: ExponentialFamily<X, F>,
-        F: Float,
-        D::NaturalParam: DotProduct<D::SufficientStat, Output = F>,
-        D::SufficientStat: SumSufficientStats,
-        X: Clone,
-    {
-        let n = F::from(xs.len()).unwrap();
-
-        // 1. Compute sufficient statistics: ∑ᵢT(xᵢ)
-        let individual_stats: Vec<D::SufficientStat> = xs
-            .iter()
-            .map(|x| self.distribution.sufficient_statistic(x))
-            .collect();
-        let sum_sufficient_stats = D::SufficientStat::sum_stats(&individual_stats);
-
-        // 2. Get natural parameters and log partition efficiently: (η, A(η))
-        let (natural_params, log_partition) = self.distribution.natural_and_log_partition();
-
-        // 3. Exponential family computation: η·∑ᵢT(xᵢ) - n·A(η)
-        natural_params.dot(&sum_sufficient_stats) - n * log_partition
     }
 }
 
