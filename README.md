@@ -1,142 +1,149 @@
 # Measures: Type-Safe Measure Theory for Rust
 
-A Rust library for measure theory and probability distributions with a focus on type safety, performance, and automatic differentiation support.
+A Rust library implementing measure theory foundations for probability distributions with type safety and automatic differentiation support.
 
-## 🚀 Key Features
+## Mathematical Foundation
 
-- **Type-safe measure theory**: Clear separation between measures and densities
-- **Generic numeric types**: Works with `f64`, `f32`, dual numbers for autodiff, etc.
-- **Zero-cost abstractions**: Compile-time optimization and static dispatch
-- **Automatic shared-root computation**: Efficient log-density calculations
-- **Exponential family support**: Specialized implementations for common distributions
-- **Fluent API**: Natural, discoverable interface
+This library implements measure theory concepts for statistical computing:
 
-## 📖 Quick Start
+- **Measure separation**: Clear distinction between measures μ and their densities dν/dμ
+- **Log-density computation**: Numerically stable evaluation of log(dν/dμ)(x)  
+- **Base measure transformations**: Change of measure via log(dν₁/dμ) - log(dν₂/dμ) = log(dν₁/dν₂)
+- **Exponential families**: Distributions of the form f(x|θ) = h(x)exp(η(θ)·T(x) - A(η(θ)))
+- **IID collections**: Joint distributions for independent samples maintaining exponential family structure
+
+## Architecture
+
+### Core Abstractions (`src/core/`)
+- `Measure<T>`: Fundamental measure trait defining support and root measure
+- `LogDensityTrait<T>`: Mathematical interface for log-density computation
+- `EvaluateAt<T, F>`: Generic evaluation enabling different numeric types
+- `LogDensity<T, M, B>`: Builder type for fluent computation with type-level tracking
+
+### Measure Implementations (`src/measures/`)
+- **Primitive**: `LebesgueMeasure<T>`, `CountingMeasure<T>` 
+- **Derived**: `Dirac<T>`, `FactorialMeasure<F>`
+
+### Distributions (`src/distributions/`)
+- **Continuous**: `Normal<T>`, `StdNormal<T>`
+- **Discrete**: `Poisson<F>`
+- **Exponential Family**: Unified interface via `ExponentialFamily<X, F>` trait
+
+### Type System Features
+- **Static dispatch**: Zero-cost abstractions with compile-time optimization
+- **Generic numeric types**: Works with f64, f32, dual numbers for autodiff
+- **Type-level safety**: Incompatible measures cause compilation errors
+
+## Usage
+
+### Basic Log-Density Computation
 
 ```rust
-use measures::{Normal, Measure};
+use measures::{Normal, LogDensityBuilder};
 
 let normal = Normal::new(0.0, 1.0);
 let x = 0.5;
 
-// Compute log-density with respect to root measure (Lebesgue)
-let ld = normal.log_density();
-let log_density_value: f64 = ld.at(&x);
+// Log-density with respect to Lebesgue measure
+let log_density: f64 = normal.log_density().at(&x);
 
-// Compute log-density with respect to different base measure
+// Log-density with respect to different base measure  
 let other_normal = Normal::new(1.0, 2.0);
-let ld_wrt = normal.log_density().wrt(other_normal);
-let relative_log_density: f64 = ld_wrt.at(&x);
-
-// Same log-density, different numeric types (autodiff ready!)
-let f32_x = x as f32;
-let f32_result: f32 = normal.log_density().at(&f32_x);
-// let dual_result: Dual64 = ld.at(&dual_x);  // With autodiff library
+let relative_log_density: f64 = normal.log_density().wrt(other_normal).at(&x);
 ```
-
-## 🏗️ Architecture
-
-The library is organized around a clean separation of concerns:
-
-### Core Abstractions (`src/core/`)
-- **`Measure<T>`**: Fundamental measure trait
-- **`LogDensityTrait<T>`**: Mathematical log-density interface  
-- **`EvaluateAt<T, F>`**: Generic evaluation for any numeric type
-- **`LogDensity<T, M, B>`**: Builder for fluent log-density computation
-
-### Measures (`src/measures/`)
-- **Primitive**: `LebesgueMeasure`, `CountingMeasure` (building blocks)
-- **Derived**: `Dirac`, `WeightedMeasure` (constructed from primitives)
-
-### Distributions (`src/distributions/`)
-- **Continuous**: `Normal`, `StdNormal`
-- **Discrete**: `Poisson`  
-- **Multivariate**: `MultivariateNormal`
-
-## 🎯 Design Highlights
 
 ### Automatic Shared-Root Optimization
 
-When measures share the same root measure, log-densities are automatically computed using the efficient formula:
+When measures share the same root measure, computation automatically uses:
+`log(dν₁/dν₂) = log(dν₁/dμ) - log(dν₂/dμ)`
 
 ```rust
-// Both normals have LebesgueMeasure as root
 let normal1 = Normal::new(0.0, 1.0);
 let normal2 = Normal::new(1.0, 2.0);
 
-// Automatically computed as: normal1.log_density() - normal2.log_density()
-let ld = normal1.log_density().wrt(normal2);
+// Automatically computed via subtraction (both use LebesgueMeasure)
+let relative_density = normal1.log_density().wrt(normal2).at(&x);
 ```
 
 ### Generic Numeric Types
 
-The same log-density works with different numeric types:
+```rust
+// Same mathematical object, different numeric evaluations
+let f64_result: f64 = normal.log_density().at(&x);
+let f32_result: f32 = normal.log_density().at(&(x as f32));
+// Autodiff: let dual_result: Dual64 = normal.log_density().at(&dual_x);
+```
+
+### IID Collections
+
+For independent and identically distributed samples:
 
 ```rust
+use measures::IIDExtension;
+
 let normal = Normal::new(0.0, 1.0);
-let x = 0.5;
+let iid_normal = normal.iid();
+let samples = vec![0.5, -0.3, 1.2];
 
-let f64_result: f64 = normal.log_density().at(&x);           // Regular computation
-let f32_result: f32 = normal.log_density().at(&(x as f32));  // Lower precision  
-// let dual_result: Dual64 = normal.log_density().at(&dual_x); // Forward-mode autodiff
+// Efficient computation using exponential family structure
+let joint_log_density: f64 = iid_normal.iid_log_density(&samples);
 ```
 
-### Type-Level Safety
-
-The type system enforces mathematical correctness:
+### Exponential Family Interface
 
 ```rust
-// ✅ Valid: measures with same root
-let ld = normal1.log_density().wrt(normal2);
+use measures::exponential_family::{compute_exp_fam_log_density, ExponentialFamily};
 
-// ❌ Compile error: incompatible measures  
-// let ld = normal.log_density().wrt(discrete_measure);
+let poisson = Poisson::new(3.0);
+
+// Direct exponential family computation
+let log_density = compute_exp_fam_log_density(&poisson, &2u64);
+
+// Access natural parameters and sufficient statistics
+let natural_params = poisson.to_natural();
+let sufficient_stats = poisson.sufficient_statistic(&2u64);
 ```
 
-## 📚 Documentation
+### Caching for Performance
 
-- **[Design Notes](DESIGN_NOTES.md)**: Detailed architectural decisions and rationale
-- **API Documentation**: Run `cargo doc --open` for full API docs
-- **Examples**: See `examples/` directory for usage patterns
-
-## 🔬 Advanced Features
-
-### Caching
 ```rust
-let ld_cached = normal.log_density().cached();
-for &xi in &[0.1, 0.2, 0.1, 0.3, 0.1] {  // 0.1 computed only once
-    let _val: f64 = ld_cached.at(&xi);
+// Cache exponential family parameters for repeated evaluations
+let cached_normal = normal.log_density().cached();
+for &xi in &[0.1, 0.2, 0.1, 0.3, 0.1] {
+    let _val: f64 = cached_normal.at(&xi);  // 0.1 computed only once
 }
 ```
 
-### Algebraic Operations
-```rust
-let ld_neg = -ld;              // Negated log-density
-// let ld_sum = ld1 + ld2;     // Chain rule (when valid)
-```
+## Future Work
 
-### Exponential Families
-```rust
-// Specialized implementations for exponential family distributions
-// with natural parameter computations and sufficient statistics
-```
+### Planned Extensions
+- **Additional distributions**: Binomial, Beta, Gamma families
+- **Multivariate support**: Complete multivariate normal implementation  
+- **SIMD optimization**: Vectorized operations for batch computations
+- **GPU support**: CUDA/OpenCL backends for large-scale computation
 
-## 🛠️ Development
+### Research Directions
+- **Variational inference**: Automatic differentiation for gradient-based optimization
+- **Hamiltonian Monte Carlo**: Integration with NUTS and other samplers
+- **Information geometry**: Fisher information and natural gradients
+- **Conjugate priors**: Automatic Bayesian updates for exponential families
+
+### API Evolution
+- **Algebraic operations**: Addition, composition of log-densities via operator overloading
+- **Symbolic computation**: Compile-time evaluation of simple expressions
+- **Custom base measures**: Extension framework for domain-specific measures
+
+## Documentation
+
+- **[Design Notes](DESIGN_NOTES.md)**: Architectural decisions and mathematical rationale
+- **[Exponential Family Implementation](IID_EXPONENTIAL_FAMILY_IMPLEMENTATION.md)**: IID mathematics and implementation details
+- **API Documentation**: Run `cargo doc --open` for complete API reference
+- **Examples**: See `examples/` directory for usage patterns and performance demonstrations
+
+## Development
 
 ```bash
-# Run tests
-cargo test
-
-# Check compilation
-cargo check
-
-# Build documentation
-cargo doc --open
-
-# Run benchmarks
-cargo bench
-```
-
-## 📄 License
-
-[Add your license here] 
+cargo test    # Run test suite
+cargo bench   # Performance benchmarks  
+cargo doc --open  # Build and view documentation
+``` 
