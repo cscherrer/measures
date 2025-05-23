@@ -17,14 +17,29 @@ to enable flexible computation of probabilities and likelihood functions.
 ### Basic Example
 
 ```rust
-use measures::{Normal};
+use measures::{Normal, LogDensityBuilder};
 
 // Create a standard normal distribution
 let normal = Normal::new(0.0, 1.0);
 
-// Compute density at x = 0
-let density: f64 = normal.density(&0.0).into();
+// Compute log-density at x = 0.5
+let log_density: f64 = normal.log_density().at(&0.5);
 
-// Compute log-density (more efficient)
-let log_density: f64 = normal.log_density(&0.0).into();
-``` 
+// Compute log-density with respect to another measure
+let other_normal = Normal::new(1.0, 2.0);
+let relative_log_density: f64 = normal.log_density().wrt(other_normal).at(&0.5);
+```
+
+### IID Collections
+
+```rust
+use measures::{IIDExtension, Normal};
+
+let normal = Normal::new(0.0, 1.0);
+let iid_normal = normal.iid();
+
+let samples = vec![0.5, -0.3, 1.2];
+let iid_log_density: f64 = iid_normal.iid_log_density(&samples);
+```
+
+For more examples, see the `examples/` directory in the repository. 

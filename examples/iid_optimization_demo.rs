@@ -51,30 +51,13 @@ fn main() {
     println!("✓ Both approaches give identical results");
 
     // Show the efficient IID computation
-    println!("\n=== Efficient IID Computation ===");
+    println!("\n=== IID Computation Using Optimization ===");
     let start = std::time::Instant::now();
-    let efficient_result: f64 = iid_normal.iid_log_density(&samples);
-    let efficient_time = start.elapsed();
+    let iid_result: f64 = iid_normal.iid_log_density(&samples);
+    let iid_time = start.elapsed();
 
-    println!("IID log-density: {:.8}", efficient_result);
-    println!("Time: {:?}", efficient_time);
-
-    // Compare with naive approach
-    let start = std::time::Instant::now();
-    let naive_result: f64 = iid_normal.iid_log_density(&samples);
-    let naive_time = start.elapsed();
-
-    println!("\n=== Comparison with Naive Approach ===");
-    println!("Naive result: {:.8}", naive_result);
-    println!("Naive time: {:?}", naive_time);
-
-    let results_match = (efficient_result - naive_result).abs() < 1e-10;
-    println!("Results match: {}", results_match);
-
-    if naive_time.as_nanos() > 0 && efficient_time.as_nanos() > 0 {
-        let speedup = naive_time.as_nanos() as f64 / efficient_time.as_nanos() as f64;
-        println!("Speedup: {:.1}x", speedup);
-    }
+    println!("IID log-density: {:.8}", iid_result);
+    println!("Time: {:?}", iid_time);
 
     println!("\n=== Key Benefits of Optimization ===");
     println!("✓ Single method call instead of two separate calls");

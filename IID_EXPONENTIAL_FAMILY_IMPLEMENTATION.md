@@ -39,7 +39,7 @@ This maintains exponential family form with:
 1. **IID Wrapper** (`src/exponential_family/iid.rs`)
    - `IID<D>` struct wraps any exponential family distribution
    - Implements `Measure<Vec<X>>` for vector observations
-   - Provides `compute_iid_log_density()` method
+   - Provides `iid_log_density()` method
 
 2. **Extension Trait** 
    - `IIDExtension` adds `.iid()` method to all exponential families
@@ -78,7 +78,7 @@ let normal = Normal::new(0.0, 1.0);
 let iid_normal = normal.iid();
 
 let samples = vec![0.5, -0.3, 1.2];
-let log_density = iid_normal.compute_iid_log_density(&samples);
+let log_density = iid_normal.iid_log_density(&samples);
 ```
 
 ### Statistical Inference
@@ -97,7 +97,7 @@ let mut best_model = &candidates[0];
 
 for model in &candidates {
     let iid_model = model.clone().iid();
-    let log_likelihood = iid_model.compute_iid_log_density(&observed_data);
+    let log_likelihood = iid_model.iid_log_density(&observed_data);
     if log_likelihood > best_log_likelihood {
         best_log_likelihood = log_likelihood;
         best_model = model;
@@ -167,7 +167,7 @@ Multiple computation methods yield identical results (within numerical precision
 ExponentialFamily<X, F>
     ↓ IIDExtension
 IID<D> : Measure<Vec<X>>
-    ↓ compute_iid_log_density
+    ↓ iid_log_density
 f64 (or F: Float)
 ```
 

@@ -28,10 +28,7 @@ pub fn compute_iid_exp_fam_log_density<D, X, F>(distribution: &D, xs: &[X]) -> F
 
 ### 2. Unified and Consistent IID Interface
 
-**Before**: Multiple confusing method names:
-- `compute_iid_log_density()` (inefficient, marked for removal)
-- `efficient_iid_log_density()` (efficient but verbose)
-- **API inconsistency**: Mixed patterns for log-density computation
+**Before**: Inconsistent and confusing method names across different computation approaches.
 
 **After**: Clean, consistent interface that respects existing API patterns:
 ```rust
@@ -145,10 +142,6 @@ impl ExponentialFamily<X, F> for MyDistribution {
 
 ### Before
 ```rust
-// Confusing multiple methods
-let result1 = iid_dist.compute_iid_log_density(&samples);      // Inefficient
-let result2 = iid_dist.efficient_iid_log_density(&samples);   // Efficient but verbose
-
 // Manual exponential family computation
 let (eta, A) = dist.natural_and_log_partition();
 let T = dist.sufficient_statistic(&x);
