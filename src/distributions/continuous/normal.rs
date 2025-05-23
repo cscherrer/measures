@@ -74,9 +74,15 @@ impl<T: Float + FloatConst> ExponentialFamilyCache<T, T> for NormalCache<T> {
         Self::new(distribution.mean, distribution.std_dev)
     }
 
-    fn log_partition(&self) -> T { self.log_partition }
-    fn natural_params(&self) -> &[T; 2] { &self.natural_params }
-    fn base_measure(&self) -> &LebesgueMeasure<T> { &self.base_measure }
+    fn log_partition(&self) -> T {
+        self.log_partition
+    }
+    fn natural_params(&self) -> &[T; 2] {
+        &self.natural_params
+    }
+    fn base_measure(&self) -> &LebesgueMeasure<T> {
+        &self.base_measure
+    }
 }
 
 /// A normal (Gaussian) distribution.
@@ -137,15 +143,8 @@ impl<T: Float> Measure<T> for Normal<T> {
     }
 }
 
-/// Implement `HasLogDensity` for automatic shared-root computation
-impl<T: Float + FloatConst> HasLogDensity<T, T> for Normal<T> {
-    #[inline]
-    fn log_density_wrt_root(&self, x: &T) -> T {
-        // Use optimized cached computation from exponential family framework
-        let cache = self.precompute_cache();
-        self.cached_log_density(&cache, x)
-    }
-}
+// Note: HasLogDensity implementation is now automatic via the blanket impl
+// for exponential families in density.rs! No manual implementation needed.
 
 impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
     type NaturalParam = [T; 2]; // (η₁, η₂) = (μ/σ², -1/(2σ²))

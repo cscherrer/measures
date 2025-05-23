@@ -13,23 +13,27 @@ fn main() {
     println!("```rust");
     println!("impl<T: Float + FloatConst> ExponentialFamilyCache<T, T> for NormalCache<T> {{");
     println!("    type Distribution = Normal<T>;");
-    println!("");
+    println!();
     println!("    fn from_distribution(distribution: &Self::Distribution) -> Self {{");
     println!("        Self::new(distribution.mean, distribution.std_dev)");
     println!("    }}");
-    println!("");
+    println!();
     println!("    fn log_partition(&self) -> T {{");
     println!("        self.log_partition");
     println!("    }}");
-    println!("");
-    println!("    fn natural_params(&self) -> &<Self::Distribution as ExponentialFamily<T, T>>::NaturalParam {{");
+    println!();
+    println!(
+        "    fn natural_params(&self) -> &<Self::Distribution as ExponentialFamily<T, T>>::NaturalParam {{"
+    );
     println!("        &self.natural_params");
     println!("    }}");
-    println!("");
-    println!("    fn base_measure(&self) -> &<Self::Distribution as ExponentialFamily<T, T>>::BaseMeasure {{");
+    println!();
+    println!(
+        "    fn base_measure(&self) -> &<Self::Distribution as ExponentialFamily<T, T>>::BaseMeasure {{"
+    );
     println!("        &self.base_measure");
     println!("    }}");
-    println!("");
+    println!();
     println!("    // log_density method is provided by the default implementation in the trait");
     println!("}}");
     println!("```\n");
@@ -49,7 +53,9 @@ fn main() {
     println!("```rust");
     println!("impl<T: Float + FloatConst> ExponentialFamilyCache<T, T> for NormalCache<T> {{");
     println!("    type Distribution = Normal<T>;");
-    println!("    fn from_distribution(distribution: &Self::Distribution) -> Self {{ Self::new(distribution.mean, distribution.std_dev) }}");
+    println!(
+        "    fn from_distribution(distribution: &Self::Distribution) -> Self {{ Self::new(distribution.mean, distribution.std_dev) }}"
+    );
     println!("    fn log_partition(&self) -> T {{ self.log_partition }}");
     println!("    fn natural_params(&self) -> &[T; 2] {{ &self.natural_params }}");
     println!("    fn base_measure(&self) -> &LebesgueMeasure<T> {{ &self.base_measure }}");
@@ -60,7 +66,9 @@ fn main() {
     println!("```rust");
     println!("impl<F: Float + FloatConst> ExponentialFamilyCache<u64, F> for PoissonCache<F> {{");
     println!("    type Distribution = Poisson<F>;");
-    println!("    fn from_distribution(distribution: &Self::Distribution) -> Self {{ Self::new(distribution.lambda) }}");
+    println!(
+        "    fn from_distribution(distribution: &Self::Distribution) -> Self {{ Self::new(distribution.lambda) }}"
+    );
     println!("    fn log_partition(&self) -> F {{ self.log_partition }}");
     println!("    fn natural_params(&self) -> &[F; 1] {{ &self.natural_param }}");
     println!("    fn base_measure(&self) -> &FactorialMeasure<F> {{ &self.base_measure }}");
@@ -71,7 +79,9 @@ fn main() {
     println!("```rust");
     println!("impl<T: Float + FloatConst> ExponentialFamilyCache<T, T> for StdNormalCache<T> {{");
     println!("    type Distribution = StdNormal<T>;");
-    println!("    fn from_distribution(_distribution: &Self::Distribution) -> Self {{ Self::new() }}");
+    println!(
+        "    fn from_distribution(_distribution: &Self::Distribution) -> Self {{ Self::new() }}"
+    );
     println!("    fn log_partition(&self) -> T {{ self.log_partition }}");
     println!("    fn natural_params(&self) -> &[T; 2] {{ &self.natural_params }}");
     println!("    fn base_measure(&self) -> &LebesgueMeasure<T> {{ &self.base_measure }}");
@@ -99,4 +109,4 @@ fn main() {
     println!("• Consistent: All distributions follow identical structure");
     println!("• Extensible: Adding new distributions requires minimal boilerplate");
     println!("• Correct: Default implementation guarantees exponential family formula");
-} 
+}

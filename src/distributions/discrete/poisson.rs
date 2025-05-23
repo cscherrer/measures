@@ -4,7 +4,7 @@
 //! distribution that expresses the probability of a given number of events occurring
 //! in a fixed interval of time or space.
 
-use crate::core::{False, HasLogDensity, Measure, MeasureMarker, True};
+use crate::core::{False, Measure, MeasureMarker, True};
 use crate::exponential_family::{ExponentialFamily, ExponentialFamilyCache};
 use crate::measures::derived::factorial::FactorialMeasure;
 use crate::measures::primitive::counting::CountingMeasure;
@@ -47,9 +47,15 @@ impl<F: Float + FloatConst> ExponentialFamilyCache<u64, F> for PoissonCache<F> {
         Self::new(distribution.lambda)
     }
 
-    fn log_partition(&self) -> F { self.log_partition }
-    fn natural_params(&self) -> &[F; 1] { &self.natural_param }
-    fn base_measure(&self) -> &FactorialMeasure<F> { &self.base_measure }
+    fn log_partition(&self) -> F {
+        self.log_partition
+    }
+    fn natural_params(&self) -> &[F; 1] {
+        &self.natural_param
+    }
+    fn base_measure(&self) -> &FactorialMeasure<F> {
+        &self.base_measure
+    }
 }
 
 /// A Poisson distribution.
@@ -96,6 +102,9 @@ impl<F: Float> Measure<u64> for Poisson<F> {
     }
 }
 
+// Note: HasLogDensity implementation is now automatic via the blanket impl
+// for exponential families in density.rs! No manual implementation needed.
+
 // Natural parameter for Poisson is log(lambda), sufficient statistic is k as F
 impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
     type NaturalParam = [F; 1]; // η = [log(λ)]
@@ -132,15 +141,5 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
     fn cached_log_density(&self, cache: &Self::Cache, x: &u64) -> F {
         // Use the new ExponentialFamilyCache trait for cleaner implementation
         cache.log_density(x)
-    }
-}
-
-/// Implement `HasLogDensity` for automatic shared-root computation
-impl<F: Float + FloatConst> HasLogDensity<u64, F> for Poisson<F> {
-    #[inline]
-    fn log_density_wrt_root(&self, x: &u64) -> F {
-        // Use optimized cached computation from exponential family framework
-        let cache = self.precompute_cache();
-        self.cached_log_density(&cache, x)
     }
 }

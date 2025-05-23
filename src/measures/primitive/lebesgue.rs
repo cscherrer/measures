@@ -1,4 +1,5 @@
-use crate::core::{False, MeasureMarker, PrimitiveMeasure, True};
+use crate::core::{False, HasLogDensity, MeasureMarker, PrimitiveMeasure, True};
+use num_traits::Zero;
 
 #[derive(Clone, Default)]
 pub struct LebesgueMeasure<T: Clone> {
@@ -20,3 +21,11 @@ impl<T: Clone> MeasureMarker for LebesgueMeasure<T> {
 }
 
 impl<T: Clone> PrimitiveMeasure<T> for LebesgueMeasure<T> {}
+
+/// Primitive measures have log-density 0 with respect to themselves
+/// since log(dm/dm) = log(1) = 0
+impl<T: Clone, F: Zero> HasLogDensity<T, F> for LebesgueMeasure<T> {
+    fn log_density_wrt_root(&self, _x: &T) -> F {
+        F::zero()
+    }
+}

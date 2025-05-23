@@ -1,4 +1,6 @@
 use super::measure::Measure;
+use crate::core::types::True;
+use num_traits::Float;
 use std::ops::Neg;
 
 /// A trait representing the log-density between two measures. Goals for the
@@ -137,20 +139,6 @@ where
     M: Measure<T> + Clone,
 {
     /// Create a new log-density computation with the root measure as base.
-    #[cfg(feature = "profiling")]
-    #[profiling::function]
-    #[inline]
-    pub fn new(measure: M) -> Self {
-        let base_measure = measure.root_measure();
-        Self {
-            measure,
-            base_measure,
-            _phantom: std::marker::PhantomData,
-        }
-    }
-
-    /// Create a new log-density computation with the root measure as base.
-    #[cfg(not(feature = "profiling"))]
     #[inline]
     pub fn new(measure: M) -> Self {
         let base_measure = measure.root_measure();
@@ -185,25 +173,6 @@ where
     /// let result: f32 = log_density.at(&x);        // f32 inferred  
     /// let result = log_density.at::<f64>(&x);      // f64 explicit
     /// ```
-    #[cfg(feature = "profiling")]
-    #[profiling::function]
-    #[inline]
-    pub fn at<F>(&self, x: &T) -> F
-    where
-        Self: EvaluateAt<T, F>,
-    {
-        EvaluateAt::at(self, x)
-    }
-
-    /// Evaluate the log-density at a specific point.
-    ///
-    /// The return type is inferred from context or can be specified explicitly:
-    /// ```rust,ignore
-    /// let result: f64 = log_density.at(&x);        // f64 inferred
-    /// let result: f32 = log_density.at(&x);        // f32 inferred  
-    /// let result = log_density.at::<f64>(&x);      // f64 explicit
-    /// ```
-    #[cfg(not(feature = "profiling"))]
     #[inline]
     pub fn at<F>(&self, x: &T) -> F
     where
@@ -243,15 +212,6 @@ where
     M2: Measure<T, RootMeasure = M1::RootMeasure> + HasLogDensity<T, F> + Clone,
     F: std::ops::Sub<Output = F>,
 {
-    #[cfg(feature = "profiling")]
-    #[profiling::function]
-    #[inline]
-    fn at(&self, x: &T) -> F {
-        // log(dm1/dm2) = log(dm1/root) - log(dm2/root)
-        self.measure.log_density_wrt_root(x) - self.base_measure.log_density_wrt_root(x)
-    }
-
-    #[cfg(not(feature = "profiling"))]
     #[inline]
     fn at(&self, x: &T) -> F {
         // log(dm1/dm2) = log(dm1/root) - log(dm2/root)
@@ -267,28 +227,37 @@ pub trait LogDensityEval<T, F> {
     fn evaluate_log_density(&self, base_measure: &impl Measure<T>, x: &T) -> F;
 }
 
-/// A trait for measures that can compute their log-density with respect to their root measure.
+/// Base trait for measures that can compute their log-density with respect to their root measure.
 ///
-/// This enables default implementations for log-densities between measures that share
-/// the same root measure: `log(dm1/dm2) = log(dm1/root) - log(dm2/root)`
+/// This trait provides automatic specialization based on `IsExponentialFamily`:
+/// - Exponential families get optimized cached computation automatically  
+/// - Other measures implement the trait manually
 ///
-/// # Example Implementation
-///
-/// ```rust,ignore
-/// // For a Normal distribution with LebesgueMeasure as root:
-/// impl<T> HasLogDensity<T, f64> for Normal<T>
-/// where T: Into<f64> + Clone
-/// {
-///     fn log_density_wrt_root(&self, x: &T) -> f64 {
-///         let x_val: f64 = x.clone().into();
-///         let normalized = (x_val - self.mean) / self.std_dev;
-///         -0.5 * normalized * normalized - (2.0 * std::f64::consts::PI * self.std_dev.powi(2)).ln() / 2.0
-///     }
-/// }
-/// ```
-pub trait HasLogDensity<T, F>: Measure<T> {
+/// This design mirrors how `PrimitiveMeasure` splits on `IsPrimitive`.
+pub trait HasLogDensity<T, F> {
     /// Compute the log-density of this measure with respect to its root measure
     fn log_density_wrt_root(&self, x: &T) -> F;
+}
+
+/// Specialized automatic implementation for exponential family measures.
+///
+/// This provides optimized cached computation using the exponential family formula:
+/// log p(x|θ) = η·T(x) - A(η) + log h(x)
+impl<T, F, M> HasLogDensity<T, F> for M
+where
+    M: Measure<T, IsExponentialFamily = True>
+        + crate::exponential_family::ExponentialFamily<T, F>
+        + Clone,
+    F: Float,
+    M::NaturalParam: crate::traits::DotProduct<M::SufficientStat, Output = F> + Clone,
+    M::BaseMeasure: HasLogDensity<T, F>,
+{
+    #[inline]
+    fn log_density_wrt_root(&self, x: &T) -> F {
+        // Use cached exponential family computation automatically
+        let cache = self.precompute_cache();
+        self.cached_log_density(&cache, x)
+    }
 }
 
 /// Algebraic operation: Negation (swaps measure and base measure)
@@ -319,7 +288,6 @@ where
     F: Neg<Output = F>,
     T: Clone,
 {
-    #[profiling::function]
     fn at(&self, x: &T) -> F {
         -self.inner.at(x)
     }
@@ -389,21 +357,6 @@ where
     T: Clone + std::hash::Hash + Eq,
     F: Clone,
 {
-    #[cfg(feature = "profiling")]
-    #[profiling::function]
-    #[inline]
-    fn at(&self, x: &T) -> F {
-        let mut cache = self.cache.borrow_mut();
-        if let Some(cached_value) = cache.get(x) {
-            cached_value.clone()
-        } else {
-            let value = self.inner.at(x);
-            cache.insert(x.clone(), value.clone());
-            value
-        }
-    }
-
-    #[cfg(not(feature = "profiling"))]
     #[inline]
     fn at(&self, x: &T) -> F {
         let mut cache = self.cache.borrow_mut();
@@ -443,4 +396,115 @@ where
     L: LogDensityTrait<T>,
     T: Clone,
 {
+}
+
+/// A trait for computing log-densities.
+///
+/// This trait provides a builder pattern for computing log-densities
+/// with explicit control over the reference measure.
+pub trait LogDensityBuilder<T>
+where
+    T: Clone,
+{
+    /// Get the log-density with respect to the root measure.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use measures::{Normal, LogDensityBuilder};
+    ///
+    /// let normal = Normal::new(0.0, 1.0);
+    /// let ld = normal.log_density();
+    /// let log_density_value: f64 = ld.at(&0.0);
+    /// ```
+    fn log_density(&self) -> LogDensity<T, Self>
+    where
+        Self: Measure<T> + Clone;
+}
+
+impl<T, M> LogDensityBuilder<T> for M
+where
+    T: Clone,
+    M: Measure<T>,
+{
+    fn log_density(&self) -> LogDensity<T, Self>
+    where
+        Self: Clone,
+    {
+        LogDensity::new(self.clone())
+    }
+}
+
+/// Helper trait for shared root computation optimization.
+///
+/// When multiple measures share the same root measure, this trait provides
+/// utilities for efficient batch computation of log-densities.
+pub trait SharedRootMeasure<T, F>
+where
+    T: Clone,
+{
+    /// The shared root measure type
+    type SharedRoot: Measure<T>;
+
+    /// Get the shared root measure
+    fn shared_root(&self) -> Self::SharedRoot;
+
+    /// Compute log-density with respect to the shared root measure
+    fn log_density_wrt_shared_root(&self, x: &T) -> F;
+}
+
+/// Automatic implementation of `SharedRootMeasure` for measures with the same root.
+impl<T, F, M1, M2> SharedRootMeasure<T, F> for (M1, M2)
+where
+    T: Clone,
+    M1: Measure<T> + HasLogDensity<T, F>,
+    M2: Measure<T, RootMeasure = M1::RootMeasure> + HasLogDensity<T, F>,
+    F: Float,
+{
+    type SharedRoot = M1::RootMeasure;
+
+    fn shared_root(&self) -> Self::SharedRoot {
+        self.0.root_measure()
+    }
+
+    fn log_density_wrt_shared_root(&self, x: &T) -> F {
+        let density1 = self.0.log_density_wrt_root(x);
+        let density2 = self.1.log_density_wrt_root(x);
+        density1 + density2
+    }
+}
+
+/// Marker trait for measures that can be used in log-density computations.
+pub trait DensityMeasure<T, F>: Measure<T> + HasLogDensity<T, F>
+where
+    T: Clone,
+{
+}
+
+impl<T, F, M> DensityMeasure<T, F> for M
+where
+    T: Clone,
+    M: Measure<T> + HasLogDensity<T, F>,
+{
+}
+
+/// Helper function for computing log-densities in a functional style.
+pub fn log_density_at<T, F, M>(measure: &M, x: &T) -> F
+where
+    T: Clone,
+    M: HasLogDensity<T, F>,
+{
+    measure.log_density_wrt_root(x)
+}
+
+/// Batch computation helper for multiple points.
+pub fn log_density_batch<T, F, M>(measure: &M, points: &[T]) -> Vec<F>
+where
+    T: Clone,
+    M: HasLogDensity<T, F>,
+{
+    points
+        .iter()
+        .map(|x| measure.log_density_wrt_root(x))
+        .collect()
 }

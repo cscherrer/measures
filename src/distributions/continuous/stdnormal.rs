@@ -50,9 +50,15 @@ impl<T: Float + FloatConst> ExponentialFamilyCache<T, T> for StdNormalCache<T> {
         Self::new()
     }
 
-    fn log_partition(&self) -> T { self.log_partition }
-    fn natural_params(&self) -> &[T; 2] { &self.natural_params }
-    fn base_measure(&self) -> &LebesgueMeasure<T> { &self.base_measure }
+    fn log_partition(&self) -> T {
+        self.log_partition
+    }
+    fn natural_params(&self) -> &[T; 2] {
+        &self.natural_params
+    }
+    fn base_measure(&self) -> &LebesgueMeasure<T> {
+        &self.base_measure
+    }
 }
 
 /// A standard normal (Gaussian) distribution with mean 0 and standard deviation 1.

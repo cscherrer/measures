@@ -9,6 +9,28 @@ use crate::exponential_family::ExponentialFamily;
 use crate::traits::DotProduct;
 use num_traits::Float;
 
+/// A simple trait for accessing cached exponential family fields.
+///
+/// This trait abstracts over the field access pattern common to all
+/// exponential family caches, enabling a single blanket implementation
+/// of `ExponentialFamilyCache` for all distributions.
+pub trait CacheFields<X, F: Float> {
+    /// The distribution type this cache is for
+    type Distribution: ExponentialFamily<X, F>;
+
+    /// Create a new cache from a distribution
+    fn from_distribution(distribution: &Self::Distribution) -> Self;
+
+    /// Access the cached log partition value
+    fn log_partition(&self) -> F;
+
+    /// Access the cached natural parameters  
+    fn natural_params(&self) -> &<Self::Distribution as ExponentialFamily<X, F>>::NaturalParam;
+
+    /// Access the cached base measure
+    fn base_measure(&self) -> &<Self::Distribution as ExponentialFamily<X, F>>::BaseMeasure;
+}
+
 /// A trait for cached computations of exponential family distributions.
 ///
 /// This trait separates cache management from the distribution itself,

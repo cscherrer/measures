@@ -1,6 +1,5 @@
-use super::density::{HasLogDensity, LogDensity};
+use super::density::LogDensity;
 use super::types::{True, TypeLevelBool};
-use num_traits::Zero;
 
 /// A trait for measures that can indicate their properties.
 pub trait MeasureMarker {
@@ -44,19 +43,6 @@ impl<P: PrimitiveMeasure<T>, T: Clone> Measure<T> for P {
 
     fn root_measure(&self) -> Self::RootMeasure {
         self.clone()
-    }
-}
-
-/// Automatic implementation: primitive measures have log-density 0 with respect to themselves
-/// since log(dm/dm) = log(1) = 0
-impl<P, T, F> HasLogDensity<T, F> for P
-where
-    P: PrimitiveMeasure<T>,
-    T: Clone,
-    F: Zero,
-{
-    fn log_density_wrt_root(&self, _x: &T) -> F {
-        F::zero()
     }
 }
 
