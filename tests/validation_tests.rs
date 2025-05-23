@@ -264,9 +264,7 @@ fn test_lookup_table_generation_code() {
             (factorial as f64).ln()
         };
 
-        let comment = if k == 0 {
-            format!("// log({k}!) = log(1)")
-        } else if k == 1 {
+        let comment = if k <= 1 {
             format!("// log({k}!) = log(1)")
         } else if k == 2 {
             "// log(2!) = log(2) = LN_2".to_string()
