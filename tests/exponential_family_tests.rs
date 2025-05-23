@@ -3,11 +3,9 @@
 //! This module tests that exponential family distributions can actually perform
 //! proper computations using their natural parameter representation.
 
-use measures::Normal;
+use measures::{Normal, distributions::discrete::poisson::Poisson};
 use measures::core::{HasLogDensity, LogDensityBuilder};
-use measures::distributions::discrete::poisson::Poisson;
 use measures::exponential_family::ExponentialFamily;
-use num_traits::Float;
 
 #[test]
 fn test_normal_exponential_family_conversion() {
@@ -121,7 +119,7 @@ fn test_poisson_exponential_family_log_density() {
         log_factorial += (i as f64).ln();
     }
 
-    // Now using DotProduct for [F; 1] arrays
+    // Using DotProduct for [F; 1] arrays
     use measures::traits::DotProduct;
     let exp_fam_log_density = natural_param.dot(&sufficient_stat) - log_partition - log_factorial;
 
@@ -222,4 +220,90 @@ fn test_automatic_shared_root_computation() {
         (relative_density - manual_relative).abs() < 1e-10,
         "Automatic computation {relative_density} != manual computation {manual_relative}"
     );
+}
+
+#[test]
+fn test_automatic_chain_rule_for_poisson() {
+    println!("\n=== Testing Automatic Chain Rule Enhancement ===");
+    
+    let poisson = Poisson::new(2.5_f64);
+    let k = 3u64;
+    
+    // The default exp_fam_log_density should now automatically include:
+    // 1. Exponential family part: η·T(x) - A(η) = k·ln(λ) - λ
+    // 2. Chain rule part: base_measure.log_density_wrt_root(x) = -log(k!)
+    let automatic_result = poisson.exp_fam_log_density(&k);
+    
+    // Manual computation for comparison
+    let manual_exp_fam = (k as f64) * poisson.lambda.ln() - poisson.lambda;
+    let manual_factorial = if k == 0 { 0.0 } else {
+        -(1..=k).map(|i| (i as f64).ln()).sum::<f64>()
+    };
+    let manual_result = manual_exp_fam + manual_factorial;
+    
+    println!("Automatic chain rule result: {}", automatic_result);
+    println!("Manual computation: exp_fam({}) + factorial({}) = {}", 
+             manual_exp_fam, manual_factorial, manual_result);
+    println!("Difference: {}", (automatic_result - manual_result).abs());
+    
+    assert!(
+        (automatic_result - manual_result).abs() < 1e-10,
+        "Automatic chain rule failed: auto={}, manual={}",
+        automatic_result, manual_result
+    );
+    
+    // Also verify it matches the HasLogDensity implementation
+    let log_density_result: f64 = poisson.log_density().at(&k);
+    assert!(
+        (automatic_result - log_density_result).abs() < 1e-10,
+        "exp_fam_log_density doesn't match log_density: {} vs {}",
+        automatic_result, log_density_result
+    );
+    
+    println!("✅ Automatic chain rule works perfectly!");
+    println!("✅ No manual override needed for Poisson!");
+}
+
+#[test]
+fn test_automatic_chain_rule_for_normal() {
+    println!("\n=== Testing Normal with Automatic Chain Rule ===");
+    
+    let normal = Normal::new(1.0_f64, 2.0_f64);
+    let x = 0.5_f64;
+    
+    // For Normal, base_measure == root_measure (both LebesgueMeasure)
+    // So chain rule part should be zero: base_measure.log_density_wrt_root(x) = 0
+    let automatic_result = normal.exp_fam_log_density(&x);
+    
+    // Manual computation: just the exponential family part (no chain rule needed)
+    let natural_params = normal.to_natural();
+    let sufficient_stats = normal.sufficient_statistic(&x);
+    let log_partition = normal.log_partition();
+    let manual_result = natural_params[0] * sufficient_stats[0] 
+                      + natural_params[1] * sufficient_stats[1] 
+                      - log_partition;
+    
+    println!("Normal automatic result: {}", automatic_result);
+    println!("Normal manual result: {}", manual_result);
+    println!("Difference: {}", (automatic_result - manual_result).abs());
+    
+    assert!(
+        (automatic_result - manual_result).abs() < 1e-10,
+        "Normal automatic chain rule failed: auto={}, manual={}",
+        automatic_result, manual_result
+    );
+    
+    // Verify base measure log-density is indeed zero
+    let base_measure = normal.base_measure();
+    let chain_rule_part: f64 = base_measure.log_density_wrt_root(&x);
+    println!("Normal chain rule part: {} (should be 0)", chain_rule_part);
+    
+    assert!(
+        chain_rule_part.abs() < 1e-10,
+        "Normal chain rule part should be zero, got: {}",
+        chain_rule_part
+    );
+    
+    println!("✅ Normal distributions work correctly with automatic chain rule!");
+    println!("✅ Chain rule part is zero as expected for base_measure == root_measure!");
 }

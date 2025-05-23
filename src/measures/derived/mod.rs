@@ -5,6 +5,10 @@
 
 pub mod dirac;
 pub mod weighted;
+pub mod integral;
+pub mod factorial;
 
 pub use dirac::Dirac;
 pub use weighted::WeightedMeasure;
+pub use integral::IntegralMeasure;
+pub use factorial::FactorialMeasure;

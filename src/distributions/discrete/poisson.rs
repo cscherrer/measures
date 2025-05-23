@@ -6,9 +6,8 @@
 
 use crate::core::{False, HasLogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::ExponentialFamily;
-use crate::measures::derived::weighted::WeightedMeasure;
+use crate::measures::derived::factorial::FactorialMeasure;
 use crate::measures::primitive::counting::CountingMeasure;
-use crate::traits::DotProduct;
 use num_traits::{Float, FloatConst};
 
 /// A Poisson distribution.
@@ -59,7 +58,7 @@ impl<F: Float> Measure<u64> for Poisson<F> {
 impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
     type NaturalParam = [F; 1]; // η = [log(λ)]
     type SufficientStat = [F; 1]; // T(x) = [x] (as Float)
-    type BaseMeasure = WeightedMeasure<CountingMeasure<u64>, F>;
+    type BaseMeasure = FactorialMeasure<F>;
 
     fn from_natural(param: Self::NaturalParam) -> Self {
         Self::new(param[0].exp())
@@ -78,29 +77,12 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
     }
 
     fn base_measure(&self) -> Self::BaseMeasure {
-        // The base measure is a weighted counting measure
-        // We use a fixed log-weight of 0 as required by measure theory
-        // The factorial term will be handled in the log-density calculation
-        WeightedMeasure::new(CountingMeasure::<u64>::new(), F::zero())
+        FactorialMeasure::new()
     }
 
-    // Override for the factorial term that's not in the generic implementation
-    fn exp_fam_log_density(&self, x: &u64) -> F {
-        let k = *x;
-        let natural_param = self.to_natural();
-        let sufficient_stat = self.sufficient_statistic(x);
-        let log_partition = self.log_partition();
-
-        // Compute log(k!)
-        let mut log_factorial = F::zero();
-        for i in 1..=k {
-            log_factorial = log_factorial + F::from(i).unwrap().ln();
-        }
-
-        // η·T(x) - A(η) - log(k!)
-        // Now using DotProduct for [F; 1] arrays
-        natural_param.dot(&sufficient_stat) - log_partition - log_factorial
-    }
+    // REMOVED: Manual override no longer needed with automatic chain rule!
+    // The default implementation now handles: η·T(x) - A(η) + base_measure.log_density_wrt_root(x)
+    // For Poisson: k·ln(λ) - λ + (-log(k!)) = complete Poisson log-PMF
 }
 
 /// Implement `HasLogDensity` for automatic shared-root computation  
