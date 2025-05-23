@@ -46,9 +46,10 @@ where
     /// Create a new generic cache from any exponential family distribution.
     #[must_use]
     pub fn new(distribution: &D) -> Self {
+        let (natural_params, log_partition) = distribution.natural_and_log_partition();
         Self {
-            natural_params: distribution.to_natural(),
-            log_partition: distribution.log_partition(),
+            natural_params,
+            log_partition,
             base_measure: distribution.base_measure(),
             _phantom: PhantomData,
         }

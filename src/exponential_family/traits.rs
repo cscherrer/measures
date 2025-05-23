@@ -50,10 +50,14 @@ pub trait ExponentialFamily<X: Clone, F: Float>: Clone {
     fn from_natural(param: Self::NaturalParam) -> Self;
 
     /// Convert from standard parameters to natural parameters
-    fn to_natural(&self) -> Self::NaturalParam;
+    fn to_natural(&self) -> Self::NaturalParam {
+        self.natural_and_log_partition().0
+    }
 
     /// Compute the log partition function A(η)
-    fn log_partition(&self) -> F;
+    fn log_partition(&self) -> F {
+        self.natural_and_log_partition().1
+    }
 
     /// Compute the sufficient statistic T(x)
     fn sufficient_statistic(&self, x: &X) -> Self::SufficientStat;
@@ -94,9 +98,8 @@ pub trait ExponentialFamily<X: Clone, F: Float>: Clone {
     {
         profiling::scope!("exp_fam_computation");
 
-        let natural_params = self.to_natural();
+        let (natural_params, log_partition) = self.natural_and_log_partition();
         let sufficient_stats = self.sufficient_statistic(x);
-        let log_partition = self.log_partition();
 
         // Standard exponential family part: η·T(x) - A(η)
         let exp_fam_part = {
@@ -129,6 +132,17 @@ pub trait ExponentialFamily<X: Clone, F: Float>: Clone {
         // Use cached computation if possible for better performance
         let cache = self.precompute_cache();
         self.cached_log_density(&cache, x)
+    }
+
+    /// Compute both natural parameters and log partition function efficiently.
+    ///
+    /// Many exponential families share expensive computations between η(θ) and A(η).
+    /// This method allows computing both together to avoid duplication.
+    ///
+    /// Default implementation calls the separate methods, but distributions should
+    /// override this for better performance when there are shared computations.
+    fn natural_and_log_partition(&self) -> (Self::NaturalParam, F) {
+        (self.to_natural(), self.log_partition())
     }
 }
 

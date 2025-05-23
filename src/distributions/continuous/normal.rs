@@ -71,6 +71,18 @@ impl<T: Float + FloatConst> Normal<T> {
         assert!(std_dev > T::zero(), "Standard deviation must be positive");
         Self { mean, std_dev }
     }
+
+    /// Helper: compute σ² (variance) once
+    #[inline]
+    fn variance(&self) -> T {
+        self.std_dev * self.std_dev
+    }
+
+    /// Helper: compute 1/σ² from precomputed σ²
+    #[inline]
+    fn inv_variance_from(variance: T) -> T {
+        T::one() / variance
+    }
 }
 
 impl<T: Float> Measure<T> for Normal<T> {
@@ -103,9 +115,8 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
     }
 
     fn to_natural(&self) -> Self::NaturalParam {
-        // Compute sigma2 once and reuse
-        let sigma2 = self.std_dev * self.std_dev;
-        let inv_sigma2 = T::one() / sigma2;
+        let sigma2 = self.variance();
+        let inv_sigma2 = Self::inv_variance_from(sigma2);
         [
             self.mean * inv_sigma2,              // μ/σ²
             -inv_sigma2 / T::from(2.0).unwrap(), // -1/(2σ²)
@@ -114,8 +125,8 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
 
     fn log_partition(&self) -> T {
         // Compute log partition: A(η) = μ²/(2σ²) + ½log(2πσ²)
+        let sigma2 = self.variance();
         let mu2 = self.mean * self.mean;
-        let sigma2 = self.std_dev * self.std_dev;
         (T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap()
             + mu2 / (T::from(2.0).unwrap() * sigma2)
     }
@@ -131,10 +142,28 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
     fn cached_log_density(&self, cache: &Self::Cache, x: &T) -> T {
         self.cached_log_density_generic(cache, x)
     }
+
+    fn natural_and_log_partition(&self) -> (Self::NaturalParam, T) {
+        // Efficient implementation that computes variance and mean_squared only once
+        let sigma2 = self.variance();
+        let mu2 = self.mean * self.mean;
+        let inv_sigma2 = Self::inv_variance_from(sigma2);
+
+        let natural_params = [
+            self.mean * inv_sigma2,              // μ/σ²
+            -inv_sigma2 / T::from(2.0).unwrap(), // -1/(2σ²)
+        ];
+
+        let log_partition = (T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap()
+            + mu2 / (T::from(2.0).unwrap() * sigma2);
+
+        (natural_params, log_partition)
+    }
 }
 
 impl<T: Float + FloatConst> PrecomputeCache<T, T> for Normal<T> {
     fn precompute_cache(&self) -> Self::Cache {
-        self.precompute_cache_default()
+        // The most efficient approach given the constraints
+        self.precompute_generic_cache()
     }
 }
