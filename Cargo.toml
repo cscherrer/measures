@@ -13,6 +13,8 @@ profiling = "1.0"
 # Optional advanced tools
 tracy-client = { version = "0.18", optional = true }
 iai-callgrind = { version = "0.14", optional = true }
+# Add rv for comparison testing
+rv = { git = "https://github.com/promised-ai/rv", branch = "release/v0.19.0", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports", "cargo_bench_support"] }
@@ -38,6 +40,7 @@ harness = false
 
 [features]
 default = []
+profiling = []       # Enable profiling instrumentation
 tracy = ["dep:tracy-client"]
 callgrind = ["dep:iai-callgrind"]
 dhat-heap = []    # Simple feature flag for heap profiling as per dhat docs

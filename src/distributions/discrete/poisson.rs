@@ -87,6 +87,7 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
 
 /// Implement `HasLogDensity` for automatic shared-root computation  
 impl<F: Float + FloatConst> HasLogDensity<u64, F> for Poisson<F> {
+    #[inline]
     fn log_density_wrt_root(&self, x: &u64) -> F {
         self.exp_fam_log_density(x)
     }

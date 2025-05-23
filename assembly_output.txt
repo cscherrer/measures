@@ -1,0 +1,9 @@
+Try one of those by name or a sequence number
+0 "core::ops::function::FnOnce::call_once{{vtable.shim}}" [20]
+1 "main" [18]
+2 "perf_test::main" [243]
+3 "perf_test::measures_normal_direct" [84]
+4 "perf_test::measures_poisson_direct" [142]
+5 "std::rt::lang_start" [28]
+6 "std::rt::lang_start::{{closure}}" [19]
+7 "std::sys::backtrace::__rust_begin_short_backtrace" [22]

@@ -82,6 +82,7 @@ impl<T: Float> Measure<T> for Normal<T> {
 
 /// Implement `HasLogDensity` for automatic shared-root computation
 impl<T: Float + FloatConst> HasLogDensity<T, T> for Normal<T> {
+    #[inline]
     fn log_density_wrt_root(&self, x: &T) -> T {
         self.exp_fam_log_density(x)
     }

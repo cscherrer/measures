@@ -91,27 +91,33 @@ const LOG_FACTORIAL_TABLE: [f64; 21] = [
     42.335_616_460_753_485,  // log(20!)
 ];
 
-/// Optimized log-factorial computation
+/// Optimized O(1) log-factorial computation using lookup table + Stirling's approximation.
 ///
-/// Uses a hybrid approach:
-/// - Exact computation for small k (k ≤ 20) via lookup table
-/// - Stirling's approximation for large k (k > 20) for O(1) performance
+/// For k ≤ 20: Uses precomputed exact values from `LOG_FACTORIAL_TABLE`
+/// For k > 20: Uses Stirling's approximation with Ramanujan's correction terms
 ///
-/// This provides the best of both worlds: exact results where feasible,
-/// and excellent performance for large k values.
-fn log_factorial<F: Float>(k: u64) -> F {
+/// This provides excellent accuracy with O(1) time complexity, making it suitable
+/// for high-performance applications where factorial computation is a bottleneck.
+#[inline]
+#[must_use]
+pub fn log_factorial<F: Float>(k: u64) -> F {
     if k <= 20 {
-        // Use precomputed lookup table for exact values
+        // O(1): Direct lookup for small values
         F::from(LOG_FACTORIAL_TABLE[k as usize]).unwrap()
     } else {
-        // Use Stirling's approximation for larger values
+        // O(1): Stirling's approximation for large values
         stirling_log_factorial_precise(k)
     }
 }
 
-/// High-precision Stirling's approximation with Ramanujan's correction
+/// Precise Stirling's approximation for log(k!) using Ramanujan's expansion.
 ///
-/// More accurate for very large k values. Still O(1) time complexity.
+/// Uses the formula: log(k!) ≈ k*ln(k) - k + 0.5*ln(2πk) + `correction_terms`
+/// where `correction_terms` include the first few terms of Ramanujan's series.
+///
+/// This provides very high accuracy (error < 10^-10 for k >= 10) while maintaining
+/// O(1) computational complexity.
+#[inline]
 fn stirling_log_factorial_precise<F: Float>(k: u64) -> F {
     if k <= 1 {
         return F::zero();
@@ -139,9 +145,20 @@ fn stirling_log_factorial_precise<F: Float>(k: u64) -> F {
 /// Implement `HasLogDensity` for `FactorialMeasure`
 /// This provides the factorial term: log(dν/dμ) = -log(k!)
 impl<F: Float> HasLogDensity<u64, F> for FactorialMeasure<F> {
+    #[cfg(feature = "profiling")]
     #[profiling::function]
+    #[inline]
     fn log_density_wrt_root(&self, x: &u64) -> F {
         profiling::scope!("factorial_computation");
+        let k = *x;
+
+        // Use optimized O(1) log-factorial computation
+        -log_factorial::<F>(k)
+    }
+
+    #[cfg(not(feature = "profiling"))]
+    #[inline]
+    fn log_density_wrt_root(&self, x: &u64) -> F {
         let k = *x;
 
         // Use optimized O(1) log-factorial computation
