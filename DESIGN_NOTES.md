@@ -67,7 +67,7 @@ This separation is essential for modern scientific computing where you want to e
 - **`LogDensityTrait<T>`**: Minimal trait with only `measure()`, `base_measure()` - **no `at()` method**
 - **`EvaluateAt<T, F>`**: Generic evaluation trait that works with any numeric type `F`
 - **`LogDensity<T, M, B>`**: Builder type with `wrt()`, `at()`, `cached()`, etc.
-- **Algebraic operations**: Separate combinator types (`NegLogDensity`, `SumLogDensity`)
+
 
 ### Unified Design (Rejected)
 - **`LogDensityTrait<T>`**: Contains everything including fixed output type
@@ -176,7 +176,6 @@ The concrete implementation and entry point:
   ### 4. **Algebraic Combinators**
 
 Type-level implementations of log-density algebra:
-- `NegLogDensity<L>` - negation (swap measure/base)
 - `CachedLogDensity<L, T, F>` - memoization wrapper (includes numeric type)
 - Additional operations (addition, composition, etc.) can be added later as needed
 

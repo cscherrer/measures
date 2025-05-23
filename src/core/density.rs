@@ -1,7 +1,6 @@
 use super::measure::Measure;
 use crate::core::types::True;
 use num_traits::Float;
-use std::ops::Neg;
 
 /// A trait representing the log-density between two measures. Goals for the
 /// design:
@@ -257,52 +256,6 @@ where
         // Use cached exponential family computation automatically
         let cache = self.precompute_cache();
         self.cached_log_density(&cache, x)
-    }
-}
-
-/// Algebraic operation: Negation (swaps measure and base measure)
-pub struct NegLogDensity<L> {
-    inner: L,
-}
-
-impl<L, T> LogDensityTrait<T> for NegLogDensity<L>
-where
-    L: LogDensityTrait<T>,
-    T: Clone,
-{
-    type Measure = L::BaseMeasure;
-    type BaseMeasure = L::Measure;
-
-    fn measure(&self) -> &Self::Measure {
-        self.inner.base_measure()
-    }
-
-    fn base_measure(&self) -> &Self::BaseMeasure {
-        self.inner.measure()
-    }
-}
-
-impl<L, T, F> EvaluateAt<T, F> for NegLogDensity<L>
-where
-    L: EvaluateAt<T, F>,
-    F: Neg<Output = F>,
-    T: Clone,
-{
-    fn at(&self, x: &T) -> F {
-        -self.inner.at(x)
-    }
-}
-
-impl<T, M, B> Neg for LogDensity<T, M, B>
-where
-    T: Clone,
-    M: Measure<T> + Clone,
-    B: Measure<T> + Clone,
-{
-    type Output = NegLogDensity<Self>;
-
-    fn neg(self) -> Self::Output {
-        NegLogDensity { inner: self }
     }
 }
 
