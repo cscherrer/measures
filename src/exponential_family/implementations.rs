@@ -8,7 +8,7 @@ use crate::core::{False, LogDensity, Measure, MeasureMarker, True};
 use crate::traits::DotProduct;
 
 // Helper for converting LogDensity to f64 for exponential family measures
-pub struct ExponentialFamilyDensity<'a, X, F, M>(pub LogDensity<'a, X, M>, PhantomData<(X, F)>)
+pub struct ExponentialFamilyDensity<X, F, M>(pub LogDensity<X, M>, PhantomData<(X, F)>)
 where
     X: Clone,
     F: Float,

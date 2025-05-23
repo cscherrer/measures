@@ -1,3 +1,4 @@
+use super::density::LogDensity;
 use super::types::{True, TypeLevelBool};
 
 /// A trait for measures that can indicate if they are primitive.
@@ -43,4 +44,15 @@ pub trait Measure<T>: MeasureMarker + Clone {
 
     /// Get the root measure for this measure
     fn root_measure(&self) -> Self::RootMeasure;
+
+    /// Create a log-density computation for this measure
+    ///
+    /// This provides the entry point for the fluent interface:
+    /// `measure.log_density().wrt(base_measure).at(&x)`
+    fn log_density(&self) -> LogDensity<T, Self, Self::RootMeasure>
+    where
+        T: Clone,
+    {
+        LogDensity::new(self.clone())
+    }
 }
