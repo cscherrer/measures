@@ -5,7 +5,7 @@
 //! in a fixed interval of time or space.
 
 use crate::core::{False, HasLogDensity, Measure, MeasureMarker, True};
-use crate::exponential_family::ExponentialFamily;
+use crate::exponential_family::{ExponentialFamily, ExponentialFamilyCache};
 use crate::measures::derived::factorial::FactorialMeasure;
 use crate::measures::primitive::counting::CountingMeasure;
 use num_traits::{Float, FloatConst};
@@ -37,6 +37,19 @@ impl<F: Float + FloatConst> PoissonCache<F> {
             base_measure: FactorialMeasure::new(),
         }
     }
+}
+
+/// Implement the `ExponentialFamilyCache` trait - boilerplate eliminated!
+impl<F: Float + FloatConst> ExponentialFamilyCache<u64, F> for PoissonCache<F> {
+    type Distribution = Poisson<F>;
+
+    fn from_distribution(distribution: &Self::Distribution) -> Self {
+        Self::new(distribution.lambda)
+    }
+
+    fn log_partition(&self) -> F { self.log_partition }
+    fn natural_params(&self) -> &[F; 1] { &self.natural_param }
+    fn base_measure(&self) -> &FactorialMeasure<F> { &self.base_measure }
 }
 
 /// A Poisson distribution.
@@ -99,7 +112,9 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
     }
 
     fn log_partition(&self) -> F {
-        self.lambda
+        // Use cached computation for efficiency
+        let cache = PoissonCache::from_distribution(self);
+        cache.log_partition()
     }
 
     fn sufficient_statistic(&self, x: &u64) -> Self::SufficientStat {
@@ -115,20 +130,8 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
     }
 
     fn cached_log_density(&self, cache: &Self::Cache, x: &u64) -> F {
-        // Use generic exponential family computation: η·T(x) - A(η) + log h(x)
-        use crate::traits::DotProduct;
-
-        // Sufficient statistics: T(x) = [x] (as F)
-        let sufficient_stat = [F::from(*x).unwrap()];
-
-        // Exponential family part: η·T(x) - A(η)
-        let exp_fam_part = cache.natural_param.dot(&sufficient_stat) - cache.log_partition;
-
-        // Chain rule part: log h(x) = -log(x!) from factorial measure
-        let chain_rule_part = cache.base_measure.log_density_wrt_root(x);
-
-        // Complete log-density
-        exp_fam_part + chain_rule_part
+        // Use the new ExponentialFamilyCache trait for cleaner implementation
+        cache.log_density(x)
     }
 }
 

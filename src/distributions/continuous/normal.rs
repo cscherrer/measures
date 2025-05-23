@@ -18,7 +18,9 @@
 
 use crate::core::types::{False, True};
 use crate::core::{HasLogDensity, Measure, MeasureMarker};
-use crate::exponential_family::{ExponentialFamily, ExponentialFamilyMeasure};
+use crate::exponential_family::{
+    ExponentialFamily, ExponentialFamilyCache, ExponentialFamilyMeasure,
+};
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
@@ -62,6 +64,19 @@ impl<T: Float + FloatConst> NormalCache<T> {
             base_measure: LebesgueMeasure::new(),
         }
     }
+}
+
+/// Implement the `ExponentialFamilyCache` trait - boilerplate eliminated!
+impl<T: Float + FloatConst> ExponentialFamilyCache<T, T> for NormalCache<T> {
+    type Distribution = Normal<T>;
+
+    fn from_distribution(distribution: &Self::Distribution) -> Self {
+        Self::new(distribution.mean, distribution.std_dev)
+    }
+
+    fn log_partition(&self) -> T { self.log_partition }
+    fn natural_params(&self) -> &[T; 2] { &self.natural_params }
+    fn base_measure(&self) -> &LebesgueMeasure<T> { &self.base_measure }
 }
 
 /// A normal (Gaussian) distribution.
@@ -156,11 +171,9 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
     }
 
     fn log_partition(&self) -> T {
-        // Compute sigma2 once and reuse
-        let sigma2 = self.std_dev * self.std_dev;
-        let mu2 = self.mean * self.mean;
-        (T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap()
-            + mu2 / (T::from(2.0).unwrap() * sigma2)
+        // Use cached computation for efficiency
+        let cache = NormalCache::from_distribution(self);
+        cache.log_partition()
     }
 
     fn sufficient_statistic(&self, x: &T) -> <Self as ExponentialFamily<T, T>>::SufficientStat {

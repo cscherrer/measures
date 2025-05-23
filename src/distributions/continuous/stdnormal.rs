@@ -4,8 +4,8 @@
 //! distribution with mean 0 and standard deviation 1. It's a special case of the Normal
 //! distribution that is particularly optimized for computations.
 
-use crate::core::{False, HasLogDensity, Measure, MeasureMarker, True};
-use crate::exponential_family::ExponentialFamily;
+use crate::core::{False, Measure, MeasureMarker, True};
+use crate::exponential_family::{ExponentialFamily, ExponentialFamilyCache};
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
@@ -40,6 +40,19 @@ impl<T: Float + FloatConst> Default for StdNormalCache<T> {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Implement the `ExponentialFamilyCache` trait - boilerplate eliminated!
+impl<T: Float + FloatConst> ExponentialFamilyCache<T, T> for StdNormalCache<T> {
+    type Distribution = StdNormal<T>;
+
+    fn from_distribution(_distribution: &Self::Distribution) -> Self {
+        Self::new()
+    }
+
+    fn log_partition(&self) -> T { self.log_partition }
+    fn natural_params(&self) -> &[T; 2] { &self.natural_params }
+    fn base_measure(&self) -> &LebesgueMeasure<T> { &self.base_measure }
 }
 
 /// A standard normal (Gaussian) distribution with mean 0 and standard deviation 1.
@@ -95,8 +108,9 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
     }
 
     fn log_partition(&self) -> T {
-        // For StdNormal, log partition is log(sqrt(2π)) = log(2π)/2
-        T::PI().ln() / T::from(2.0).unwrap() + T::from(0.5).unwrap().ln()
+        // Use cached computation for efficiency
+        let cache = StdNormalCache::from_distribution(self);
+        cache.log_partition()
     }
 
     fn sufficient_statistic(&self, x: &T) -> <Self as ExponentialFamily<T, T>>::SufficientStat {
@@ -112,19 +126,7 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
     }
 
     fn cached_log_density(&self, cache: &Self::Cache, x: &T) -> T {
-        // Use generic exponential family computation: η·T(x) - A(η) + log h(x)
-        use crate::traits::DotProduct;
-
-        // Sufficient statistics: T(x) = [x, x²]
-        let sufficient_stats = [*x, *x * *x];
-
-        // Exponential family part: η·T(x) - A(η)
-        let exp_fam_part = cache.natural_params.dot(&sufficient_stats) - cache.log_partition;
-
-        // Chain rule part: log h(x) = 0 for Lebesgue measure
-        let chain_rule_part = cache.base_measure.log_density_wrt_root(x);
-
-        // Complete log-density
-        exp_fam_part + chain_rule_part
+        // Use the new ExponentialFamilyCache trait for cleaner implementation
+        cache.log_density(x)
     }
 }

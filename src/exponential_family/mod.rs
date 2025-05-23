@@ -15,9 +15,11 @@
 //! - The space X where the random variable lives (could be ints, vectors, etc.)
 //! - The field F for numerical computations (always some Float type)
 
+pub mod cache_trait;
 pub mod implementations;
 pub mod traits;
 
 // Re-export key types
+pub use cache_trait::ExponentialFamilyCache;
 pub use implementations::{ExpFam, ExponentialFamilyDensity};
 pub use traits::{ExponentialFamily, ExponentialFamilyMeasure};
