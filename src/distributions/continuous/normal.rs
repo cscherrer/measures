@@ -21,6 +21,7 @@ use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::{
     ExponentialFamily, ExponentialFamilyMeasure, GenericExpFamCache, GenericExpFamImpl,
 };
+use crate::exponential_family::traits::PrecomputeCache;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
@@ -127,11 +128,13 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
         LebesgueMeasure::<T>::new()
     }
 
-    fn precompute_cache(&self) -> Self::Cache {
-        self.precompute_generic_cache()
-    }
-
     fn cached_log_density(&self, cache: &Self::Cache, x: &T) -> T {
         self.cached_log_density_generic(cache, x)
+    }
+}
+
+impl<T: Float + FloatConst> PrecomputeCache<T, T> for Normal<T> {
+    fn precompute_cache(&self) -> Self::Cache {
+        self.precompute_generic_cache()
     }
 }

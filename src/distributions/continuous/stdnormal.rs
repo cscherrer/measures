@@ -5,6 +5,7 @@
 //! distribution that is particularly optimized for computations.
 
 use crate::core::{False, Measure, MeasureMarker, True};
+use crate::exponential_family::traits::PrecomputeCache;
 use crate::exponential_family::{ExponentialFamily, ExponentialFamilyCache};
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
@@ -127,12 +128,14 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
         LebesgueMeasure::<T>::new()
     }
 
-    fn precompute_cache(&self) -> Self::Cache {
-        StdNormalCache::new()
-    }
-
     fn cached_log_density(&self, cache: &Self::Cache, x: &T) -> T {
         // Use the new ExponentialFamilyCache trait for cleaner implementation
         cache.log_density(x)
+    }
+}
+
+impl<T: Float + FloatConst> PrecomputeCache<T, T> for StdNormal<T> {
+    fn precompute_cache(&self) -> Self::Cache {
+        StdNormalCache::new()
     }
 }

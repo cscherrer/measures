@@ -3,7 +3,6 @@
 //! This example shows how the `GenericExpFamCache` eliminates redundant code
 //! and provides a unified interface for all exponential family distributions.
 
-use measures::core::LogDensityBuilder;
 use measures::distributions::continuous::normal::Normal;
 use measures::distributions::discrete::poisson::Poisson;
 use measures::exponential_family::{ExponentialFamilyCache, GenericExpFamCache};

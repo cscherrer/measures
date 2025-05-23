@@ -5,6 +5,7 @@
 //! computations for both single evaluations and batch operations.
 
 use measures::exponential_family::ExponentialFamily;
+use measures::exponential_family::traits::PrecomputeCache;
 use measures::{HasLogDensity, Normal, distributions::discrete::poisson::Poisson};
 
 fn main() {

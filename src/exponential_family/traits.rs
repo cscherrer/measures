@@ -61,19 +61,6 @@ pub trait ExponentialFamily<X: Clone, F: Float>: Clone {
     /// Get the base measure for this exponential family
     fn base_measure(&self) -> Self::BaseMeasure;
 
-    /// Precompute and cache values for optimized density computation.
-    ///
-    /// This method should compute and store all expensive operations that are
-    /// independent of the data point x, such as:
-    /// - Natural parameters η
-    /// - Log partition function A(η)
-    /// - Any intermediate values used in density computation
-    /// - Distribution-specific optimizations
-    ///
-    /// The cached values can then be reused across multiple density evaluations,
-    /// eliminating redundant computation for batch operations.
-    fn precompute_cache(&self) -> Self::Cache;
-
     /// Compute log-density using precomputed cached values.
     ///
     /// This method should use the cached values to compute the log-density
@@ -84,30 +71,6 @@ pub trait ExponentialFamily<X: Clone, F: Float>: Clone {
     ///
     /// where all components of η and A(η) come from the cached values.
     fn cached_log_density(&self, cache: &Self::Cache, x: &X) -> F;
-
-    /// Compute log-density at multiple points efficiently using cached values.
-    ///
-    /// This provides a default implementation that precomputes cache once
-    /// and applies it to all points, but distributions can override this
-    /// for further optimizations (e.g., SIMD operations).
-    fn cached_log_density_batch(&self, points: &[X]) -> Vec<F> {
-        let cache = self.precompute_cache();
-        points
-            .iter()
-            .map(|x| self.cached_log_density(&cache, x))
-            .collect()
-    }
-
-    /// Create an optimized closure for computing log-density.
-    ///
-    /// Returns a closure that captures precomputed cache and can be
-    /// applied to individual points efficiently. Useful for mapping over
-    /// iterators or in functional programming contexts.
-    fn cached_log_density_fn(&self) -> impl Fn(&X) -> F + Clone {
-        let cache = self.precompute_cache();
-        let distribution = (*self).clone();
-        move |x: &X| distribution.cached_log_density(&cache, x)
-    }
 
     /// Exponential family log-density computation with automatic chain rule.
     ///
@@ -159,6 +122,7 @@ pub trait ExponentialFamily<X: Clone, F: Float>: Clone {
     #[inline]
     fn exp_fam_log_density(&self, x: &X) -> F
     where
+        Self: PrecomputeCache<X, F>,
         Self::NaturalParam: DotProduct<Self::SufficientStat, Output = F>,
         Self::BaseMeasure: HasLogDensity<X, F>,
     {
@@ -209,7 +173,7 @@ pub trait GenericExpFamImpl<X: Clone, F: Float>: ExponentialFamily<X, F> {
     }
 }
 
-// Blanket implementation: any exponential family can use the generic implementations
+/// Blanket implementation: any exponential family can use the generic implementations
 impl<T, X, F> GenericExpFamImpl<X, F> for T
 where
     T: ExponentialFamily<X, F>,
@@ -225,4 +189,48 @@ where
 pub trait ExponentialFamilyMeasure<X: Clone, F: Float>:
     Measure<X, IsExponentialFamily = True> + ExponentialFamily<X, F>
 {
+}
+
+/// Extension trait for exponential families that support cache precomputation.
+///
+/// This trait provides a default implementation for distributions using `GenericExpFamCache`.
+/// Distributions can opt into this behavior by implementing this trait, or provide their own
+/// custom cache precomputation logic.
+pub trait PrecomputeCache<X: Clone, F: Float>: ExponentialFamily<X, F> {
+    /// Precompute and cache values for optimized density computation.
+    ///
+    /// This method should compute and store all expensive operations that are
+    /// independent of the data point x, such as:
+    /// - Natural parameters η
+    /// - Log partition function A(η)
+    /// - Any intermediate values used in density computation
+    /// - Distribution-specific optimizations
+    ///
+    /// The cached values can then be reused across multiple density evaluations,
+    /// eliminating redundant computation for batch operations.
+    fn precompute_cache(&self) -> Self::Cache;
+
+    /// Compute log-density at multiple points efficiently using cached values.
+    ///
+    /// This provides a default implementation that precomputes cache once
+    /// and applies it to all points, but distributions can override this
+    /// for further optimizations (e.g., SIMD operations).
+    fn cached_log_density_batch(&self, points: &[X]) -> Vec<F> {
+        let cache = self.precompute_cache();
+        points
+            .iter()
+            .map(|x| self.cached_log_density(&cache, x))
+            .collect()
+    }
+
+    /// Create an optimized closure for computing log-density.
+    ///
+    /// Returns a closure that captures precomputed cache and can be
+    /// applied to individual points efficiently. Useful for mapping over
+    /// iterators or in functional programming contexts.
+    fn cached_log_density_fn(&self) -> impl Fn(&X) -> F + Clone {
+        let cache = self.precompute_cache();
+        let distribution = (*self).clone();
+        move |x: &X| distribution.cached_log_density(&cache, x)
+    }
 }
