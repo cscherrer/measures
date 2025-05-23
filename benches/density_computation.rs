@@ -124,33 +124,19 @@ fn bench_batch_evaluations(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark Poisson factorial computation (likely bottleneck)
+/// Benchmark Poisson performance (now O(1) optimized)
 fn bench_poisson_factorial(c: &mut Criterion) {
-    let mut group = c.benchmark_group("poisson_factorial");
+    let mut group = c.benchmark_group("poisson_performance");
 
     let poisson = Poisson::new(2.5_f64);
 
-    // Test factorial computation for different values of k
-    for k in &[0, 1, 5, 10, 20, 50] {
-        group.bench_with_input(
-            BenchmarkId::new("poisson_full_computation", k),
-            k,
-            |b, &k| {
-                b.iter(|| {
-                    let result = poisson.exp_fam_log_density(black_box(&k));
-                    black_box(result)
-                });
-            },
-        );
-
-        group.bench_with_input(BenchmarkId::new("factorial_only", k), k, |b, &k| {
+    // Test our O(1) factorial computation across different k values
+    // This validates that performance is indeed O(1) regardless of k
+    for k in &[0, 1, 5, 10, 20, 50, 100, 500, 1000] {
+        group.bench_with_input(BenchmarkId::new("poisson_optimized", k), k, |b, &k| {
             b.iter(|| {
-                // Just the factorial computation
-                let mut log_factorial = 0.0_f64;
-                for i in 1..=black_box(k) {
-                    log_factorial += (i as f64).ln();
-                }
-                black_box(log_factorial)
+                let result = poisson.exp_fam_log_density(black_box(&k));
+                black_box(result)
             });
         });
     }
