@@ -77,7 +77,6 @@ impl<T: Float + FloatConst> Normal<T> {
     fn variance(&self) -> T {
         self.std_dev * self.std_dev
     }
-
 }
 
 impl<T: Float> Measure<T> for Normal<T> {
@@ -129,11 +128,11 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
 
         let natural_params = [
             self.mean * inv_sigma2,              // μ/σ²
-            T::from(-0.5).unwrap() *inv_sigma2,  // -1/(2σ²)
+            T::from(-0.5).unwrap() * inv_sigma2, // -1/(2σ²)
         ];
 
         let log_partition = (T::from(2.0).unwrap() * T::PI() * sigma2).ln() * T::from(0.5).unwrap()
-            + T::from(0.5).unwrap() *mu2 * inv_sigma2;
+            + T::from(0.5).unwrap() * mu2 * inv_sigma2;
 
         (natural_params, log_partition)
     }
