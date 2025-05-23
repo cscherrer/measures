@@ -1,4 +1,4 @@
-//! Tests for the ExponentialFamilyCache trait with generic cache.
+//! Tests for the `ExponentialFamilyCache` trait with generic cache.
 
 use measures::core::LogDensityBuilder;
 use measures::distributions::continuous::normal::Normal;
@@ -8,7 +8,8 @@ use measures::exponential_family::{ExponentialFamily, ExponentialFamilyCache, Ge
 #[test]
 fn test_normal_cache_trait_api() {
     let normal = Normal::new(1.0, 2.0);
-    let cache: GenericExpFamCache<Normal<f64>, f64, f64> = GenericExpFamCache::from_distribution(&normal);
+    let cache: GenericExpFamCache<Normal<f64>, f64, f64> =
+        GenericExpFamCache::from_distribution(&normal);
 
     // Test basic cache functionality
     let log_density_value: f64 = cache.log_density(&0.5);
@@ -19,9 +20,7 @@ fn test_normal_cache_trait_api() {
     let diff: f64 = log_density_value - direct_log_density;
     assert!(
         diff.abs() < 1e-10,
-        "Cached computation {} != direct computation {}",
-        log_density_value,
-        direct_log_density
+        "Cached computation {log_density_value} != direct computation {direct_log_density}"
     );
 }
 
@@ -36,16 +35,15 @@ fn test_cached_log_partition() {
 
     assert!(
         diff.abs() < 1e-10,
-        "Cached log partition {} != direct log partition {}",
-        cached_log_partition,
-        direct_log_partition
+        "Cached log partition {cached_log_partition} != direct log partition {direct_log_partition}"
     );
 }
 
 #[test]
 fn test_poisson_cache_trait_api() {
     let poisson = Poisson::new(2.5);
-    let cache: GenericExpFamCache<Poisson<f64>, u64, f64> = GenericExpFamCache::from_distribution(&poisson);
+    let cache: GenericExpFamCache<Poisson<f64>, u64, f64> =
+        GenericExpFamCache::from_distribution(&poisson);
 
     // Test basic cache functionality
     let log_density_value: f64 = cache.log_density(&3u64);
@@ -56,8 +54,6 @@ fn test_poisson_cache_trait_api() {
     let diff: f64 = log_density_value - direct_log_density;
     assert!(
         diff.abs() < 1e-10,
-        "Cached computation {} != direct computation {}",
-        log_density_value,
-        direct_log_density
+        "Cached computation {log_density_value} != direct computation {direct_log_density}"
     );
-} 
+}

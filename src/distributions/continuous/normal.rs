@@ -18,9 +18,7 @@
 
 use crate::core::types::{False, True};
 use crate::core::{Measure, MeasureMarker};
-use crate::exponential_family::{
-    ExponentialFamily, ExponentialFamilyMeasure, GenericExpFamCache,
-};
+use crate::exponential_family::{ExponentialFamily, ExponentialFamilyMeasure, GenericExpFamCache};
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
@@ -28,7 +26,7 @@ use num_traits::{Float, FloatConst};
 ///
 /// The normal distribution is characterized by its mean and standard deviation.
 /// The density is computed with respect to Lebesgue measure.
-/// 
+///
 /// Uses the generic exponential family cache - no need for distribution-specific cache!
 #[derive(Clone)]
 pub struct Normal<T: Float> {
@@ -84,7 +82,7 @@ impl<T: Float> Measure<T> for Normal<T> {
     }
 }
 
-// Note: HasLogDensity implementation is now automatic via the blanket impl 
+// Note: HasLogDensity implementation is now automatic via the blanket impl
 // for exponential families in density.rs! No manual implementation needed.
 
 impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {

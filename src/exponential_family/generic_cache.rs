@@ -13,7 +13,7 @@ use std::marker::PhantomData;
 ///
 /// This eliminates the need for distribution-specific cache types by using
 /// the associated types directly from the `ExponentialFamily` implementation.
-/// 
+///
 /// Instead of each distribution defining its own cache struct, they can all use:
 /// `type Cache = GenericExpFamCache<Self, X, F>;`
 #[derive(Clone)]
@@ -25,11 +25,11 @@ where
     D::NaturalParam: Clone,
     D::BaseMeasure: Clone,
 {
-    /// Cached natural parameters η - type comes from D::NaturalParam
+    /// Cached natural parameters η - type comes from `D::NaturalParam`
     pub natural_params: D::NaturalParam,
     /// Cached log partition function A(η)
     pub log_partition: F,
-    /// Cached base measure - type comes from D::BaseMeasure
+    /// Cached base measure - type comes from `D::BaseMeasure`
     pub base_measure: D::BaseMeasure,
     /// Phantom data to bind the distribution and point types
     _phantom: PhantomData<(D, X)>,
@@ -79,7 +79,7 @@ where
     {
         // Create a temporary distribution instance to get sufficient statistics
         let distribution = D::from_natural(self.natural_params.clone());
-        
+
         // Sufficient statistics: T(x)
         let sufficient_stats = distribution.sufficient_statistic(x);
 
@@ -114,10 +114,11 @@ where
     }
 }
 
-/// Implement ExponentialFamilyCache for the generic cache.
+/// Implement `ExponentialFamilyCache` for the generic cache.
 ///
 /// This provides the standard interface that the existing code expects.
-impl<D, X, F> crate::exponential_family::ExponentialFamilyCache<X, F> for GenericExpFamCache<D, X, F>
+impl<D, X, F> crate::exponential_family::ExponentialFamilyCache<X, F>
+    for GenericExpFamCache<D, X, F>
 where
     D: ExponentialFamily<X, F> + Clone,
     X: Clone,
@@ -142,4 +143,4 @@ where
     fn base_measure(&self) -> &D::BaseMeasure {
         &self.base_measure
     }
-} 
+}

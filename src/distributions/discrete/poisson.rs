@@ -14,7 +14,7 @@ use num_traits::{Float, FloatConst};
 ///
 /// The Poisson distribution has a single parameter lambda (rate) and
 /// is defined over non-negative integers.
-/// 
+///
 /// Uses the generic exponential family cache - no need for distribution-specific cache!
 #[derive(Clone)]
 pub struct Poisson<F: Float> {
@@ -56,7 +56,7 @@ impl<F: Float> Measure<u64> for Poisson<F> {
     }
 }
 
-// Note: HasLogDensity implementation is now automatic via the blanket impl 
+// Note: HasLogDensity implementation is now automatic via the blanket impl
 // for exponential families in density.rs! No manual implementation needed.
 
 impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
