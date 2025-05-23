@@ -36,6 +36,16 @@ pub trait ExponentialFamily<X, F: Float> {
     /// The base measure type
     type BaseMeasure: Measure<X>;
 
+    /// Cached computation type for optimized density evaluation.
+    ///
+    /// Each exponential family can define what should be cached to avoid
+    /// redundant computations. This typically includes:
+    /// - Natural parameters η
+    /// - Log partition function A(η)
+    /// - Any intermediate values needed for efficient density computation
+    /// - Distribution-specific optimized values
+    type Cache: Clone;
+
     /// Convert from natural parameters to standard parameters
     fn from_natural(param: Self::NaturalParam) -> Self;
 
@@ -50,6 +60,60 @@ pub trait ExponentialFamily<X, F: Float> {
 
     /// Get the base measure for this exponential family
     fn base_measure(&self) -> Self::BaseMeasure;
+
+    /// Precompute and cache values for optimized density computation.
+    ///
+    /// This method should compute and store all expensive operations that are
+    /// independent of the data point x, such as:
+    /// - Natural parameters η
+    /// - Log partition function A(η)
+    /// - Any intermediate values used in density computation
+    /// - Distribution-specific optimizations
+    ///
+    /// The cached values can then be reused across multiple density evaluations,
+    /// eliminating redundant computation for batch operations.
+    fn precompute_cache(&self) -> Self::Cache;
+
+    /// Compute log-density using precomputed cached values.
+    ///
+    /// This method should use the cached values to compute the log-density
+    /// efficiently, avoiding any redundant computations. It should
+    /// implement the exponential family formula using the cached values:
+    ///
+    /// log p(x|θ) = η·T(x) - A(η) + log h(x)
+    ///
+    /// where all components of η and A(η) come from the cached values.
+    fn cached_log_density(&self, cache: &Self::Cache, x: &X) -> F;
+
+    /// Compute log-density at multiple points efficiently using cached values.
+    ///
+    /// This provides a default implementation that precomputes cache once
+    /// and applies it to all points, but distributions can override this
+    /// for further optimizations (e.g., SIMD operations).
+    fn cached_log_density_batch(&self, points: &[X]) -> Vec<F>
+    where
+        X: Clone,
+    {
+        let cache = self.precompute_cache();
+        points
+            .iter()
+            .map(|x| self.cached_log_density(&cache, x))
+            .collect()
+    }
+
+    /// Create an optimized closure for computing log-density.
+    ///
+    /// Returns a closure that captures precomputed cache and can be
+    /// applied to individual points efficiently. Useful for mapping over
+    /// iterators or in functional programming contexts.
+    fn cached_log_density_fn(&self) -> impl Fn(&X) -> F + Clone
+    where
+        Self: Clone,
+    {
+        let cache = self.precompute_cache();
+        let distribution = (*self).clone();
+        move |x: &X| distribution.cached_log_density(&cache, x)
+    }
 
     /// Exponential family log-density computation with automatic chain rule.
     ///
@@ -96,16 +160,7 @@ pub trait ExponentialFamily<X, F: Float> {
 
     /// Exponential family log-density computation with automatic chain rule (optimized, no profiling).
     ///
-    /// Computes: η·T(x) - A(η) + log(d(base_measure)/d(root_measure))(x)
-    ///
-    /// The chain rule term is automatically added when the base measure differs
-    /// from the root measure. This eliminates the need for manual overrides in
-    /// distributions like Poisson that have non-trivial base measures.
-    ///
-    /// Default implementation:
-    /// - Pure exponential family: η·T(x) - A(η)
-    /// - Chain rule: + `base_measure.log_density_wrt_root(x)`
-    /// - Combined: Complete log-density with respect to root measure
+    /// This version uses cached computation when available for better performance.
     #[cfg(not(feature = "profiling"))]
     #[inline]
     fn exp_fam_log_density(&self, x: &X) -> F
@@ -113,19 +168,9 @@ pub trait ExponentialFamily<X, F: Float> {
         Self::NaturalParam: DotProduct<Self::SufficientStat, Output = F>,
         Self::BaseMeasure: HasLogDensity<X, F>,
     {
-        let natural_params = self.to_natural();
-        let sufficient_stats = self.sufficient_statistic(x);
-        let log_partition = self.log_partition();
-
-        // Standard exponential family part: η·T(x) - A(η)
-        let exp_fam_part = natural_params.dot(&sufficient_stats) - log_partition;
-
-        // Chain rule part: log-density of base measure with respect to root measure
-        let base_measure = self.base_measure();
-        let chain_rule_part = base_measure.log_density_wrt_root(x);
-
-        // Complete log-density: exponential family + chain rule
-        exp_fam_part + chain_rule_part
+        // Use cached computation if possible for better performance
+        let cache = self.precompute_cache();
+        self.cached_log_density(&cache, x)
     }
 }
 

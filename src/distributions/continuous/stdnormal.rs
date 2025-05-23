@@ -4,10 +4,43 @@
 //! distribution with mean 0 and standard deviation 1. It's a special case of the Normal
 //! distribution that is particularly optimized for computations.
 
-use crate::core::{False, Measure, MeasureMarker, True};
+use crate::core::{False, HasLogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::ExponentialFamily;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
+
+/// Precomputed cache for standard normal distribution.
+///
+/// This struct caches the exponential family components for standard normal:
+/// - Natural parameters η = [0, -1/2]
+/// - Log partition function A(η) = ½log(2π)
+/// - Base measure (Lebesgue measure)
+#[derive(Clone)]
+pub struct StdNormalCache<T: Float> {
+    /// Cached natural parameters η = [0, -1/2]
+    pub natural_params: [T; 2],
+    /// Cached log partition function A(η) = ½log(2π)
+    pub log_partition: T,
+    /// Cached base measure
+    pub base_measure: LebesgueMeasure<T>,
+}
+
+impl<T: Float + FloatConst> StdNormalCache<T> {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            natural_params: [T::zero(), -T::from(0.5).unwrap()],
+            log_partition: T::PI().ln() / T::from(2.0).unwrap() + T::from(0.5).unwrap().ln(),
+            base_measure: LebesgueMeasure::new(),
+        }
+    }
+}
+
+impl<T: Float + FloatConst> Default for StdNormalCache<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// A standard normal (Gaussian) distribution with mean 0 and standard deviation 1.
 ///
@@ -48,6 +81,8 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
     type NaturalParam = [T; 2]; // (η₁, η₂) = (0, -1/2)
     type SufficientStat = [T; 2]; // (x, x²)
     type BaseMeasure = LebesgueMeasure<T>;
+    type Cache = StdNormalCache<T>; // Simple cache for standard normal
+
     fn from_natural(_param: <Self as ExponentialFamily<T, T>>::NaturalParam) -> Self {
         // For StdNormal, natural parameters are always (0, -1/2)
         // This implementation is included for completeness
@@ -70,5 +105,26 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
 
     fn base_measure(&self) -> Self::BaseMeasure {
         LebesgueMeasure::<T>::new()
+    }
+
+    fn precompute_cache(&self) -> Self::Cache {
+        StdNormalCache::new()
+    }
+
+    fn cached_log_density(&self, cache: &Self::Cache, x: &T) -> T {
+        // Use generic exponential family computation: η·T(x) - A(η) + log h(x)
+        use crate::traits::DotProduct;
+
+        // Sufficient statistics: T(x) = [x, x²]
+        let sufficient_stats = [*x, *x * *x];
+
+        // Exponential family part: η·T(x) - A(η)
+        let exp_fam_part = cache.natural_params.dot(&sufficient_stats) - cache.log_partition;
+
+        // Chain rule part: log h(x) = 0 for Lebesgue measure
+        let chain_rule_part = cache.base_measure.log_density_wrt_root(x);
+
+        // Complete log-density
+        exp_fam_part + chain_rule_part
     }
 }

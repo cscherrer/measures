@@ -22,6 +22,48 @@ use crate::exponential_family::{ExponentialFamily, ExponentialFamilyMeasure};
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
+/// Precomputed cache for optimal Normal distribution density computation.
+///
+/// This struct caches the expensive exponential family components:
+/// - Natural parameters η = [μ/σ², -1/(2σ²)]
+/// - Log partition function A(η) = μ²/(2σ²) + ½log(2πσ²)
+/// - Base measure (for chain rule computation)
+#[derive(Clone)]
+pub struct NormalCache<T: Float> {
+    /// Cached natural parameters η = [μ/σ², -1/(2σ²)]
+    pub natural_params: [T; 2],
+    /// Cached log partition function A(η)
+    pub log_partition: T,
+    /// Cached base measure
+    pub base_measure: LebesgueMeasure<T>,
+}
+
+impl<T: Float + FloatConst> NormalCache<T> {
+    #[must_use]
+    pub fn new(mean: T, std_dev: T) -> Self {
+        assert!(std_dev > T::zero(), "Standard deviation must be positive");
+
+        // Compute natural parameters: η = [μ/σ², -1/(2σ²)]
+        let sigma2 = std_dev * std_dev;
+        let inv_sigma2 = T::one() / sigma2;
+        let natural_params = [
+            mean * inv_sigma2,                   // μ/σ²
+            -inv_sigma2 / T::from(2.0).unwrap(), // -1/(2σ²)
+        ];
+
+        // Compute log partition: A(η) = μ²/(2σ²) + ½log(2πσ²)
+        let mu2 = mean * mean;
+        let log_partition = (T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap()
+            + mu2 / (T::from(2.0).unwrap() * sigma2);
+
+        Self {
+            natural_params,
+            log_partition,
+            base_measure: LebesgueMeasure::new(),
+        }
+    }
+}
+
 /// A normal (Gaussian) distribution.
 ///
 /// The normal distribution is characterized by its mean and standard deviation.
@@ -50,7 +92,7 @@ impl<T: Float> MeasureMarker for Normal<T> {
 
 impl<T: Float + FloatConst> ExponentialFamilyMeasure<T, T> for Normal<T> {}
 
-impl<T: Float> Normal<T> {
+impl<T: Float + FloatConst> Normal<T> {
     /// Create a new normal distribution with the given mean and standard deviation.
     ///
     /// # Arguments
@@ -84,7 +126,9 @@ impl<T: Float> Measure<T> for Normal<T> {
 impl<T: Float + FloatConst> HasLogDensity<T, T> for Normal<T> {
     #[inline]
     fn log_density_wrt_root(&self, x: &T) -> T {
-        self.exp_fam_log_density(x)
+        // Use optimized cached computation from exponential family framework
+        let cache = self.precompute_cache();
+        self.cached_log_density(&cache, x)
     }
 }
 
@@ -92,6 +136,7 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
     type NaturalParam = [T; 2]; // (η₁, η₂) = (μ/σ², -1/(2σ²))
     type SufficientStat = [T; 2]; // (x, x²)
     type BaseMeasure = LebesgueMeasure<T>;
+    type Cache = NormalCache<T>; // Use our existing NormalCache as the cached type
 
     fn from_natural(param: <Self as ExponentialFamily<T, T>>::NaturalParam) -> Self {
         let [eta1, eta2] = param;
@@ -101,14 +146,17 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
     }
 
     fn to_natural(&self) -> <Self as ExponentialFamily<T, T>>::NaturalParam {
+        // Compute sigma2 once and reuse
         let sigma2 = self.std_dev * self.std_dev;
+        let inv_sigma2 = T::one() / sigma2;
         [
-            self.mean / sigma2,
-            -T::one() / (T::from(2.0).unwrap() * sigma2),
+            self.mean * inv_sigma2,              // μ/σ²
+            -inv_sigma2 / T::from(2.0).unwrap(), // -1/(2σ²)
         ]
     }
 
     fn log_partition(&self) -> T {
+        // Compute sigma2 once and reuse
         let sigma2 = self.std_dev * self.std_dev;
         let mu2 = self.mean * self.mean;
         (T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap()
@@ -121,5 +169,26 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
 
     fn base_measure(&self) -> Self::BaseMeasure {
         LebesgueMeasure::<T>::new()
+    }
+
+    fn precompute_cache(&self) -> Self::Cache {
+        NormalCache::new(self.mean, self.std_dev)
+    }
+
+    fn cached_log_density(&self, cache: &Self::Cache, x: &T) -> T {
+        // Use generic exponential family computation: η·T(x) - A(η) + log h(x)
+        use crate::traits::DotProduct;
+
+        // Sufficient statistics: T(x) = [x, x²]
+        let sufficient_stats = [*x, *x * *x];
+
+        // Exponential family part: η·T(x) - A(η)
+        let exp_fam_part = cache.natural_params.dot(&sufficient_stats) - cache.log_partition;
+
+        // Chain rule part: log h(x) = 0 for Lebesgue measure
+        let chain_rule_part = cache.base_measure.log_density_wrt_root(x);
+
+        // Complete log-density
+        exp_fam_part + chain_rule_part
     }
 }
