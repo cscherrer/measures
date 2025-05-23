@@ -78,11 +78,6 @@ impl<T: Float + FloatConst> Normal<T> {
         self.std_dev * self.std_dev
     }
 
-    /// Helper: compute 1/σ² from precomputed σ²
-    #[inline]
-    fn inv_variance_from(variance: T) -> T {
-        T::one() / variance
-    }
 }
 
 impl<T: Float> Measure<T> for Normal<T> {
@@ -109,7 +104,7 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
 
     fn from_natural(param: Self::NaturalParam) -> Self {
         let [eta1, eta2] = param;
-        let sigma2 = -T::one() / (T::from(2.0).unwrap() * eta2);
+        let sigma2 = -(T::from(2.0).unwrap() * eta2).recip();
         let mu = eta1 * sigma2;
         Self::new(mu, sigma2.sqrt())
     }
@@ -130,15 +125,15 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
         // Efficient implementation that computes variance and mean_squared only once
         let sigma2 = self.variance();
         let mu2 = self.mean * self.mean;
-        let inv_sigma2 = Self::inv_variance_from(sigma2);
+        let inv_sigma2 = sigma2.recip();
 
         let natural_params = [
             self.mean * inv_sigma2,              // μ/σ²
-            -inv_sigma2 / T::from(2.0).unwrap(), // -1/(2σ²)
+            T::from(-0.5).unwrap() *inv_sigma2,  // -1/(2σ²)
         ];
 
-        let log_partition = (T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap()
-            + mu2 / (T::from(2.0).unwrap() * sigma2);
+        let log_partition = (T::from(2.0).unwrap() * T::PI() * sigma2).ln() * T::from(0.5).unwrap()
+            + T::from(0.5).unwrap() *mu2 * inv_sigma2;
 
         (natural_params, log_partition)
     }
