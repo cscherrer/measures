@@ -25,6 +25,13 @@ dhat = "0.3"          # Memory profiling
 inherits = "release"
 debug = true  # Enable debug symbols for profiling
 
+[profile.bench]
+opt-level = 3        # Full optimization like release
+debug = false        # No debug info for clean benchmarks
+lto = false          # Disable LTO to prevent over-optimization across crates
+codegen-units = 1    # Single codegen unit for consistent timings
+panic = "abort"      # Faster than unwinding
+
 [[bench]]
 name = "density_computation"
 harness = false

@@ -1,68 +1,81 @@
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main, PlotConfiguration, AxisScale};
 use measures::core::{HasLogDensity, LogDensityBuilder};
 use measures::exponential_family::ExponentialFamily;
 use measures::{Normal, distributions::discrete::poisson::Poisson};
 use pprof::criterion::{Output, PProfProfiler};
+use rv::dist::{Gaussian, Poisson as RvPoisson};
+use rv::prelude::*;
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
 
-/// Benchmark single density evaluations
+/// Benchmark single density evaluations with rv comparisons
 fn bench_single_evaluations(c: &mut Criterion) {
     let mut group = c.benchmark_group("single_density_evaluation");
+    
+    // Configure plotting for better visualization
+    group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Logarithmic));
 
-    // Normal distribution benchmarks
-    let normal = Normal::new(0.0_f64, 1.0_f64);
-    let x = 0.5_f64;
+    // Use dynamic inputs to prevent constant folding
+    let inputs: Vec<f64> = vec![0.1, 0.5, 1.0, 2.0, 5.0];
+    let k_inputs: Vec<u64> = vec![0, 1, 3, 5, 10];
 
-    group.bench_function("normal_log_density", |b| {
-        b.iter(|| {
-            let ld = normal.log_density();
-            let result: f64 = ld.at(black_box(&x));
-            black_box(result)
+    for (i, &x) in inputs.iter().enumerate() {
+        // Normal distribution benchmarks - our implementation vs rv
+        let normal = black_box(Normal::new(0.0_f64, 1.0_f64));
+        let rv_normal = black_box(Gaussian::new(0.0, 1.0).unwrap());
+
+        group.bench_function(&format!("measures_normal_exp_fam_{}", i), |b| {
+            b.iter(|| {
+                let result = black_box(&normal).exp_fam_log_density(black_box(&x));
+                black_box(result)
+            });
         });
-    });
 
-    group.bench_function("normal_exp_fam_log_density", |b| {
-        b.iter(|| {
-            let result = normal.exp_fam_log_density(black_box(&x));
-            black_box(result)
+        group.bench_function(&format!("rv_normal_ln_f_{}", i), |b| {
+            b.iter(|| {
+                let result = black_box(&rv_normal).ln_f(black_box(&x));
+                black_box(result)
+            });
         });
-    });
 
-    group.bench_function("normal_log_density_wrt_root", |b| {
-        b.iter(|| {
-            let result = normal.log_density_wrt_root(black_box(&x));
-            black_box(result)
+        group.bench_function(&format!("measures_normal_log_density_{}", i), |b| {
+            b.iter(|| {
+                let ld = black_box(&normal).log_density();
+                let result: f64 = ld.at(black_box(&x));
+                black_box(result)
+            });
         });
-    });
+    }
 
-    // Poisson distribution benchmarks
-    let poisson = Poisson::new(2.5_f64);
-    let k = 3u64;
+    for (i, &k) in k_inputs.iter().enumerate() {
+        // Poisson distribution benchmarks - our implementation vs rv
+        let poisson = black_box(Poisson::new(2.5_f64));
+        let rv_poisson = black_box(RvPoisson::new(2.5).unwrap());
 
-    group.bench_function("poisson_log_density", |b| {
-        b.iter(|| {
-            let ld = poisson.log_density();
-            let result: f64 = ld.at(black_box(&k));
-            black_box(result)
+        group.bench_function(&format!("measures_poisson_exp_fam_{}", i), |b| {
+            b.iter(|| {
+                let result = black_box(&poisson).exp_fam_log_density(black_box(&k));
+                black_box(result)
+            });
         });
-    });
 
-    group.bench_function("poisson_exp_fam_log_density", |b| {
-        b.iter(|| {
-            let result = poisson.exp_fam_log_density(black_box(&k));
-            black_box(result)
+        group.bench_function(&format!("rv_poisson_ln_f_{}", i), |b| {
+            b.iter(|| {
+                let result = black_box(&rv_poisson).ln_f(black_box(&(k as usize)));
+                black_box(result)
+            });
         });
-    });
 
-    group.bench_function("poisson_log_density_wrt_root", |b| {
-        b.iter(|| {
-            let result = poisson.log_density_wrt_root(black_box(&k));
-            black_box(result)
+        group.bench_function(&format!("measures_poisson_log_density_{}", i), |b| {
+            b.iter(|| {
+                let ld = black_box(&poisson).log_density();
+                let result: f64 = ld.at(black_box(&k));
+                black_box(result)
+            });
         });
-    });
+    }
 
     group.finish();
 }
@@ -124,21 +137,50 @@ fn bench_batch_evaluations(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark Poisson performance (now O(1) optimized)
+/// Benchmark Poisson performance with rv comparison and scaling visualization
 fn bench_poisson_factorial(c: &mut Criterion) {
-    let mut group = c.benchmark_group("poisson_performance");
+    let mut group = c.benchmark_group("poisson_scaling_analysis");
+    
+    // Configure plotting to visualize scaling behavior
+    group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Linear));
 
-    let poisson = Poisson::new(2.5_f64);
-
-    // Test our O(1) factorial computation across different k values
+    // Test our O(1) factorial computation vs rv across different k values
     // This validates that performance is indeed O(1) regardless of k
     for k in &[0, 1, 5, 10, 20, 50, 100, 500, 1000] {
-        group.bench_with_input(BenchmarkId::new("poisson_optimized", k), k, |b, &k| {
+        // Create fresh measures for each k to prevent optimization
+        let poisson = black_box(Poisson::new(2.5_f64 + (*k as f64) * 0.001));
+        let rv_poisson = black_box(RvPoisson::new(2.5 + (*k as f64) * 0.001).unwrap());
+        
+        group.bench_with_input(BenchmarkId::new("measures_optimized_poisson", k), k, |b, &k| {
             b.iter(|| {
-                let result = poisson.exp_fam_log_density(black_box(&k));
+                let result = black_box(&poisson).exp_fam_log_density(black_box(&k));
                 black_box(result)
             });
         });
+
+        group.bench_with_input(BenchmarkId::new("rv_poisson_reference", k), k, |b, &k| {
+            b.iter(|| {
+                let result = black_box(&rv_poisson).ln_f(black_box(&(k as usize)));
+                black_box(result)
+            });
+        });
+
+        // Also test our old O(k) approach for comparison (but only for smaller k)
+        if k <= &100 {
+            group.bench_with_input(BenchmarkId::new("measures_naive_factorial", k), k, |b, &k| {
+                b.iter(|| {
+                    // Naive O(k) factorial computation for comparison
+                    let mut log_factorial = 0.0_f64;
+                    for i in 1..=black_box(k) {
+                        log_factorial += (i as f64).ln();
+                    }
+                    // Simplified Poisson computation using naive factorial
+                    let lambda = 2.5_f64;
+                    let result = (k as f64) * lambda.ln() - lambda - log_factorial;
+                    black_box(result)
+                });
+            });
+        }
     }
 
     group.finish();
@@ -461,11 +503,65 @@ fn bench_factorial_optimization(c: &mut Criterion) {
     group.finish();
 }
 
+/// Simple sanity check benchmarks to detect optimization issues
+fn bench_sanity_checks(c: &mut Criterion) {
+    let mut group = c.benchmark_group("sanity_checks");
+    
+    // Test 1: Basic arithmetic to establish baseline timing
+    group.bench_function("baseline_math_operations", |b| {
+        b.iter(|| {
+            let x = black_box(2.5_f64);
+            let y = black_box(3.7_f64);
+            let result = x.ln() + y.powi(2) - (x * y).sqrt();
+            black_box(result)
+        });
+    });
+
+    // Test 2: Simple factorial computation to verify we're not optimizing away loops
+    group.bench_function("simple_factorial_computation", |b| {
+        b.iter(|| {
+            let k = black_box(10u64);
+            let mut result = 0.0_f64;
+            for i in 1..=k {
+                result += (black_box(i) as f64).ln();
+            }
+            black_box(result)
+        });
+    });
+
+    // Test 3: Our optimized factorial vs simple computation
+    let poisson = black_box(Poisson::new(2.5_f64));
+    let k = black_box(10u64);
+    
+    group.bench_function("optimized_poisson_factorial", |b| {
+        b.iter(|| {
+            let result = black_box(&poisson).exp_fam_log_density(black_box(&k));
+            black_box(result)
+        });
+    });
+
+    // Test 4: Force a computation that definitely can't be optimized away
+    group.bench_function("forced_computation", |b| {
+        b.iter(|| {
+            let normal = black_box(Normal::new(
+                black_box(std::hint::black_box(0.0_f64)),
+                black_box(std::hint::black_box(1.0_f64))
+            ));
+            let x = black_box(std::hint::black_box(0.5_f64));
+            let result = black_box(&normal).log_density_wrt_root(black_box(&x));
+            // Force the result to be "used" in a way the compiler can't predict
+            std::hint::black_box(result)
+        });
+    });
+
+    group.finish();
+}
+
 criterion_group! {
     name = benches;
     config = Criterion::default().with_profiler(PProfProfiler::new(100, Output::Flamegraph(None)));
     targets = bench_single_evaluations, bench_batch_evaluations, bench_poisson_factorial,
-              bench_exp_fam_components, bench_measure_creation, bench_allocation_patterns, bench_component_creation, bench_factorial_optimization
+              bench_exp_fam_components, bench_measure_creation, bench_allocation_patterns, bench_component_creation, bench_factorial_optimization, bench_sanity_checks
 }
 
 criterion_main!(benches);

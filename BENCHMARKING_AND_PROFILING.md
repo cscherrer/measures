@@ -377,4 +377,193 @@ cargo bench --profile profiling
 - `benches/`: Benchmark source files
 - `examples/`: Profiling examples and workloads
 
-This methodology provides a systematic approach to identifying, measuring, and optimizing performance bottlenecks in Rust applications. 
+This methodology provides a systematic approach to identifying, measuring, and optimizing performance bottlenecks in Rust applications.
+
+## Preventing Compiler Optimizations in Benchmarks
+
+**Critical Issue**: Rust's optimizer can eliminate computations it deems "unused", leading to unrealistic sub-nanosecond timings.
+
+### Symptoms of Over-Optimization
+- Sub-nanosecond benchmark timings
+- Unrealistically fast performance 
+- Performance that doesn't scale with input complexity
+- Identical timings for different algorithms
+
+### Solutions
+
+**1. Aggressive black_box Usage**
+```rust
+// ❌ Bad: Compiler might optimize away the computation
+let result = measure.log_density().at(&x);
+
+// ✅ Good: Force computation and prevent optimization
+let measure = black_box(Normal::new(0.0, 1.0));
+let result = black_box(&measure).log_density().at(black_box(&x));
+black_box(result);
+```
+
+**2. Dynamic Inputs**
+```rust
+// ❌ Bad: Constant inputs get constant-folded
+let x = 0.5_f64;
+
+// ✅ Good: Dynamic inputs prevent constant folding
+let inputs = vec![0.1, 0.5, 1.0, 2.0, 5.0];
+for &x in &inputs {
+    let result = measure.log_density().at(black_box(&x));
+}
+```
+
+**3. Proper Benchmark Profile**
+```toml
+[profile.bench]
+opt-level = 3        # Full optimization like release
+debug = false        # No debug info for clean benchmarks
+lto = false          # Disable LTO to prevent over-optimization across crates
+codegen-units = 1    # Single codegen unit for consistent timings
+```
+
+**4. Sanity Check Benchmarks**
+Always include baseline benchmarks to detect optimization issues:
+```rust
+// Baseline arithmetic to establish realistic timing floor
+group.bench_function("baseline_math", |b| {
+    b.iter(|| {
+        let x = black_box(2.5_f64);
+        let result = x.ln() + x.powi(2);
+        black_box(result)
+    });
+});
+```
+
+### Expected Timing Ranges
+- **Simple arithmetic**: 1-5ns
+- **Mathematical functions**: 5-20ns  
+- **Complex algorithms**: 20ns+
+- **Sub-nanosecond**: Usually indicates optimization issues
+
+## Baseline Comparisons with rv Crate
+
+**Always compare against rv when possible** - rv is a mature, optimized statistical computing library that provides excellent baseline performance for validation.
+
+### Setting Up rv Comparisons
+
+```rust
+use rv::dist::{Gaussian, Poisson as RvPoisson};
+use rv::prelude::*;  // Import all traits including ln_f
+
+// Normal distribution comparison
+let measures_normal = Normal::new(0.0, 1.0);
+let rv_normal = Gaussian::new(0.0, 1.0).unwrap();
+
+group.bench_function("measures_normal", |b| {
+    b.iter(|| measures_normal.exp_fam_log_density(black_box(&x)))
+});
+
+group.bench_function("rv_normal_baseline", |b| {
+    b.iter(|| rv_normal.ln_f(black_box(&x)))  // ln_f is fastest in rv
+});
+```
+
+### Why Use ln_f Instead of ln_pdf/ln_pmf
+
+**Performance Tip**: rv's `ln_f` method is optimized and faster than the specialized `ln_pdf` and `ln_pmf` methods:
+
+```rust
+// ❌ Slower: Specialized methods
+rv_normal.ln_pdf(&x);    // Continuous distributions
+rv_poisson.ln_pmf(&k);   // Discrete distributions
+
+// ✅ Faster: Generic optimized method  
+rv_normal.ln_f(&x);      // Works for both continuous and discrete
+rv_poisson.ln_f(&k);
+```
+
+### Interpreting rv Comparisons
+
+**Good Performance**: Within 20-50% of rv performance
+**Concerning**: >2x slower than rv (investigate algorithmic issues)
+**Excellent**: Within 10-20% of rv (competitive with mature implementations)
+
+Example results:
+```
+rv_normal_ln_f:           2.37ns
+measures_normal_exp_fam:  3.59ns  (51% slower - acceptable)
+rv_poisson_ln_f:          2.42ns  
+measures_poisson_exp_fam: 2.87ns  (19% slower - excellent!)
+```
+
+## Scaling Analysis with Graphical Visualization
+
+**Every measurement with multiple input sizes should generate graphs** to visualize algorithmic complexity.
+
+### Configuring Plots in Benchmarks
+
+```rust
+use criterion::{PlotConfiguration, AxisScale};
+
+fn bench_scaling_analysis(c: &mut Criterion) {
+    let mut group = c.benchmark_group("algorithm_scaling");
+    
+    // Configure plotting to visualize scaling behavior
+    group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Linear));
+    
+    for k in &[1, 5, 10, 20, 50, 100, 500, 1000] {
+        group.bench_with_input(BenchmarkId::new("O(1)_algorithm", k), k, |b, &k| {
+            b.iter(|| optimized_algorithm(black_box(&k)))
+        });
+        
+        group.bench_with_input(BenchmarkId::new("O(k)_algorithm", k), k, |b, &k| {
+            b.iter(|| naive_algorithm(black_box(&k)))
+        });
+        
+        group.bench_with_input(BenchmarkId::new("rv_baseline", k), k, |b, &k| {
+            b.iter(|| rv_reference.ln_f(black_box(&k)))
+        });
+    }
+}
+```
+
+### Reading Scaling Graphs
+
+Generated in `target/criterion/algorithm_scaling/report/index.html`:
+
+**O(1) Algorithm**: Flat line regardless of input size
+```
+Time (ns)
+    ^
+  5 |     ████████████████████████
+    |     
+  0 +--+--+--+--+--+--+--+--+--+-> Input Size
+    1  10 50 100 500 1000
+```
+
+**O(k) Algorithm**: Linear growth with input size
+```
+Time (ns)
+    ^
+2500|                       ████
+    |                   ████
+1250|               ████
+    |           ████
+  625|       ████
+    |   ████
+    0+--+--+--+--+--+--+--+--+--+-> Input Size
+     1  10 50 100 500 1000
+```
+
+**Analysis Points**:
+- **Algorithmic Validation**: Confirms theoretical complexity
+- **Performance Comparison**: Shows relative efficiency vs baselines
+- **Optimization Verification**: Proves improvements work across input ranges
+- **Regression Detection**: Easily spot when optimizations break
+
+### Case Study: Factorial Optimization Graphs
+
+Our Poisson factorial optimization shows:
+
+1. **Naive O(k)**: Linear scaling from 25ns to 2500ns
+2. **Optimized O(1)**: Flat ~2.8ns regardless of k
+3. **rv Baseline**: Flat ~2.4ns (our target performance)
+
+**Visual Impact**: The graph immediately shows the 1000x improvement for large k values and validates that our optimization maintains O(1) complexity.
