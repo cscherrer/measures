@@ -17,78 +17,19 @@
 //! ```
 
 use crate::core::types::{False, True};
-use crate::core::{HasLogDensity, Measure, MeasureMarker};
+use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::{
-    ExponentialFamily, ExponentialFamilyCache, ExponentialFamilyMeasure,
+    ExponentialFamily, ExponentialFamilyMeasure, GenericExpFamCache,
 };
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
-
-/// Precomputed cache for optimal Normal distribution density computation.
-///
-/// This struct caches the expensive exponential family components:
-/// - Natural parameters η = [μ/σ², -1/(2σ²)]
-/// - Log partition function A(η) = μ²/(2σ²) + ½log(2πσ²)
-/// - Base measure (for chain rule computation)
-#[derive(Clone)]
-pub struct NormalCache<T: Float> {
-    /// Cached natural parameters η = [μ/σ², -1/(2σ²)]
-    pub natural_params: [T; 2],
-    /// Cached log partition function A(η)
-    pub log_partition: T,
-    /// Cached base measure
-    pub base_measure: LebesgueMeasure<T>,
-}
-
-impl<T: Float + FloatConst> NormalCache<T> {
-    #[must_use]
-    pub fn new(mean: T, std_dev: T) -> Self {
-        assert!(std_dev > T::zero(), "Standard deviation must be positive");
-
-        // Compute natural parameters: η = [μ/σ², -1/(2σ²)]
-        let sigma2 = std_dev * std_dev;
-        let inv_sigma2 = T::one() / sigma2;
-        let natural_params = [
-            mean * inv_sigma2,                   // μ/σ²
-            -inv_sigma2 / T::from(2.0).unwrap(), // -1/(2σ²)
-        ];
-
-        // Compute log partition: A(η) = μ²/(2σ²) + ½log(2πσ²)
-        let mu2 = mean * mean;
-        let log_partition = (T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap()
-            + mu2 / (T::from(2.0).unwrap() * sigma2);
-
-        Self {
-            natural_params,
-            log_partition,
-            base_measure: LebesgueMeasure::new(),
-        }
-    }
-}
-
-/// Implement the `ExponentialFamilyCache` trait - boilerplate eliminated!
-impl<T: Float + FloatConst> ExponentialFamilyCache<T, T> for NormalCache<T> {
-    type Distribution = Normal<T>;
-
-    fn from_distribution(distribution: &Self::Distribution) -> Self {
-        Self::new(distribution.mean, distribution.std_dev)
-    }
-
-    fn log_partition(&self) -> T {
-        self.log_partition
-    }
-    fn natural_params(&self) -> &[T; 2] {
-        &self.natural_params
-    }
-    fn base_measure(&self) -> &LebesgueMeasure<T> {
-        &self.base_measure
-    }
-}
 
 /// A normal (Gaussian) distribution.
 ///
 /// The normal distribution is characterized by its mean and standard deviation.
 /// The density is computed with respect to Lebesgue measure.
+/// 
+/// Uses the generic exponential family cache - no need for distribution-specific cache!
 #[derive(Clone)]
 pub struct Normal<T: Float> {
     /// The mean of the distribution
@@ -143,23 +84,24 @@ impl<T: Float> Measure<T> for Normal<T> {
     }
 }
 
-// Note: HasLogDensity implementation is now automatic via the blanket impl
+// Note: HasLogDensity implementation is now automatic via the blanket impl 
 // for exponential families in density.rs! No manual implementation needed.
 
 impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
+    // Types specified once - no redundancy!
     type NaturalParam = [T; 2]; // (η₁, η₂) = (μ/σ², -1/(2σ²))
     type SufficientStat = [T; 2]; // (x, x²)
     type BaseMeasure = LebesgueMeasure<T>;
-    type Cache = NormalCache<T>; // Use our existing NormalCache as the cached type
+    type Cache = GenericExpFamCache<Self, T, T>; // Generic cache!
 
-    fn from_natural(param: <Self as ExponentialFamily<T, T>>::NaturalParam) -> Self {
+    fn from_natural(param: Self::NaturalParam) -> Self {
         let [eta1, eta2] = param;
         let sigma2 = -T::one() / (T::from(2.0).unwrap() * eta2);
         let mu = eta1 * sigma2;
         Self::new(mu, sigma2.sqrt())
     }
 
-    fn to_natural(&self) -> <Self as ExponentialFamily<T, T>>::NaturalParam {
+    fn to_natural(&self) -> Self::NaturalParam {
         // Compute sigma2 once and reuse
         let sigma2 = self.std_dev * self.std_dev;
         let inv_sigma2 = T::one() / sigma2;
@@ -170,12 +112,14 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
     }
 
     fn log_partition(&self) -> T {
-        // Use cached computation for efficiency
-        let cache = NormalCache::from_distribution(self);
-        cache.log_partition()
+        // Compute log partition: A(η) = μ²/(2σ²) + ½log(2πσ²)
+        let mu2 = self.mean * self.mean;
+        let sigma2 = self.std_dev * self.std_dev;
+        (T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap()
+            + mu2 / (T::from(2.0).unwrap() * sigma2)
     }
 
-    fn sufficient_statistic(&self, x: &T) -> <Self as ExponentialFamily<T, T>>::SufficientStat {
+    fn sufficient_statistic(&self, x: &T) -> Self::SufficientStat {
         [*x, *x * *x]
     }
 
@@ -184,23 +128,10 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
     }
 
     fn precompute_cache(&self) -> Self::Cache {
-        NormalCache::new(self.mean, self.std_dev)
+        GenericExpFamCache::new(self)
     }
 
     fn cached_log_density(&self, cache: &Self::Cache, x: &T) -> T {
-        // Use generic exponential family computation: η·T(x) - A(η) + log h(x)
-        use crate::traits::DotProduct;
-
-        // Sufficient statistics: T(x) = [x, x²]
-        let sufficient_stats = [*x, *x * *x];
-
-        // Exponential family part: η·T(x) - A(η)
-        let exp_fam_part = cache.natural_params.dot(&sufficient_stats) - cache.log_partition;
-
-        // Chain rule part: log h(x) = 0 for Lebesgue measure
-        let chain_rule_part = cache.base_measure.log_density_wrt_root(x);
-
-        // Complete log-density
-        exp_fam_part + chain_rule_part
+        cache.log_density(x)
     }
 }

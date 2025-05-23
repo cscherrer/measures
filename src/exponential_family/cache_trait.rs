@@ -46,11 +46,11 @@ pub trait CacheFields<X, F: Float> {
 /// # Example
 ///
 /// ```rust
-/// use measures::distributions::continuous::normal::{Normal, NormalCache};
-/// use measures::exponential_family::ExponentialFamilyCache;
+/// use measures::distributions::continuous::normal::Normal;
+/// use measures::exponential_family::{ExponentialFamilyCache, GenericExpFamCache};
 ///
 /// let normal = Normal::new(0.0, 1.0);
-/// let cache = NormalCache::from_distribution(&normal);
+/// let cache: GenericExpFamCache<Normal<f64>, f64, f64> = GenericExpFamCache::from_distribution(&normal);
 ///
 /// // Reuse cache for multiple computations
 /// let density1 = cache.log_density(&0.5);

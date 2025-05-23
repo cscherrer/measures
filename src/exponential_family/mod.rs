@@ -16,10 +16,12 @@
 //! - The field F for numerical computations (always some Float type)
 
 pub mod cache_trait;
+pub mod generic_cache;
 pub mod implementations;
 pub mod traits;
 
 // Re-export key types
 pub use cache_trait::ExponentialFamilyCache;
+pub use generic_cache::GenericExpFamCache;
 pub use implementations::{ExpFam, ExponentialFamilyDensity};
 pub use traits::{ExponentialFamily, ExponentialFamilyMeasure};
