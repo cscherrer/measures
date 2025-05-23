@@ -137,6 +137,7 @@ where
     M: Measure<T> + Clone,
 {
     /// Create a new log-density computation with the root measure as base.
+    #[profiling::function]
     pub fn new(measure: M) -> Self {
         let base_measure = measure.root_measure();
         Self {
@@ -170,6 +171,7 @@ where
     /// let result: f32 = log_density.at(&x);        // f32 inferred  
     /// let result = log_density.at::<f64>(&x);      // f64 explicit
     /// ```
+    #[profiling::function]
     pub fn at<F>(&self, x: &T) -> F
     where
         Self: EvaluateAt<T, F>,
@@ -208,6 +210,7 @@ where
     M2: Measure<T, RootMeasure = M1::RootMeasure> + HasLogDensity<T, F> + Clone,
     F: std::ops::Sub<Output = F>,
 {
+    #[profiling::function]
     fn at(&self, x: &T) -> F {
         // log(dm1/dm2) = log(dm1/root) - log(dm2/root)
         self.measure.log_density_wrt_root(x) - self.base_measure.log_density_wrt_root(x)
@@ -274,6 +277,7 @@ where
     F: Neg<Output = F>,
     T: Clone,
 {
+    #[profiling::function]
     fn at(&self, x: &T) -> F {
         -self.inner.at(x)
     }
@@ -343,6 +347,7 @@ where
     T: Clone + std::hash::Hash + Eq,
     F: Clone,
 {
+    #[profiling::function]
     fn at(&self, x: &T) -> F {
         let mut cache = self.cache.borrow_mut();
         if let Some(cached_value) = cache.get(x) {

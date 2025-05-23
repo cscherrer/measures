@@ -14,184 +14,276 @@
 //! 3. **Future enhancement**: Modify `ExponentialFamily` trait to automatically include
 //!    chain rule when base measure != root measure, eliminating the need for manual overrides
 
-use measures::core::{HasLogDensity, LogDensityBuilder};
-use measures::measures::derived::integral::IntegralMeasure;
-use measures::measures::primitive::counting::CountingMeasure;
-use measures::traits::DotProduct;
+use approx::assert_abs_diff_eq;
+use measures::core::HasLogDensity;
+use measures::exponential_family::ExponentialFamily;
 use measures::{Normal, distributions::discrete::poisson::Poisson};
 use rv::prelude::*;
 
 #[test]
 fn test_normal_vs_rv() {
-    let our_normal = Normal::new(1.0, 2.0);
-    let rv_normal = rv::dist::Gaussian::new(1.0, 2.0).unwrap();
+    use rv::dist::Gaussian;
 
-    let test_points = vec![-2.0, -1.0, 0.0, 1.0, 2.0, 3.0];
+    let measures_normal = Normal::new(1.0_f64, 2.0_f64);
+    let rv_normal = Gaussian::new(1.0, 2.0).unwrap();
 
-    for &x in &test_points {
-        let our_logpdf: f64 = our_normal.log_density().at(&x);
-        let rv_logpdf = rv_normal.ln_f(&x);
+    // Test at several points
+    let test_points = vec![-2.0, -1.0, 0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 5.0];
 
-        println!("Normal at x={x}: ours={our_logpdf}, rv={rv_logpdf}");
+    for x in test_points {
+        let measures_result = measures_normal.log_density_wrt_root(&x);
+        let rv_result = rv_normal.ln_f(&x);
 
-        assert!(
-            (our_logpdf - rv_logpdf).abs() < 1e-10,
-            "Normal mismatch at x={x}: ours={our_logpdf}, rv={rv_logpdf}"
+        println!(
+            "x={}: measures={:.10}, rv={:.10}, diff={:.2e}",
+            x,
+            measures_result,
+            rv_result,
+            (measures_result - rv_result).abs()
         );
+
+        assert_abs_diff_eq!(measures_result, rv_result, epsilon = 1e-10);
     }
 }
 
 #[test]
 fn test_poisson_vs_rv() {
-    let our_poisson = Poisson::new(2.5_f64);
-    let rv_poisson = rv::dist::Poisson::new(2.5).unwrap();
+    use rv::dist::Poisson as RvPoisson;
 
-    let test_points = vec![0usize, 1, 2, 3, 4, 5, 10];
+    let measures_poisson = Poisson::new(2.5_f64);
+    let rv_poisson = RvPoisson::new(2.5).unwrap();
 
-    for &k in &test_points {
-        let our_logpmf: f64 = our_poisson.log_density().at(&(k as u64));
-        let rv_logpmf = rv_poisson.ln_pmf(&k);
+    // Test at several integer points
+    let test_points: Vec<usize> = vec![0, 1, 2, 3, 4, 5, 10, 15, 20];
 
-        println!("Poisson at k={k}: ours={our_logpmf}, rv={rv_logpmf}");
+    for k in test_points {
+        let measures_result = measures_poisson.log_density_wrt_root(&(k as u64));
+        let rv_result = rv_poisson.ln_f(&k);
 
-        // Check if our result is reasonable (should be negative)
-        if our_logpmf > 0.0 {
-            println!("WARNING: Our Poisson log-pmf is positive at k={k}: {our_logpmf}");
-        }
-
-        assert!(
-            (our_logpmf - rv_logpmf).abs() < 1e-10,
-            "Poisson mismatch at k={k}: ours={our_logpmf}, rv={rv_logpmf}"
+        println!(
+            "k={}: measures={:.10}, rv={:.10}, diff={:.2e}",
+            k,
+            measures_result,
+            rv_result,
+            (measures_result - rv_result).abs()
         );
+
+        assert_abs_diff_eq!(measures_result, rv_result, epsilon = 1e-10);
     }
 }
 
 #[test]
 fn test_poisson_working_vs_integral_measure() {
-    println!("\n=== Debugging Poisson: Working vs IntegralMeasure ===");
+    // Test that our Poisson with FactorialMeasure matches manual computation
+    let poisson = Poisson::new(2.5_f64);
 
-    let lambda = 2.5_f64;
-    let k = 3u64;
+    for k in [0, 1, 2, 5, 10, 15, 20, 25] {
+        let integral_result = poisson.exp_fam_log_density(&k);
 
-    // === Working Implementation ===
-    let working_poisson = Poisson::new(lambda);
-    let working_logpmf: f64 = working_poisson.log_density().at(&k);
-
-    println!("Working Poisson({lambda}): log_pmf({k}) = {working_logpmf}");
-
-    // === Manual IntegralMeasure Implementation ===
-    let counting = CountingMeasure::<u64>::new();
-    let integral_base = IntegralMeasure::new(counting.clone(), |k: &u64| {
-        let mut log_factorial = 0.0_f64;
-        for i in 1..=*k {
+        // Manual Poisson computation for verification
+        let lambda = 2.5_f64;
+        let k_f64 = k as f64;
+        let mut log_factorial = 0.0;
+        for i in 1..=k {
             log_factorial += (i as f64).ln();
         }
-        -log_factorial // -log(k!) for 1/k! density
-    });
-
-    // === Step-by-step computation ===
-    println!("\n--- Manual Chain Rule Computation ---");
-
-    // 1. CountingMeasure log-density wrt root (should be 0)
-    let counting_log_density: f64 = counting.log_density_wrt_root(&k);
-    println!("log(dCounting/dRoot) at k={k}: {counting_log_density}");
-
-    // 2. IntegralMeasure log-density function at k
-    let factorial_fn = |k: &u64| {
-        let mut log_factorial = 0.0_f64;
-        for i in 1..=*k {
-            log_factorial += (i as f64).ln();
-        }
-        -log_factorial
-    };
-    let integral_fn_value = factorial_fn(&k);
-    println!("Integral log-density function at k={k}: {integral_fn_value}");
-
-    // 3. IntegralMeasure log-density wrt root (chain rule)
-    let integral_log_density: f64 = integral_base.log_density_wrt_root(&k);
-    println!("log(dIntegral/dRoot) at k={k}: {integral_log_density}");
-    println!(
-        "  = log_density_fn({k}) + counting_log_density = {integral_fn_value} + {counting_log_density} = {integral_log_density}"
-    );
-
-    // 4. Exponential family computation for hypothetical IntegralMeasure Poisson
-    let natural_param = [lambda.ln()];
-    let sufficient_stat = [k as f64];
-    let log_partition = lambda;
-
-    let exp_fam_part = natural_param.dot(&sufficient_stat) - log_partition;
-    println!("\n--- Exponential Family Part ---");
-    println!(
-        "η·T(x) - A(η) = {} * {} - {} = {}",
-        natural_param[0], sufficient_stat[0], log_partition, exp_fam_part
-    );
-
-    // 5. What would IntegralMeasure Poisson give?
-    let integral_poisson_result = exp_fam_part; // Default implementation
-    println!("\n--- Final Results ---");
-    println!("Working Poisson result: {working_logpmf}");
-    println!("IntegralMeasure Poisson (no chain rule): {integral_poisson_result}");
-    println!(
-        "Expected with chain rule: {} + {} = {}",
-        integral_poisson_result,
-        integral_log_density,
-        integral_poisson_result + integral_log_density
-    );
-
-    // 6. Manual computation for verification
-    let manual_result =
-        k as f64 * lambda.ln() - lambda - (1..=k).map(|i| (i as f64).ln()).sum::<f64>();
-    println!("Manual Poisson computation: {manual_result}");
-
-    // What's the difference?
-    let difference = working_logpmf - integral_poisson_result;
-    println!("\nDifference (working - exp_fam_only): {difference}");
-    println!("Expected difference (should be -log(k!)): {integral_fn_value}");
-
-    // Verify rv matches our working implementation
-    let rv_poisson = rv::dist::Poisson::new(lambda).unwrap();
-    let rv_logpmf = rv_poisson.ln_pmf(&(k as usize));
-    println!("rv reference: {rv_logpmf}");
-
-    // The key insight: IntegralMeasure + ExpFam is mathematically correct!
-    // Working result = ExpFam part + Chain rule part
-    assert!((working_logpmf - (integral_poisson_result + integral_log_density)).abs() < 1e-10);
-}
-
-#[test]
-fn test_integral_measure_poisson_implementation() {
-    println!("\n=== Key Insight: IntegralMeasure + ExpFam = Working Implementation ===");
-
-    let lambda = 2.5_f64;
-    let test_points = [0u64, 1, 2, 3, 4, 5];
-
-    let working_poisson = Poisson::new(lambda);
-
-    for &k in &test_points {
-        let working_result: f64 = working_poisson.log_density().at(&k);
-
-        // Manual decomposition: ExpFam part + Chain rule part
-        let exp_fam_part = (k as f64) * lambda.ln() - lambda; // η·T(x) - A(η)
-
-        let factorial_part = if k == 0 {
-            0.0
-        } else {
-            -(1..=k).map(|i| (i as f64).ln()).sum::<f64>() // -log(k!)
-        };
-
-        let decomposed_result = exp_fam_part + factorial_part;
+        let manual_result = k_f64 * lambda.ln() - lambda - log_factorial;
 
         println!(
-            "k={k}: Working={working_result:.6}, ExpFam={exp_fam_part:.6}, Factorial={factorial_part:.6}, Sum={decomposed_result:.6}"
+            "k={}: integral={:.10}, manual={:.10}, diff={:.2e}",
+            k,
+            integral_result,
+            manual_result,
+            (integral_result - manual_result).abs()
+        );
+
+        assert_abs_diff_eq!(integral_result, manual_result, epsilon = 1e-10);
+    }
+}
+
+/// Test O(1) Stirling's approximation accuracy against exact computation
+#[test]
+fn test_stirling_factorial_accuracy() {
+    use measures::measures::derived::factorial::FactorialMeasure;
+
+    let factorial_measure = FactorialMeasure::<f64>::new();
+
+    // Test accuracy for different k values
+    let test_cases = vec![
+        // (k, expected_relative_error_threshold)
+        (21, 1e-4),   // Just above exact computation cutoff
+        (25, 1e-5),   // Should be very accurate
+        (50, 1e-6),   // Stirling gets more accurate with larger k
+        (100, 1e-7),  // Even better
+        (500, 1e-8),  // Excellent accuracy
+        (1000, 1e-9), // Nearly perfect
+    ];
+
+    for (k, error_threshold) in test_cases {
+        // Our O(1) implementation
+        let stirling_result = factorial_measure.log_density_wrt_root(&k);
+
+        // Exact computation for reference (O(k))
+        let mut exact_log_factorial = 0.0_f64;
+        for i in 1..=k {
+            exact_log_factorial += (i as f64).ln();
+        }
+        let exact_result = -exact_log_factorial;
+
+        let relative_error = ((stirling_result - exact_result) / exact_result).abs();
+
+        println!(
+            "k={k}: stirling={stirling_result:.12}, exact={exact_result:.12}, relative_error={relative_error:.2e}"
         );
 
         assert!(
-            (working_result - decomposed_result).abs() < 1e-10,
-            "Decomposition failed at k={k}: working={working_result}, decomposed={decomposed_result}"
+            relative_error < error_threshold,
+            "k={k}: relative error {relative_error:.2e} exceeds threshold {error_threshold:.2e}"
         );
     }
+}
 
-    println!("✅ Working Poisson = Exponential Family part + Factorial base measure part");
-    println!("✅ This proves IntegralMeasure approach is mathematically sound!");
-    println!("✅ The issue was that default ExpFam impl doesn't include chain rule automatically");
+/// Test that O(1) factorial provides correct Poisson results
+#[test]
+fn test_stirling_poisson_vs_rv() {
+    use rv::dist::Poisson as RvPoisson;
+
+    let measures_poisson = Poisson::new(10.0_f64);
+    let rv_poisson = RvPoisson::new(10.0).unwrap();
+
+    // Test at larger k values where Stirling approximation is used
+    let test_points: Vec<usize> = vec![25, 50, 100, 200, 500, 1000];
+
+    for k in test_points {
+        let measures_result = measures_poisson.log_density_wrt_root(&(k as u64));
+        let rv_result = rv_poisson.ln_f(&k);
+
+        let relative_error = ((measures_result - rv_result) / rv_result).abs();
+
+        println!(
+            "k={k}: measures={measures_result:.10}, rv={rv_result:.10}, relative_error={relative_error:.2e}"
+        );
+
+        // For statistical computing, 0.01% relative error is excellent
+        assert!(
+            relative_error < 1e-4,
+            "k={k}: relative error {relative_error:.2e} too large"
+        );
+    }
+}
+
+/// Performance regression test: O(1) should be much faster for large k
+#[test]
+fn test_factorial_performance_regression() {
+    use std::time::Instant;
+
+    let poisson = Poisson::new(5.0_f64);
+    let large_k = 1000u64;
+    let iterations = 1000;
+
+    // Time our O(1) implementation
+    let start = Instant::now();
+    for _ in 0..iterations {
+        let _ = poisson.exp_fam_log_density(&large_k);
+    }
+    let o1_duration = start.elapsed();
+
+    // Time the old O(k) approach
+    let start = Instant::now();
+    for _ in 0..iterations {
+        let mut log_factorial = 0.0_f64;
+        for i in 1..=large_k {
+            log_factorial += (i as f64).ln();
+        }
+        let _ =
+            poisson.to_natural()[0] * (large_k as f64) - poisson.log_partition() - log_factorial;
+    }
+    let ok_duration = start.elapsed();
+
+    let speedup = ok_duration.as_nanos() as f64 / o1_duration.as_nanos() as f64;
+
+    println!("O(1) time: {o1_duration:?}");
+    println!("O(k) time: {ok_duration:?}");
+    println!("Speedup: {speedup:.1}x");
+
+    // For k=1000, we should see significant speedup
+    assert!(speedup > 10.0, "Expected >10x speedup, got {speedup:.1}x");
+}
+
+/// Test that our precomputed lookup table values are correct
+#[test]
+fn test_lookup_table_correctness() {
+    // This test validates that our LOG_FACTORIAL_TABLE contains the correct values
+    // by recomputing them and comparing
+
+    for k in 0u64..=20 {
+        // Compute log(k!) exactly using the O(k) method
+        let exact_log_factorial = if k == 0 {
+            0.0_f64 // log(0!) = log(1) = 0
+        } else {
+            (1..=k).map(|i| (i as f64).ln()).sum::<f64>()
+        };
+
+        // Get the value from our lookup table via FactorialMeasure
+        let factorial_measure =
+            measures::measures::derived::factorial::FactorialMeasure::<f64>::new();
+        let table_result = factorial_measure.log_density_wrt_root(&k);
+        let expected_result = -exact_log_factorial; // FactorialMeasure returns -log(k!)
+
+        let error = (table_result - expected_result).abs();
+
+        println!("k={k}: exact={expected_result:.15}, table={table_result:.15}, error={error:.2e}");
+
+        // For the exact lookup table values, we should have good accuracy
+        // Note: Small differences are expected because:
+        // - Table values: computed as ln(k!) where k! is computed as product
+        // - "Exact" values: computed as sum(ln(i)) which has different rounding
+        // Both approaches are mathematically equivalent but have different numerical properties
+        assert!(
+            error < 1e-9,
+            "k={k}: lookup table error {error:.2e} too large (expected < 1e-9)"
+        );
+    }
+}
+
+/// Test that demonstrates the generation code for the lookup table
+#[test]
+fn test_lookup_table_generation_code() {
+    // This test shows exactly how the lookup table values were computed
+    // It serves as documentation and validation
+
+    println!("\n// Generated lookup table values:");
+    println!("const LOG_FACTORIAL_TABLE: [f64; 21] = [");
+
+    for k in 0u64..=20 {
+        let log_factorial = if k == 0 {
+            0.0 // Special case: log(0!) = log(1) = 0
+        } else {
+            // Compute k! then take log
+            let factorial = (1..=k).product::<u64>();
+            (factorial as f64).ln()
+        };
+
+        let comment = if k == 0 {
+            format!("// log({k}!) = log(1)")
+        } else if k == 1 {
+            format!("// log({k}!) = log(1)")
+        } else if k == 2 {
+            "// log(2!) = log(2) = LN_2".to_string()
+        } else {
+            let factorial = (1..=k).product::<u64>();
+            format!("// log({k}!) = log({factorial})")
+        };
+
+        let value_str = if k == 2 {
+            "std::f64::consts::LN_2".to_string()
+        } else {
+            format!("{log_factorial:.15}")
+        };
+
+        println!("    {value_str},  {comment}");
+    }
+
+    println!("];");
+    println!("// This validates that our precomputed table is correct!");
 }

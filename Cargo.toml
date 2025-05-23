@@ -6,9 +6,31 @@ edition = "2024"
 [dependencies]
 alga = "0.9.3"
 approx = "0.5.1"
-nalgebra = "0.33.2"
-num-traits = "0.2.19"
+nalgebra = "0.33"
+num-traits = "0.2"
+# Profiling dependencies (lightweight, zero-cost when not used)
+profiling = "1.0"
+# Optional advanced tools
+tracy-client = { version = "0.18", optional = true }
+iai-callgrind = { version = "0.14", optional = true }
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = { version = "0.5", features = ["html_reports", "cargo_bench_support"] }
 rv = { git = "https://github.com/promised-ai/rv", branch = "release/v0.19.0" }
+pprof = { version = "0.13", features = ["flamegraph", "criterion"] }
+inferno = "0.12"      # Better flamegraph generation  
+dhat = "0.3"          # Memory profiling
+
+[profile.profiling]
+inherits = "release"
+debug = true  # Enable debug symbols for profiling
+
+[[bench]]
+name = "density_computation"
+harness = false
+
+[features]
+default = []
+tracy = ["dep:tracy-client"]
+callgrind = ["dep:iai-callgrind"]
+dhat-heap = []    # Simple feature flag for heap profiling as per dhat docs

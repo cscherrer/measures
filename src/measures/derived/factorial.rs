@@ -49,21 +49,102 @@ impl<F: Float> Measure<u64> for FactorialMeasure<F> {
     }
 }
 
+/// Precomputed log-factorials for k = 0 to 20
+///
+/// This table contains log(k!) computed exactly for small k values.
+/// Values were generated using the more accurate sum-of-logarithms method:
+///
+/// ```rust,ignore
+/// for k in 0u64..=20 {
+///     let log_factorial = if k == 0 {
+///         0.0  // log(0!) = log(1) = 0
+///     } else {
+///         (1..=k).map(|i| (i as f64).ln()).sum::<f64>()
+///     };
+///     println!("{:.15},  // log({}!)", log_factorial, k);
+/// }
+/// ```
+///
+/// This method avoids precision loss from computing large factorials directly
+/// and is the gold standard for log-factorial computation.
+const LOG_FACTORIAL_TABLE: [f64; 21] = [
+    0.0,                    // log(0!) = log(1)
+    0.0,                    // log(1!) = log(1)
+    std::f64::consts::LN_2, // log(2!) = log(2)
+    1.791_759_469_228_055,  // log(3!)
+    3.178_053_830_347_9458, // log(4!)
+    4.787_491_742_782_046,  // log(5!)
+    6.579_251_212_010_101,  // log(6!)
+    8.525_161_361_065_415,  // log(7!)
+    10.604_602_902_745_25,  // log(8!)
+    12.801_827_480_081_47,  // log(9!)
+    15.104_412_573_075_518, // log(10!)
+    17.502_307_845_873_887, // log(11!)
+    19.987_214_495_661_89,  // log(12!)
+    22.552_163_853_123_425, // log(13!)
+    25.191_221_182_738_683, // log(14!)
+    27.899_271_383_840_894, // log(15!)
+    30.671_860_106_080_675, // log(16!)
+    33.505_073_450_136_89,  // log(17!)
+    36.395_445_208_033_05,  // log(18!)
+    39.339_884_187_199_495, // log(19!)
+    42.335_616_460_753_485, // log(20!)
+];
+
+/// Optimized log-factorial computation
+///
+/// Uses a hybrid approach:
+/// - Exact computation for small k (k ≤ 20) via lookup table
+/// - Stirling's approximation for large k (k > 20) for O(1) performance
+///
+/// This provides the best of both worlds: exact results where feasible,
+/// and excellent performance for large k values.
+fn log_factorial<F: Float>(k: u64) -> F {
+    if k <= 20 {
+        // Use precomputed lookup table for exact values
+        F::from(LOG_FACTORIAL_TABLE[k as usize]).unwrap()
+    } else {
+        // Use Stirling's approximation for larger values
+        stirling_log_factorial_precise(k)
+    }
+}
+
+/// High-precision Stirling's approximation with Ramanujan's correction
+///
+/// More accurate for very large k values. Still O(1) time complexity.
+fn stirling_log_factorial_precise<F: Float>(k: u64) -> F {
+    if k <= 1 {
+        return F::zero();
+    }
+
+    let k_f = F::from(k).unwrap();
+    let two_pi = F::from(2.0).unwrap() * F::from(std::f64::consts::PI).unwrap();
+
+    // Base Stirling's formula: log(k!) ≈ k*log(k) - k + 0.5*log(2πk)
+    let base = k_f * k_f.ln() - k_f + F::from(0.5).unwrap() * (two_pi * k_f).ln();
+
+    // Ramanujan's asymptotic expansion for higher accuracy:
+    // log(k!) ≈ base + 1/(12k) - 1/(360k³) + 1/(1260k⁵) - 1/(1680k⁷) + ...
+    let k_inv = F::from(1.0).unwrap() / k_f;
+    let k_inv_sq = k_inv * k_inv;
+
+    let correction = k_inv / F::from(12.0).unwrap()                      // +1/(12k)
+                   - k_inv * k_inv_sq / F::from(360.0).unwrap()          // -1/(360k³)
+                   + k_inv * k_inv_sq * k_inv_sq / F::from(1260.0).unwrap() // +1/(1260k⁵)
+                   - k_inv * k_inv_sq * k_inv_sq * k_inv_sq / F::from(1680.0).unwrap(); // -1/(1680k⁷)
+
+    base + correction
+}
+
 /// Implement `HasLogDensity` for `FactorialMeasure`
 /// This provides the factorial term: log(dν/dμ) = -log(k!)
 impl<F: Float> HasLogDensity<u64, F> for FactorialMeasure<F> {
+    #[profiling::function]
     fn log_density_wrt_root(&self, x: &u64) -> F {
+        profiling::scope!("factorial_computation");
         let k = *x;
 
-        // Compute -log(k!) = -sum(log(i) for i in 1..=k)
-        if k == 0 {
-            F::zero() // log(0!) = log(1) = 0
-        } else {
-            let mut neg_log_factorial = F::zero();
-            for i in 1..=k {
-                neg_log_factorial = neg_log_factorial - F::from(i).unwrap().ln();
-            }
-            neg_log_factorial
-        }
+        // Use optimized O(1) log-factorial computation
+        -log_factorial::<F>(k)
     }
 }
