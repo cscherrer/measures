@@ -132,11 +132,12 @@ fn bench_factorial_optimization(c: &mut Criterion) {
     let mut group = c.benchmark_group("factorial_optimization");
     group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Linear));
 
-    let poisson = black_box(Poisson::new(2.5_f64));
-    let rv_poisson = black_box(RvPoisson::new(2.5).unwrap());
-
     // Test key k values that demonstrate O(1) vs O(k) scaling
     for k in &[1, 10, 50, 200, 1000] {
+        // Create fresh measures for each k to prevent optimization (just like original)
+        let poisson = black_box(Poisson::new(2.5_f64 + (*k as f64) * 0.001));
+        let rv_poisson = black_box(RvPoisson::new(2.5 + (*k as f64) * 0.001).unwrap());
+
         // Our O(1) optimized approach
         group.bench_with_input(
             BenchmarkId::new("measures_o1_stirling", k),
@@ -168,7 +169,7 @@ fn bench_factorial_optimization(c: &mut Criterion) {
                         for i in 1..=black_box(k) {
                             log_factorial += (i as f64).ln();
                         }
-                        let lambda = 2.5_f64;
+                        let lambda = 2.5_f64 + (k as f64) * 0.001;
                         let result = (k as f64) * lambda.ln() - lambda - log_factorial;
                         black_box(result)
                     });
