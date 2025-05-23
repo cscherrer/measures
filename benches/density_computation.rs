@@ -127,7 +127,7 @@ fn bench_batch_evaluations(c: &mut Criterion) {
 }
 
 /// Consolidated factorial optimization benchmark (combines previous factorial tests)
-/// This replaces both bench_poisson_factorial and bench_factorial_optimization
+/// This replaces both `bench_poisson_factorial` and `bench_factorial_optimization`
 fn bench_factorial_optimization(c: &mut Criterion) {
     let mut group = c.benchmark_group("factorial_optimization");
     group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Linear));
@@ -139,16 +139,12 @@ fn bench_factorial_optimization(c: &mut Criterion) {
         let rv_poisson = black_box(RvPoisson::new(2.5 + (*k as f64) * 0.001).unwrap());
 
         // Our O(1) optimized approach
-        group.bench_with_input(
-            BenchmarkId::new("measures_o1_stirling", k),
-            k,
-            |b, &k| {
-                b.iter(|| {
-                    let result = black_box(&poisson).exp_fam_log_density(black_box(&k));
-                    black_box(result)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("measures_o1_stirling", k), k, |b, &k| {
+            b.iter(|| {
+                let result = black_box(&poisson).exp_fam_log_density(black_box(&k));
+                black_box(result)
+            });
+        });
 
         // rv reference implementation
         group.bench_with_input(BenchmarkId::new("rv_poisson_reference", k), k, |b, &k| {
@@ -160,28 +156,24 @@ fn bench_factorial_optimization(c: &mut Criterion) {
 
         // O(k) naive approach (only for smaller k to avoid excessive runtime)
         if k <= &100 {
-            group.bench_with_input(
-                BenchmarkId::new("naive_ok_factorial", k),
-                k,
-                |b, &k| {
-                    b.iter(|| {
-                        let mut log_factorial = 0.0_f64;
-                        for i in 1..=black_box(k) {
-                            log_factorial += (i as f64).ln();
-                        }
-                        let lambda = 2.5_f64 + (k as f64) * 0.001;
-                        let result = (k as f64) * lambda.ln() - lambda - log_factorial;
-                        black_box(result)
-                    });
-                },
-            );
+            group.bench_with_input(BenchmarkId::new("naive_ok_factorial", k), k, |b, &k| {
+                b.iter(|| {
+                    let mut log_factorial = 0.0_f64;
+                    for i in 1..=black_box(k) {
+                        log_factorial += (i as f64).ln();
+                    }
+                    let lambda = 2.5_f64 + (k as f64) * 0.001;
+                    let result = (k as f64) * lambda.ln() - lambda - log_factorial;
+                    black_box(result)
+                });
+            });
         }
     }
 
     group.finish();
 }
 
-/// Consolidated component benchmark (combines exp_fam_components and component_creation)
+/// Consolidated component benchmark (combines `exp_fam_components` and `component_creation`)
 fn bench_exponential_family_components(c: &mut Criterion) {
     let mut group = c.benchmark_group("exponential_family_components");
 

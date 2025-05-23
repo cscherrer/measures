@@ -15,13 +15,16 @@
 //! - The space X where the random variable lives (could be ints, vectors, etc.)
 //! - The field F for numerical computations (always some Float type)
 
+pub mod array_utils;
 pub mod cache_trait;
 pub mod generic_cache;
+pub mod iid;
 pub mod implementations;
 pub mod traits;
 
 // Re-export key types
 pub use cache_trait::ExponentialFamilyCache;
 pub use generic_cache::GenericExpFamCache;
+pub use iid::{IID, IIDExtension};
 pub use implementations::{ExpFam, ExponentialFamilyDensity};
 pub use traits::{ExponentialFamily, ExponentialFamilyMeasure, GenericExpFamImpl};

@@ -46,6 +46,7 @@ pub use core::{
     DotProduct, EvaluateAt, HasLogDensity, LogDensity, LogDensityTrait, Measure, PrimitiveMeasure,
 };
 pub use distributions::Normal;
+pub use exponential_family::IIDExtension;
 pub use measures::{CountingMeasure, Dirac, LebesgueMeasure};
 
 // Re-export core traits that users need to import
