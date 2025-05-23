@@ -28,7 +28,6 @@ pub use generic_cache::GenericExpFamCache;
 pub use iid::{IID, IIDExtension};
 pub use implementations::{ExpFam, ExponentialFamilyDensity};
 pub use traits::{
-    compute_exp_fam_log_density, compute_iid_exp_fam_log_density,
-    ExponentialFamily, ExponentialFamilyMeasure, GenericExpFamImpl, 
-    PrecomputeCache, SumSufficientStats
+    ExponentialFamily, ExponentialFamilyMeasure, GenericExpFamImpl, PrecomputeCache,
+    SumSufficientStats, compute_exp_fam_log_density, compute_iid_exp_fam_log_density,
 };

@@ -237,7 +237,7 @@ pub trait PrecomputeCache<X: Clone, F: Float>: ExponentialFamily<X, F> {
     /// - Any intermediate computations
     fn precompute_cache(&self) -> Self::Cache;
 
-    /// Default implementation using GenericExpFamCache.
+    /// Default implementation using `GenericExpFamCache`.
     ///
     /// Most distributions can use this default implementation, which provides
     /// a generic cache that stores natural parameters and log partition.
@@ -280,10 +280,7 @@ pub trait PrecomputeCache<X: Clone, F: Float>: ExponentialFamily<X, F> {
 ///
 /// By centralizing this computation, we ensure consistency across all
 /// exponential family implementations and reduce code duplication.
-pub fn compute_exp_fam_log_density<D, X, F>(
-    distribution: &D,
-    x: &X,
-) -> F
+pub fn compute_exp_fam_log_density<D, X, F>(distribution: &D, x: &X) -> F
 where
     D: ExponentialFamily<X, F>,
     X: Clone,
@@ -315,10 +312,7 @@ where
 /// - Computes natural parameters and log partition only once
 /// - Computes sufficient statistics sum directly
 /// - Scales the log partition by sample size
-pub fn compute_iid_exp_fam_log_density<D, X, F>(
-    distribution: &D,
-    xs: &[X],
-) -> F
+pub fn compute_iid_exp_fam_log_density<D, X, F>(distribution: &D, xs: &[X]) -> F
 where
     D: ExponentialFamily<X, F>,
     X: Clone,
@@ -328,7 +322,7 @@ where
     D::BaseMeasure: HasLogDensity<X, F>,
 {
     let n = F::from(xs.len()).unwrap();
-    
+
     // Handle empty case
     if xs.is_empty() {
         return F::zero();

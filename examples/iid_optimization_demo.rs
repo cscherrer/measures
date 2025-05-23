@@ -53,7 +53,7 @@ fn main() {
     // Show the efficient IID computation
     println!("\n=== Efficient IID Computation ===");
     let start = std::time::Instant::now();
-    let efficient_result: f64 = iid_normal.log_density(&samples);
+    let efficient_result: f64 = iid_normal.iid_log_density(&samples);
     let efficient_time = start.elapsed();
 
     println!("IID log-density: {:.8}", efficient_result);
@@ -61,7 +61,7 @@ fn main() {
 
     // Compare with naive approach
     let start = std::time::Instant::now();
-    let naive_result: f64 = iid_normal.log_density(&samples);
+    let naive_result: f64 = iid_normal.iid_log_density(&samples);
     let naive_time = start.elapsed();
 
     println!("\n=== Comparison with Naive Approach ===");

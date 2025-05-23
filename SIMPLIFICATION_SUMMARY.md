@@ -26,24 +26,35 @@ pub fn compute_iid_exp_fam_log_density<D, X, F>(distribution: &D, xs: &[X]) -> F
 - ✅ Easier to maintain and debug
 - ✅ Automatic optimizations benefit all distributions
 
-### 2. Unified IID Interface
+### 2. Unified and Consistent IID Interface
 
 **Before**: Multiple confusing method names:
 - `compute_iid_log_density()` (inefficient, marked for removal)
 - `efficient_iid_log_density()` (efficient but verbose)
+- **API inconsistency**: Mixed patterns for log-density computation
 
-**After**: Single, clean interface:
+**After**: Clean, consistent interface that respects existing API patterns:
 ```rust
+// Standard log-density API (unchanged)
+normal.log_density().at(&x)
+
+// IID-specific API (clearly distinct)
 impl<D> IID<D> {
-    pub fn log_density<X, F>(&self, xs: &[X]) -> F  // Uses centralized function
-    pub fn log_density_fallback<X, F>(&self, xs: &[X]) -> F  // For non-exp-fam
+    pub fn iid_log_density<X, F>(&self, xs: &[X]) -> F  // Uses centralized function
+    pub fn iid_log_density_fallback<X, F>(&self, xs: &[X]) -> F  // For non-exp-fam
 }
+
+// Direct access to centralized functions
+compute_exp_fam_log_density(&distribution, &x)
+compute_iid_exp_fam_log_density(&distribution, &samples)
 ```
 
 **Benefits**:
-- ✅ Clear, intuitive API
+- ✅ Clear API separation: `log_density()` vs `iid_log_density()`
+- ✅ Respects existing `LogDensity` trait patterns
 - ✅ Automatically uses efficient exponential family computation
 - ✅ Fallback available for non-exponential families
+- ✅ No confusion between single-point and multi-point APIs
 
 ### 3. Centralized Sufficient Statistics Operations
 
@@ -146,8 +157,11 @@ let result = eta.dot(&T) - A + base_measure.log_density_wrt_root(&x);
 
 ### After
 ```rust
-// Clean, unified interface
-let result = iid_dist.log_density(&samples);  // Always efficient
+// Clean, unified interface with proper API separation
+let result = iid_dist.iid_log_density(&samples);  // Always efficient
+
+// Standard API unchanged
+let single_result = normal.log_density().at(&x);
 
 // Centralized computation available
 let result = compute_exp_fam_log_density(&dist, &x);

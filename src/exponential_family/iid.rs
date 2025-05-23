@@ -93,7 +93,7 @@ where
     ///
     /// This uses the proper exponential family approach: η·∑ᵢT(xᵢ) - n·A(η)
     /// This is both mathematically correct and computationally efficient.
-    pub fn log_density<X, F>(&self, xs: &[X]) -> F
+    pub fn iid_log_density<X, F>(&self, xs: &[X]) -> F
     where
         D: ExponentialFamily<X, F>,
         F: Float,
@@ -110,7 +110,7 @@ where
     ///
     /// This method provides backward compatibility for distributions that don't
     /// implement the exponential family trait.
-    pub fn log_density_fallback<X, F>(&self, xs: &[X]) -> F
+    pub fn iid_log_density_fallback<X, F>(&self, xs: &[X]) -> F
     where
         D: HasLogDensity<X, F>,
         X: Clone,
