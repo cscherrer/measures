@@ -12,7 +12,7 @@
 //! # Quick Start
 //!
 //! ```rust
-//! use measures::{Normal, Measure};
+//! use measures::{Normal, LogDensityBuilder};
 //!
 //! let normal = Normal::new(0.0, 1.0);
 //! let x = 0.5;
@@ -27,8 +27,9 @@
 //! let relative_log_density: f64 = ld_wrt.at(&x);
 //!
 //! // Same log-density, different numeric types (autodiff ready!)
-//! let f32_x = x as f32;
-//! let f32_result: f32 = normal.log_density().at(&f32_x);
+//! let normal_f32 = Normal::new(0.0_f32, 1.0_f32);
+//! let f32_x = 0.5_f32;
+//! let f32_result: f32 = normal_f32.log_density().at(&f32_x);
 //! // let dual_result: Dual64 = normal.log_density().at(&dual_x);  // With autodiff library
 //! ```
 
@@ -41,6 +42,11 @@ pub mod statistics;
 pub mod traits;
 
 // Re-export key types for convenient access
-pub use core::{DotProduct, EvaluateAt, HasLogDensity, LogDensity, LogDensityTrait, Measure, PrimitiveMeasure};
+pub use core::{
+    DotProduct, EvaluateAt, HasLogDensity, LogDensity, LogDensityTrait, Measure, PrimitiveMeasure,
+};
 pub use distributions::Normal;
 pub use measures::{CountingMeasure, Dirac, LebesgueMeasure};
+
+// Re-export core traits that users need to import
+pub use core::LogDensityBuilder;

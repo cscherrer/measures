@@ -7,18 +7,17 @@
 //! # Example
 //!
 //! ```rust
-//! use measures::{Normal, LebesgueMeasure};
+//! use measures::{Normal, LogDensityBuilder};
 //!
 //! let normal = Normal::new(0.0, 1.0); // Standard normal distribution
 //!
-//! // Compute density at x = 0
-//! let density: f64 = normal.log_density(&0.0).into();
-//!
-//! // Compute log-density (more efficient)
-//! let log_density: f64 = normal.log_density(&0.0).into();
+//! // Compute log-density at x = 0
+//! let ld = normal.log_density();
+//! let log_density_value: f64 = ld.at(&0.0);
 //! ```
 
-use crate::core::{False, HasLogDensity, Measure, MeasureMarker, True};
+use crate::core::types::{False, True};
+use crate::core::{HasLogDensity, Measure, MeasureMarker};
 use crate::exponential_family::{
     ExponentialFamily, ExponentialFamilyMeasure, compute_normal_log_density,
 };
@@ -90,7 +89,7 @@ impl<T: Float> Measure<T> for Normal<T> {
     }
 }
 
-/// Implement HasLogDensity for automatic shared-root computation
+/// Implement `HasLogDensity` for automatic shared-root computation
 impl<T: Float + FloatConst> HasLogDensity<T, T> for Normal<T> {
     fn log_density_wrt_root(&self, x: &T) -> T {
         self.compute_log_density(x)

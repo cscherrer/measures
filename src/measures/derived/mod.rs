@@ -7,4 +7,4 @@ pub mod dirac;
 pub mod weighted;
 
 pub use dirac::Dirac;
-pub use weighted::WeightedMeasure; 
+pub use weighted::WeightedMeasure;

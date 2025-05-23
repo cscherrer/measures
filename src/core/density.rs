@@ -70,22 +70,22 @@ use std::ops::Neg;
 /// ```
 ///
 /// This separation is essential for modern scientific computing where you want to evaluate the same mathematical object with different number systems.
-/// 
+///
 /// # Automatic Computation for Shared Root Measures
-/// 
+///
 /// When two measures share the same root measure, log-densities between them are automatically
 /// computed using the mathematical relationship:
-/// 
+///
 /// ```rust,ignore
 /// // If normal1 and normal2 both have LebesgueMeasure as their root:
 /// let normal1 = Normal::new(0.0, 1.0);
 /// let normal2 = Normal::new(1.0, 2.0);
-/// 
+///
 /// // This is automatically computed as normal1.log_density() - normal2.log_density()
 /// let ld = normal1.log_density().wrt(normal2);
 /// let value: f64 = ld.at(&x);  // = log(dnormal1/dlebesgue) - log(dnormal2/dlebesgue)
 /// ```
-/// 
+///
 /// This leverages the mathematical fact that:
 /// `log(dm1/dm2) = log(dm1/root) - log(dm2/root)` when both measures share the same root.
 pub trait LogDensityTrait<T> {
@@ -226,13 +226,13 @@ pub trait LogDensityEval<T, F> {
 ///
 /// This enables default implementations for log-densities between measures that share
 /// the same root measure: `log(dm1/dm2) = log(dm1/root) - log(dm2/root)`
-/// 
+///
 /// # Example Implementation
-/// 
+///
 /// ```rust,ignore
 /// // For a Normal distribution with LebesgueMeasure as root:
-/// impl<T> HasLogDensity<T, f64> for Normal<T> 
-/// where T: Into<f64> + Clone 
+/// impl<T> HasLogDensity<T, f64> for Normal<T>
+/// where T: Into<f64> + Clone
 /// {
 ///     fn log_density_wrt_root(&self, x: &T) -> f64 {
 ///         let x_val: f64 = x.clone().into();

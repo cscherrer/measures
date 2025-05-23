@@ -8,4 +8,4 @@ pub mod counting;
 pub mod lebesgue;
 
 pub use counting::CountingMeasure;
-pub use lebesgue::LebesgueMeasure; 
+pub use lebesgue::LebesgueMeasure;

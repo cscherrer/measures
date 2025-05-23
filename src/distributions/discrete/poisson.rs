@@ -6,8 +6,8 @@
 
 use crate::core::{False, HasLogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::ExponentialFamily;
-use crate::measures::primitive::counting::CountingMeasure;
 use crate::measures::derived::weighted::WeightedMeasure;
+use crate::measures::primitive::counting::CountingMeasure;
 use num_traits::{Float, FloatConst};
 
 /// A Poisson distribution.
@@ -84,7 +84,7 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
     }
 }
 
-/// Implement HasLogDensity for automatic shared-root computation  
+/// Implement `HasLogDensity` for automatic shared-root computation  
 impl<F: Float + FloatConst> HasLogDensity<u64, F> for Poisson<F> {
     fn log_density_wrt_root(&self, x: &u64) -> F {
         let k = *x;
