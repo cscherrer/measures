@@ -4,7 +4,7 @@
 //! distribution that expresses the probability of a given number of events occurring
 //! in a fixed interval of time or space.
 
-use crate::core::{False, LogDensity, Measure, MeasureMarker, True};
+use crate::core::{False, HasLogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::ExponentialFamily;
 use crate::measures::primitive::counting::CountingMeasure;
 use crate::measures::derived::weighted::WeightedMeasure;
@@ -84,14 +84,11 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
     }
 }
 
-// Implement From for LogDensity to f64
-impl<F: Float + FloatConst> From<LogDensity<u64, Poisson<F>>> for f64 {
-    fn from(val: LogDensity<u64, Poisson<F>>) -> Self {
-        // For now, we'll use a dummy point since the old API had the point in the LogDensity
-        // This needs to be redesigned to work with the new API
-        let k = 0u64; // Placeholder - this should come from somewhere else
-        let lambda = val.measure.lambda;
-
+/// Implement HasLogDensity for automatic shared-root computation  
+impl<F: Float + FloatConst> HasLogDensity<u64, F> for Poisson<F> {
+    fn log_density_wrt_root(&self, x: &u64) -> F {
+        let k = *x;
+        let lambda = self.lambda;
         let k_f = F::from(k).unwrap();
 
         // PMF: P(X = k) = (e^-λ * λ^k) / k!
@@ -101,7 +98,6 @@ impl<F: Float + FloatConst> From<LogDensity<u64, Poisson<F>>> for f64 {
             log_factorial = log_factorial + F::from(i).unwrap().ln();
         }
 
-        let result = -lambda + k_f * lambda.ln() - log_factorial;
-        result.to_f64().unwrap()
+        -lambda + k_f * lambda.ln() - log_factorial
     }
 }

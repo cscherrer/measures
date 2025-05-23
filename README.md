@@ -29,7 +29,8 @@ let ld_wrt = normal.log_density().wrt(other_normal);
 let relative_log_density: f64 = ld_wrt.at(&x);
 
 // Same log-density, different numeric types (autodiff ready!)
-let f32_result: f32 = ld.at(&(x as f32));
+let f32_x = x as f32;
+let f32_result: f32 = normal.log_density().at(&f32_x);
 // let dual_result: Dual64 = ld.at(&dual_x);  // With autodiff library
 ```
 
@@ -72,11 +73,12 @@ let ld = normal1.log_density().wrt(normal2);
 The same log-density works with different numeric types:
 
 ```rust
-let ld = normal.log_density();
+let normal = Normal::new(0.0, 1.0);
+let x = 0.5;
 
-let f64_result: f64 = ld.at(&x);           // Regular computation
-let f32_result: f32 = ld.at(&(x as f32));  // Lower precision
-// let dual_result: Dual64 = ld.at(&dual_x); // Forward-mode autodiff
+let f64_result: f64 = normal.log_density().at(&x);           // Regular computation
+let f32_result: f32 = normal.log_density().at(&(x as f32));  // Lower precision  
+// let dual_result: Dual64 = normal.log_density().at(&dual_x); // Forward-mode autodiff
 ```
 
 ### Type-Level Safety

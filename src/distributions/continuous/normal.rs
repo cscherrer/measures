@@ -18,7 +18,7 @@
 //! let log_density: f64 = normal.log_density(&0.0).into();
 //! ```
 
-use crate::core::{False, LogDensity, Measure, MeasureMarker, True};
+use crate::core::{False, HasLogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
     ExponentialFamily, ExponentialFamilyMeasure, compute_normal_log_density,
 };
@@ -90,16 +90,10 @@ impl<T: Float> Measure<T> for Normal<T> {
     }
 }
 
-// Implement From for LogDensity to f64 - use a single implementation
-// that works with any base measure
-impl<T: Float + FloatConst, M: Measure<T>> From<LogDensity<T, Normal<T>, M>> for f64 {
-    fn from(val: LogDensity<T, Normal<T>, M>) -> Self {
-        let normal = &val.measure;
-        // For now, we'll use a dummy point since the old API had the point in the LogDensity
-        // This needs to be redesigned to work with the new API
-        let x = T::zero(); // Placeholder - this should come from somewhere else
-
-        normal.compute_log_density(&x).to_f64().unwrap()
+/// Implement HasLogDensity for automatic shared-root computation
+impl<T: Float + FloatConst> HasLogDensity<T, T> for Normal<T> {
+    fn log_density_wrt_root(&self, x: &T) -> T {
+        self.compute_log_density(x)
     }
 }
 
