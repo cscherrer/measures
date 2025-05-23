@@ -16,7 +16,7 @@
 //! - A(η) is the log-partition function
 //! - h(x) is the carrier measure
 
-use crate::core::{Measure, True, HasLogDensity};
+use crate::core::{HasLogDensity, Measure, True};
 use crate::traits::DotProduct;
 use num_traits::Float;
 
@@ -53,15 +53,15 @@ pub trait ExponentialFamily<X, F: Float> {
 
     /// Exponential family log-density computation with automatic chain rule.
     ///
-    /// Computes: η·T(x) - A(η) + log(d(base_measure)/d(root_measure))(x)
+    /// Computes: η·T(x) - A(η) + `log(d(base_measure)/d(root_measure))(x)`
     ///
-    /// The chain rule term is automatically added when the base measure differs 
-    /// from the root measure. This eliminates the need for manual overrides in 
+    /// The chain rule term is automatically added when the base measure differs
+    /// from the root measure. This eliminates the need for manual overrides in
     /// distributions like Poisson that have non-trivial base measures.
     ///
     /// Default implementation:
-    /// - Pure exponential family: η·T(x) - A(η) 
-    /// - Chain rule: + base_measure.log_density_wrt_root(x)
+    /// - Pure exponential family: η·T(x) - A(η)
+    /// - Chain rule: + `base_measure.log_density_wrt_root(x)`
     /// - Combined: Complete log-density with respect to root measure
     fn exp_fam_log_density(&self, x: &X) -> F
     where
@@ -74,11 +74,11 @@ pub trait ExponentialFamily<X, F: Float> {
 
         // Standard exponential family part: η·T(x) - A(η)
         let exp_fam_part = natural_params.dot(&sufficient_stats) - log_partition;
-        
+
         // Chain rule part: log-density of base measure with respect to root measure
         let base_measure = self.base_measure();
         let chain_rule_part = base_measure.log_density_wrt_root(x);
-        
+
         // Complete log-density: exponential family + chain rule
         exp_fam_part + chain_rule_part
     }

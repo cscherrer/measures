@@ -1,4 +1,4 @@
-use crate::core::{False, Measure, MeasureMarker, HasLogDensity};
+use crate::core::{False, HasLogDensity, Measure, MeasureMarker};
 use num_traits::Float;
 use std::marker::PhantomData;
 
@@ -65,7 +65,7 @@ where
     }
 }
 
-/// Implement HasLogDensity for WeightedMeasure to support automatic chain rule
+/// Implement `HasLogDensity` for `WeightedMeasure` to support automatic chain rule
 impl<M, F, X> HasLogDensity<X, F> for WeightedMeasure<M, F, X>
 where
     M: Measure<X> + HasLogDensity<X, F> + Clone,
@@ -74,6 +74,6 @@ where
 {
     fn log_density_wrt_root(&self, x: &X) -> F {
         // Chain rule: log(d(weighted_measure)/d(root)) = log_weight + log(d(base)/d(root))
-        self.log_weight.clone() + self.base_measure.log_density_wrt_root(x)
+        self.log_weight + self.base_measure.log_density_wrt_root(x)
     }
 }

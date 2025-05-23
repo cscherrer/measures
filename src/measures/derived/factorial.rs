@@ -49,12 +49,12 @@ impl<F: Float> Measure<u64> for FactorialMeasure<F> {
     }
 }
 
-/// Implement HasLogDensity for FactorialMeasure
+/// Implement `HasLogDensity` for `FactorialMeasure`
 /// This provides the factorial term: log(dν/dμ) = -log(k!)
 impl<F: Float> HasLogDensity<u64, F> for FactorialMeasure<F> {
     fn log_density_wrt_root(&self, x: &u64) -> F {
         let k = *x;
-        
+
         // Compute -log(k!) = -sum(log(i) for i in 1..=k)
         if k == 0 {
             F::zero() // log(0!) = log(1) = 0
@@ -66,4 +66,4 @@ impl<F: Float> HasLogDensity<u64, F> for FactorialMeasure<F> {
             neg_log_factorial
         }
     }
-} 
+}

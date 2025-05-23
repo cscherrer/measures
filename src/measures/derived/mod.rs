@@ -4,11 +4,11 @@
 //! additional functionality like point masses, weighted measures, etc.
 
 pub mod dirac;
-pub mod weighted;
-pub mod integral;
 pub mod factorial;
+pub mod integral;
+pub mod weighted;
 
 pub use dirac::Dirac;
-pub use weighted::WeightedMeasure;
-pub use integral::IntegralMeasure;
 pub use factorial::FactorialMeasure;
+pub use integral::IntegralMeasure;
+pub use weighted::WeightedMeasure;

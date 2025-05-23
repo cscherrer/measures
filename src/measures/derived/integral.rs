@@ -72,7 +72,7 @@ where
     }
 }
 
-/// Automatic HasLogDensity implementation: log-density wrt base measure is just the function
+/// Automatic `HasLogDensity` implementation: log-density wrt base measure is just the function
 impl<M, LogDensityFn, X, F> HasLogDensity<X, F> for IntegralMeasure<M, LogDensityFn, X>
 where
     M: Measure<X> + Clone + HasLogDensity<X, F>,
@@ -84,4 +84,4 @@ where
         // Chain rule: log(dIntegral/dRoot) = log(dIntegral/dBase) + log(dBase/dRoot)
         (self.log_density_fn)(x) + self.base_measure.log_density_wrt_root(x)
     }
-} 
+}
