@@ -132,12 +132,15 @@ fn stirling_log_factorial_precise<F: Float>(k: u64) -> F {
     // Ramanujan's asymptotic expansion for higher accuracy:
     // log(k!) ≈ base + 1/(12k) - 1/(360k³) + 1/(1260k⁵) - 1/(1680k⁷) + ...
     let k_inv = F::from(1.0).unwrap() / k_f;
-    let k_inv_sq = k_inv * k_inv;
+    let k_inv2 = k_inv * k_inv;
+    let k_inv3 = k_inv2 * k_inv;
+    let k_inv5 = k_inv3 * k_inv2;
+    let k_inv7 = k_inv5 * k_inv2;
 
-    let correction = k_inv / F::from(12.0).unwrap()                      // +1/(12k)
-                   - k_inv * k_inv_sq / F::from(360.0).unwrap()          // -1/(360k³)
-                   + k_inv * k_inv_sq * k_inv_sq / F::from(1260.0).unwrap() // +1/(1260k⁵)
-                   - k_inv * k_inv_sq * k_inv_sq * k_inv_sq / F::from(1680.0).unwrap(); // -1/(1680k⁷)
+    let correction = k_inv * F::from(1.0 / 12.0).unwrap()                      // +1/(12k)
+                   - k_inv3 * F::from(1.0 / 360.0).unwrap()          // -1/(360k³)
+                   + k_inv5 * F::from(1.0 / 1260.0).unwrap() // +1/(1260k⁵)
+                   - k_inv7 * F::from(1.0 / 1680.0).unwrap(); // -1/(1680k⁷)
 
     base + correction
 }
