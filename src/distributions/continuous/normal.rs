@@ -18,9 +18,7 @@
 
 use crate::core::types::{False, True};
 use crate::core::{HasLogDensity, Measure, MeasureMarker};
-use crate::exponential_family::{
-    ExponentialFamily, ExponentialFamilyMeasure, compute_normal_log_density,
-};
+use crate::exponential_family::{ExponentialFamily, ExponentialFamilyMeasure};
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
@@ -71,9 +69,14 @@ impl<T: Float> Normal<T> {
 }
 
 impl<T: Float + FloatConst> Normal<T> {
-    /// Compute the log density directly
+    /// Compute the log density using exponential family formula: η·T(x) - A(η)
     pub fn compute_log_density(&self, x: &T) -> T {
-        compute_normal_log_density(self.mean, self.std_dev, *x)
+        let natural_params = self.to_natural();
+        let sufficient_stats = self.sufficient_statistic(x);
+        let log_partition = self.log_partition();
+        
+        // η·T(x) - A(η)
+        natural_params[0] * sufficient_stats[0] + natural_params[1] * sufficient_stats[1] - log_partition
     }
 }
 
