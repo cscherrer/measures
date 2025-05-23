@@ -59,6 +59,17 @@ pub trait ExponentialFamily<X: Clone, F: Float>: Clone {
         self.natural_and_log_partition().1
     }
 
+    /// Compute both natural parameters and log partition function efficiently.
+    ///
+    /// Many exponential families share expensive computations between η(θ) and A(η).
+    /// This method allows computing both together to avoid duplication.
+    ///
+    /// Default implementation calls the separate methods, but distributions should
+    /// override this for better performance when there are shared computations.
+    fn natural_and_log_partition(&self) -> (Self::NaturalParam, F) {
+        (self.to_natural(), self.log_partition())
+    }
+
     /// Compute the sufficient statistic T(x)
     fn sufficient_statistic(&self, x: &X) -> Self::SufficientStat;
 
@@ -132,17 +143,6 @@ pub trait ExponentialFamily<X: Clone, F: Float>: Clone {
         // Use cached computation if possible for better performance
         let cache = self.precompute_cache();
         self.cached_log_density(&cache, x)
-    }
-
-    /// Compute both natural parameters and log partition function efficiently.
-    ///
-    /// Many exponential families share expensive computations between η(θ) and A(η).
-    /// This method allows computing both together to avoid duplication.
-    ///
-    /// Default implementation calls the separate methods, but distributions should
-    /// override this for better performance when there are shared computations.
-    fn natural_and_log_partition(&self) -> (Self::NaturalParam, F) {
-        (self.to_natural(), self.log_partition())
     }
 }
 

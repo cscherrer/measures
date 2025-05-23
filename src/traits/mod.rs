@@ -4,6 +4,5 @@
 //! or computational approaches, rather than fundamental measure theory concepts.
 
 pub mod dot_product;
-pub mod exponential_family;
 
 pub use dot_product::DotProduct;

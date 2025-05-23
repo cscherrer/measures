@@ -114,23 +114,6 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
         Self::new(mu, sigma2.sqrt())
     }
 
-    fn to_natural(&self) -> Self::NaturalParam {
-        let sigma2 = self.variance();
-        let inv_sigma2 = Self::inv_variance_from(sigma2);
-        [
-            self.mean * inv_sigma2,              // μ/σ²
-            -inv_sigma2 / T::from(2.0).unwrap(), // -1/(2σ²)
-        ]
-    }
-
-    fn log_partition(&self) -> T {
-        // Compute log partition: A(η) = μ²/(2σ²) + ½log(2πσ²)
-        let sigma2 = self.variance();
-        let mu2 = self.mean * self.mean;
-        (T::from(2.0).unwrap() * T::PI() * sigma2).ln() / T::from(2.0).unwrap()
-            + mu2 / (T::from(2.0).unwrap() * sigma2)
-    }
-
     fn sufficient_statistic(&self, x: &T) -> Self::SufficientStat {
         [*x, *x * *x]
     }
