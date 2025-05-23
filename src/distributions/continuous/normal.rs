@@ -18,10 +18,10 @@
 
 use crate::core::types::{False, True};
 use crate::core::{Measure, MeasureMarker};
+use crate::exponential_family::traits::PrecomputeCache;
 use crate::exponential_family::{
     ExponentialFamily, ExponentialFamilyMeasure, GenericExpFamCache, GenericExpFamImpl,
 };
-use crate::exponential_family::traits::PrecomputeCache;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
@@ -135,6 +135,6 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for Normal<T> {
 
 impl<T: Float + FloatConst> PrecomputeCache<T, T> for Normal<T> {
     fn precompute_cache(&self) -> Self::Cache {
-        self.precompute_generic_cache()
+        self.precompute_cache_default()
     }
 }

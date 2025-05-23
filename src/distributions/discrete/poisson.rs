@@ -95,6 +95,6 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
 
 impl<F: Float + FloatConst> PrecomputeCache<u64, F> for Poisson<F> {
     fn precompute_cache(&self) -> Self::Cache {
-        self.precompute_generic_cache()
+        self.precompute_cache_default()
     }
 }

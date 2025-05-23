@@ -1,8 +1,8 @@
 use super::measure::Measure;
 use crate::core::types::True;
 use crate::exponential_family::ExponentialFamily;
-use num_traits::Float;
 use crate::exponential_family::traits::PrecomputeCache;
+use num_traits::Float;
 
 /// A trait representing the log-density between two measures. Goals for the
 /// design:

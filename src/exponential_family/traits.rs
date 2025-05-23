@@ -173,15 +173,6 @@ pub trait GenericExpFamImpl<X: Clone, F: Float>: ExponentialFamily<X, F> {
     }
 }
 
-/// Blanket implementation: any exponential family can use the generic implementations
-impl<T, X, F> GenericExpFamImpl<X, F> for T
-where
-    T: ExponentialFamily<X, F>,
-    X: Clone,
-    F: Float,
-{
-}
-
 /// A marker trait for measures that are exponential families
 ///
 /// This trait serves as a marker to identify exponential family distributions
@@ -210,6 +201,18 @@ pub trait PrecomputeCache<X: Clone, F: Float>: ExponentialFamily<X, F> {
     /// eliminating redundant computation for batch operations.
     fn precompute_cache(&self) -> Self::Cache;
 
+    /// Default implementation for distributions using `GenericExpFamCache`.
+    ///
+    /// This provided method can be called by distributions that want to use
+    /// the generic cache implementation. Distributions using custom caches
+    /// should implement `precompute_cache` directly.
+    fn precompute_cache_default(&self) -> crate::exponential_family::GenericExpFamCache<Self, X, F>
+    where
+        Self: GenericExpFamImpl<X, F>,
+    {
+        self.precompute_generic_cache()
+    }
+
     /// Compute log-density at multiple points efficiently using cached values.
     ///
     /// This provides a default implementation that precomputes cache once
@@ -233,4 +236,13 @@ pub trait PrecomputeCache<X: Clone, F: Float>: ExponentialFamily<X, F> {
         let distribution = (*self).clone();
         move |x: &X| distribution.cached_log_density(&cache, x)
     }
+}
+
+// Blanket implementation: any exponential family can use the generic implementations
+impl<T, X, F> GenericExpFamImpl<X, F> for T
+where
+    T: ExponentialFamily<X, F>,
+    X: Clone,
+    F: Float,
+{
 }
