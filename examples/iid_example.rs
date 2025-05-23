@@ -15,7 +15,7 @@ fn main() {
     );
 
     // Test with different sample sizes
-    let test_cases = vec![
+    let test_cases = [
         vec![0.0],
         vec![0.0, 1.0],
         vec![0.0, 1.0, -1.0],

@@ -116,7 +116,7 @@ where
     ///
     /// NOTE: This is inefficient and kept only for comparison.
     /// The goal is to implement the efficient exponential family approach.
-    pub fn compute_iid_log_density<X, F>(&self, xs: &Vec<X>) -> F
+    pub fn compute_iid_log_density<X, F>(&self, xs: &[X]) -> F
     where
         D: HasLogDensity<X, F>,
         X: Clone,
@@ -130,7 +130,7 @@ where
     /// Compute efficient IID log-density using exponential family structure.
     ///
     /// This demonstrates the proper approach: η·∑ᵢT(xᵢ) - n·A(η)
-    pub fn efficient_iid_log_density<X, F>(&self, xs: &Vec<X>) -> F
+    pub fn efficient_iid_log_density<X, F>(&self, xs: &[X]) -> F
     where
         D: ExponentialFamily<X, F>,
         F: Float,

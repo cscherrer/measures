@@ -12,7 +12,7 @@ fn main() {
     let samples = vec![1.0, 2.0, 1.5, 2.5, 1.2];
 
     println!("Normal distribution: μ=1.5, σ=2.0");
-    println!("Samples: {:?}\n", samples);
+    println!("Samples: {samples:?}\n");
 
     // Demonstrate the optimization
     println!("=== Inefficient Approach (separate calls) ===");
@@ -42,8 +42,8 @@ fn main() {
 
     // Verify they're identical
     let params_match = (natural_params_sep[0] - natural_params_combined[0] as f64).abs() < 1e-10
-        && (natural_params_sep[1] - natural_params_combined[1] as f64).abs() < 1e-10;
-    let partition_match = (log_partition_sep - log_partition_combined as f64).abs() < 1e-10;
+        && (natural_params_sep[1] - natural_params_combined[1]).abs() < 1e-10;
+    let partition_match = (log_partition_sep - log_partition_combined).abs() < 1e-10;
 
     println!("\n=== Verification ===");
     println!("Natural parameters match: {}", params_match);
