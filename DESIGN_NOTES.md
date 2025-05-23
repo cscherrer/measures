@@ -1,5 +1,44 @@
 # Log-Density Design Architecture
 
+## Repository Organization
+
+The repository has been reorganized for maximum clarity and intuitive navigation:
+
+```
+src/
+├── lib.rs                           # 🎯 Public API with comprehensive examples
+├── core/                            # 🏗️  Fundamental abstractions
+│   ├── density.rs                   # LogDensity traits and implementations
+│   ├── measure.rs                   # Measure trait and PrimitiveMeasure
+│   ├── types.rs                     # Type-level programming helpers
+│   └── mod.rs                       # Clean re-exports
+├── measures/                        # 📏 Concrete measure implementations
+│   ├── primitive/                   # Basic building blocks
+│   │   ├── lebesgue.rs             # Lebesgue measure (continuous)
+│   │   └── counting.rs             # Counting measure (discrete)
+│   └── derived/                     # Constructed measures
+│       ├── dirac.rs                # Point masses
+│       └── weighted.rs             # Weighted measures
+├── distributions/                   # 📊 Probability distributions
+│   ├── continuous/                  # Normal, etc.
+│   ├── discrete/                    # Poisson, etc.
+│   └── multivariate/               # Multivariate Normal, etc.
+├── exponential_family/              # 📈 Exponential family specializations
+└── traits/                          # 🔧 Domain-specific computational traits
+    ├── dot_product.rs              # Vector operations
+    └── exponential_family.rs       # Exponential family helpers
+```
+
+### Key Organizational Principles
+
+1. **`core/`** - Mathematical foundations that everything builds on
+2. **`measures/primitive/`** - Fundamental measures (Lebesgue, Counting)  
+3. **`measures/derived/`** - Measures built from primitives (Dirac, Weighted)
+4. **`distributions/`** - User-facing probability distributions
+5. **`traits/`** - Domain-specific computational traits (not core abstractions)
+
+This organization eliminates the previous duplicate definitions and creates a clear hierarchy from mathematical foundations to user-facing APIs.
+
 ## Design Philosophy: Why Split the Trait?
 
 You asked whether all functionality should be in `LogDensityTrait` or if there are advantages to splitting up `wrt` and other functions. After implementing both approaches and correcting initial confusion, the **split design is definitively better** for several key reasons:

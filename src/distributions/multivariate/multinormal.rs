@@ -5,7 +5,7 @@
 
 use crate::core::{False, Measure, MeasureMarker, True};
 use crate::exponential_family::ExponentialFamily;
-use crate::measures::lebesgue::LebesgueMeasure;
+use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use crate::traits::DotProduct;
 use nalgebra::{ComplexField, DMatrix, DVector, RealField, Scalar};
 use num_traits::{Float, FloatConst};

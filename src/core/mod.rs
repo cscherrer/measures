@@ -8,8 +8,11 @@ pub mod measure;
 pub mod types;
 
 // Re-export key types for convenient use
-pub use density::LogDensity;
+pub use density::{EvaluateAt, HasLogDensity, LogDensity, LogDensityTrait};
 pub use measure::{Measure, MeasureMarker, PrimitiveMeasure};
 pub use types::{
     Default, ExponentialFamily, False, LogDensityMethod, Specialized, True, TypeLevelBool,
 };
+
+// Re-export DotProduct as it's a fundamental computational trait
+pub use crate::traits::DotProduct;

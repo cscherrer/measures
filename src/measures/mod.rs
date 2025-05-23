@@ -1,19 +1,15 @@
 //! Fundamental measures module.
 //!
-//! This module contains the basic measures used as building blocks
-//! for more complex probability distributions:
-//! - Lebesgue measure for continuous spaces
-//! - Counting measure for discrete spaces
-//! - Dirac measure for point masses
-//! - Weighted measure for measures with weight functions
+//! This module contains measures organized by their mathematical nature:
+//! - **Primitive measures**: Basic building blocks (Lebesgue, Counting)
+//! - **Derived measures**: Constructed from primitives (Dirac, Weighted)
+//!
+//! Primitive measures serve as the foundation for probability distributions,
+//! while derived measures provide specialized functionality.
 
-pub mod counting;
-pub mod dirac;
-pub mod lebesgue;
-pub mod weighted;
+pub mod derived;
+pub mod primitive;
 
-// Re-export for convenience
-pub use counting::CountingMeasure;
-pub use dirac::Dirac;
-pub use lebesgue::LebesgueMeasure;
-pub use weighted::WeightedMeasure;
+// Re-export all measures for convenience
+pub use derived::{Dirac, WeightedMeasure};
+pub use primitive::{CountingMeasure, LebesgueMeasure};

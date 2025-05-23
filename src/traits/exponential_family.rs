@@ -3,8 +3,8 @@
 //! This module provides the core trait for exponential family distributions
 //! and implementations for various distributions.
 
+use crate::core::{LogDensity, Measure, True};
 use crate::traits::dot_product::DotProduct;
-use crate::traits::{LogDensity, Measure, True};
 use num_traits::Float;
 use std::marker::PhantomData;
 
@@ -35,25 +35,25 @@ pub trait ExponentialFamily<T: Float> {
 }
 
 // We'll use a specialization helper to avoid conflicts with dirac implementation
-pub struct ExponentialFamilyDensity<'a, T: Float, M>(pub LogDensity<'a, T, M>, PhantomData<M>)
+pub struct ExponentialFamilyDensity<T: Float, M>(pub LogDensity<T, M>, PhantomData<M>)
 where
     M: ExponentialFamily<T> + Measure<T, IsExponentialFamily = True> + Clone,
     M::NaturalParam: DotProduct<Output = T>;
 
 // Helper function to compute exponential family log density
 #[must_use]
-pub fn compute_exp_fam_log_density<T: Float, M>(log_density: LogDensity<'_, T, M>) -> T
+pub fn compute_exp_fam_log_density<T: Float, M>(log_density: LogDensity<T, M>) -> T
 where
     M: ExponentialFamily<T> + Measure<T, IsExponentialFamily = True> + Clone,
     M::NaturalParam: DotProduct<Output = T>,
 {
-    // Get the measure and point
-    let measure = log_density.measure;
-    let x = log_density.x;
+    // Get the measure
+    let measure = &log_density.measure;
 
     // Compute natural parameters and sufficient statistics
     let _eta = measure.to_natural();
-    let _t = measure.sufficient_statistic(x);
+    // Note: We can't get sufficient statistics without a point x
+    // This function signature needs to be updated to include x: &T
 
     // Compute log density using exponential family formula
     // log f(x) = η·T(x) - A(η) + log h(x)

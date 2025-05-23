@@ -6,8 +6,8 @@
 
 use crate::core::{False, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::ExponentialFamily;
-use crate::measures::counting::CountingMeasure;
-use crate::measures::weighted::WeightedMeasure;
+use crate::measures::primitive::counting::CountingMeasure;
+use crate::measures::derived::weighted::WeightedMeasure;
 use num_traits::{Float, FloatConst};
 
 /// A Poisson distribution.

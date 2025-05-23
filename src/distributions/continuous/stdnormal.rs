@@ -6,7 +6,7 @@
 
 use crate::core::{False, Measure, MeasureMarker, True};
 use crate::exponential_family::ExponentialFamily;
-use crate::measures::lebesgue::LebesgueMeasure;
+use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
 /// A standard normal (Gaussian) distribution with mean 0 and standard deviation 1.

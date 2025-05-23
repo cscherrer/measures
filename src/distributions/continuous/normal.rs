@@ -22,7 +22,7 @@ use crate::core::{False, LogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::{
     ExponentialFamily, ExponentialFamilyMeasure, compute_normal_log_density,
 };
-use crate::measures::lebesgue::LebesgueMeasure;
+use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
 /// A normal (Gaussian) distribution.
