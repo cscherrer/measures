@@ -26,15 +26,15 @@ use num_traits::Float;
 /// - Different spaces for the random variable (X)
 /// - Different spaces for the sufficient statistics
 /// - A common field (F) for numerical computations
-pub trait ExponentialFamily<X, F: Float> {
+pub trait ExponentialFamily<X: Clone, F: Float>: Clone {
     /// The natural parameter type
-    type NaturalParam;
+    type NaturalParam: Clone;
 
     /// The sufficient statistic type
     type SufficientStat;
 
     /// The base measure type
-    type BaseMeasure: Measure<X>;
+    type BaseMeasure: Measure<X> + Clone;
 
     /// Cached computation type for optimized density evaluation.
     ///
@@ -90,10 +90,7 @@ pub trait ExponentialFamily<X, F: Float> {
     /// This provides a default implementation that precomputes cache once
     /// and applies it to all points, but distributions can override this
     /// for further optimizations (e.g., SIMD operations).
-    fn cached_log_density_batch(&self, points: &[X]) -> Vec<F>
-    where
-        X: Clone,
-    {
+    fn cached_log_density_batch(&self, points: &[X]) -> Vec<F> {
         let cache = self.precompute_cache();
         points
             .iter()
@@ -106,10 +103,7 @@ pub trait ExponentialFamily<X, F: Float> {
     /// Returns a closure that captures precomputed cache and can be
     /// applied to individual points efficiently. Useful for mapping over
     /// iterators or in functional programming contexts.
-    fn cached_log_density_fn(&self) -> impl Fn(&X) -> F + Clone
-    where
-        Self: Clone,
-    {
+    fn cached_log_density_fn(&self) -> impl Fn(&X) -> F + Clone {
         let cache = self.precompute_cache();
         let distribution = (*self).clone();
         move |x: &X| distribution.cached_log_density(&cache, x)
@@ -174,11 +168,61 @@ pub trait ExponentialFamily<X, F: Float> {
     }
 }
 
+/// Helper trait for distributions that use `GenericExpFamCache`.
+///
+/// This trait provides default implementations for `precompute_cache` and `cached_log_density`
+/// that work with `GenericExpFamCache`. Distributions using the generic cache can simply call
+/// these methods in their implementations.
+pub trait GenericExpFamImpl<X: Clone, F: Float>: ExponentialFamily<X, F> {
+    /// Create a `GenericExpFamCache` from this distribution.
+    ///
+    /// Use this in your `precompute_cache` implementation:
+    /// ```ignore
+    /// fn precompute_cache(&self) -> Self::Cache {
+    ///     self.precompute_generic_cache()
+    /// }
+    /// ```
+    fn precompute_generic_cache(
+        &self,
+    ) -> crate::exponential_family::GenericExpFamCache<Self, X, F> {
+        crate::exponential_family::GenericExpFamCache::new(self)
+    }
+
+    /// Compute log-density using a `GenericExpFamCache`.
+    ///
+    /// Use this in your `cached_log_density` implementation:
+    /// ```ignore  
+    /// fn cached_log_density(&self, cache: &Self::Cache, x: &X) -> F {
+    ///     self.cached_log_density_generic(cache, x)
+    /// }
+    /// ```
+    fn cached_log_density_generic(
+        &self,
+        cache: &crate::exponential_family::GenericExpFamCache<Self, X, F>,
+        x: &X,
+    ) -> F
+    where
+        Self::NaturalParam: DotProduct<Self::SufficientStat, Output = F>,
+        Self::BaseMeasure: HasLogDensity<X, F>,
+    {
+        cache.log_density(x)
+    }
+}
+
+// Blanket implementation: any exponential family can use the generic implementations
+impl<T, X, F> GenericExpFamImpl<X, F> for T
+where
+    T: ExponentialFamily<X, F>,
+    X: Clone,
+    F: Float,
+{
+}
+
 /// A marker trait for measures that are exponential families
 ///
 /// This trait serves as a marker to identify exponential family distributions
 /// and enables specialized implementations for density calculations.
-pub trait ExponentialFamilyMeasure<X, F: Float>:
+pub trait ExponentialFamilyMeasure<X: Clone, F: Float>:
     Measure<X, IsExponentialFamily = True> + ExponentialFamily<X, F>
 {
 }

@@ -14,7 +14,7 @@ use num_traits::Float;
 /// This trait abstracts over the field access pattern common to all
 /// exponential family caches, enabling a single blanket implementation
 /// of `ExponentialFamilyCache` for all distributions.
-pub trait CacheFields<X, F: Float> {
+pub trait CacheFields<X: Clone, F: Float> {
     /// The distribution type this cache is for
     type Distribution: ExponentialFamily<X, F>;
 
@@ -57,7 +57,7 @@ pub trait CacheFields<X, F: Float> {
 /// let density2 = cache.log_density(&1.0);
 /// let log_partition = cache.log_partition(); // cached value
 /// ```
-pub trait ExponentialFamilyCache<X, F: Float>: Clone {
+pub trait ExponentialFamilyCache<X: Clone, F: Float>: Clone {
     /// The distribution type this cache is for
     type Distribution: ExponentialFamily<X, F>;
 

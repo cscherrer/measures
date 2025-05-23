@@ -1,5 +1,6 @@
 use super::measure::Measure;
 use crate::core::types::True;
+use crate::exponential_family::ExponentialFamily;
 use num_traits::Float;
 
 /// A trait representing the log-density between two measures. Goals for the
@@ -242,11 +243,9 @@ pub trait HasLogDensity<T, F> {
 ///
 /// This provides optimized cached computation using the exponential family formula:
 /// log p(x|θ) = η·T(x) - A(η) + log h(x)
-impl<T, F, M> HasLogDensity<T, F> for M
+impl<T: Clone, F, M> HasLogDensity<T, F> for M
 where
-    M: Measure<T, IsExponentialFamily = True>
-        + crate::exponential_family::ExponentialFamily<T, F>
-        + Clone,
+    M: Measure<T, IsExponentialFamily = True> + ExponentialFamily<T, F> + Clone,
     F: Float,
     M::NaturalParam: crate::traits::DotProduct<M::SufficientStat, Output = F> + Clone,
     M::BaseMeasure: HasLogDensity<T, F>,

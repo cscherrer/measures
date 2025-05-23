@@ -5,7 +5,7 @@
 //! in a fixed interval of time or space.
 
 use crate::core::{False, Measure, MeasureMarker, True};
-use crate::exponential_family::{ExponentialFamily, GenericExpFamCache};
+use crate::exponential_family::{ExponentialFamily, GenericExpFamCache, GenericExpFamImpl};
 use crate::measures::derived::factorial::FactorialMeasure;
 use crate::measures::primitive::counting::CountingMeasure;
 use num_traits::{Float, FloatConst};
@@ -88,10 +88,10 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
     }
 
     fn precompute_cache(&self) -> Self::Cache {
-        GenericExpFamCache::new(self)
+        self.precompute_generic_cache()
     }
 
     fn cached_log_density(&self, cache: &Self::Cache, x: &u64) -> F {
-        cache.log_density(x)
+        self.cached_log_density_generic(cache, x)
     }
 }

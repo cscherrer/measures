@@ -24,4 +24,4 @@ pub mod traits;
 pub use cache_trait::ExponentialFamilyCache;
 pub use generic_cache::GenericExpFamCache;
 pub use implementations::{ExpFam, ExponentialFamilyDensity};
-pub use traits::{ExponentialFamily, ExponentialFamilyMeasure};
+pub use traits::{ExponentialFamily, ExponentialFamilyMeasure, GenericExpFamImpl};
