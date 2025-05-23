@@ -68,18 +68,6 @@ impl<T: Float> Normal<T> {
     }
 }
 
-impl<T: Float + FloatConst> Normal<T> {
-    /// Compute the log density using exponential family formula: η·T(x) - A(η)
-    pub fn compute_log_density(&self, x: &T) -> T {
-        let natural_params = self.to_natural();
-        let sufficient_stats = self.sufficient_statistic(x);
-        let log_partition = self.log_partition();
-        
-        // η·T(x) - A(η)
-        natural_params[0] * sufficient_stats[0] + natural_params[1] * sufficient_stats[1] - log_partition
-    }
-}
-
 impl<T: Float> Measure<T> for Normal<T> {
     type RootMeasure = LebesgueMeasure<T>;
 
@@ -95,7 +83,7 @@ impl<T: Float> Measure<T> for Normal<T> {
 /// Implement `HasLogDensity` for automatic shared-root computation
 impl<T: Float + FloatConst> HasLogDensity<T, T> for Normal<T> {
     fn log_density_wrt_root(&self, x: &T) -> T {
-        self.compute_log_density(x)
+        self.exp_fam_log_density(x)
     }
 }
 

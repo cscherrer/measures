@@ -5,10 +5,10 @@
 use num_traits::Float;
 
 /// Extension trait for dot product operations
-pub trait DotProduct {
+pub trait DotProduct<Rhs = Self> {
     type Output;
 
-    fn dot(&self, other: &Self) -> Self::Output;
+    fn dot(&self, other: &Rhs) -> Self::Output;
 }
 
 impl<T: Float, const N: usize> DotProduct for [T; N] {

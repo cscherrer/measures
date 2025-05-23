@@ -91,8 +91,8 @@ fn test_poisson_sufficient_statistics() {
 
     let sufficient_stat = poisson.sufficient_statistic(&k);
 
-    // For Poisson distribution, sufficient statistic is just k
-    assert_eq!(sufficient_stat, k);
+    // For Poisson distribution, sufficient statistic is [k] as [F; 1]
+    assert_eq!(sufficient_stat[0], k as f64);
 }
 
 #[test]
@@ -116,14 +116,14 @@ fn test_poisson_exponential_family_log_density() {
     let log_partition = poisson.log_partition();
 
     // η·T(x) - A(η) - log(k!)
-    let k_f64 = k as f64;
     let mut log_factorial = 0.0_f64;
     for i in 1..=k {
         log_factorial += (i as f64).ln();
     }
 
-    let exp_fam_log_density =
-        natural_param * (sufficient_stat as f64) - log_partition - log_factorial;
+    // Now using DotProduct for [F; 1] arrays
+    use measures::traits::DotProduct;
+    let exp_fam_log_density = natural_param.dot(&sufficient_stat) - log_partition - log_factorial;
 
     // Compare with direct computation
     let direct_log_density = poisson.log_density_wrt_root(&k);

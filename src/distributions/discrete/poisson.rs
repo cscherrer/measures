@@ -8,6 +8,7 @@ use crate::core::{False, HasLogDensity, Measure, MeasureMarker, True};
 use crate::exponential_family::ExponentialFamily;
 use crate::measures::derived::weighted::WeightedMeasure;
 use crate::measures::primitive::counting::CountingMeasure;
+use crate::traits::DotProduct;
 use num_traits::{Float, FloatConst};
 
 /// A Poisson distribution.
@@ -54,18 +55,18 @@ impl<F: Float> Measure<u64> for Poisson<F> {
     }
 }
 
-// Natural parameter for Poisson is log(lambda), sufficient statistic is k
+// Natural parameter for Poisson is log(lambda), sufficient statistic is k as F
 impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
-    type NaturalParam = F; // η = log(λ)
-    type SufficientStat = u64; // T(x) = x
+    type NaturalParam = [F; 1]; // η = [log(λ)]
+    type SufficientStat = [F; 1]; // T(x) = [x] (as Float)
     type BaseMeasure = WeightedMeasure<CountingMeasure<u64>, F>;
 
     fn from_natural(param: Self::NaturalParam) -> Self {
-        Self::new(param.exp())
+        Self::new(param[0].exp())
     }
 
     fn to_natural(&self) -> Self::NaturalParam {
-        self.lambda.ln()
+        [self.lambda.ln()]
     }
 
     fn log_partition(&self) -> F {
@@ -73,7 +74,7 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
     }
 
     fn sufficient_statistic(&self, x: &u64) -> Self::SufficientStat {
-        *x
+        [F::from(*x).unwrap()]
     }
 
     fn base_measure(&self) -> Self::BaseMeasure {
@@ -82,22 +83,29 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
         // The factorial term will be handled in the log-density calculation
         WeightedMeasure::new(CountingMeasure::<u64>::new(), F::zero())
     }
-}
 
-/// Implement `HasLogDensity` for automatic shared-root computation  
-impl<F: Float + FloatConst> HasLogDensity<u64, F> for Poisson<F> {
-    fn log_density_wrt_root(&self, x: &u64) -> F {
+    // Override for the factorial term that's not in the generic implementation
+    fn exp_fam_log_density(&self, x: &u64) -> F {
         let k = *x;
-        let lambda = self.lambda;
-        let k_f = F::from(k).unwrap();
+        let natural_param = self.to_natural();
+        let sufficient_stat = self.sufficient_statistic(x);
+        let log_partition = self.log_partition();
 
-        // PMF: P(X = k) = (e^-λ * λ^k) / k!
-        // Log-PMF: -λ + k*log(λ) - log(k!)
+        // Compute log(k!)
         let mut log_factorial = F::zero();
         for i in 1..=k {
             log_factorial = log_factorial + F::from(i).unwrap().ln();
         }
 
-        -lambda + k_f * lambda.ln() - log_factorial
+        // η·T(x) - A(η) - log(k!)
+        // Now using DotProduct for [F; 1] arrays
+        natural_param.dot(&sufficient_stat) - log_partition - log_factorial
+    }
+}
+
+/// Implement `HasLogDensity` for automatic shared-root computation  
+impl<F: Float + FloatConst> HasLogDensity<u64, F> for Poisson<F> {
+    fn log_density_wrt_root(&self, x: &u64) -> F {
+        self.exp_fam_log_density(x)
     }
 }

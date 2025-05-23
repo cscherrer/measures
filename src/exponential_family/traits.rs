@@ -17,6 +17,7 @@
 //! - h(x) is the carrier measure
 
 use crate::core::{Measure, True};
+use crate::traits::DotProduct;
 use num_traits::Float;
 
 /// A trait for exponential family distributions over space X with computations in field F.
@@ -49,6 +50,22 @@ pub trait ExponentialFamily<X, F: Float> {
 
     /// Get the base measure for this exponential family
     fn base_measure(&self) -> Self::BaseMeasure;
+
+    /// Exponential family log-density computation: η·T(x) - A(η)
+    ///
+    /// Default implementation uses the standard exponential family formula.
+    /// Distributions needing special handling (like factorial terms) can override this.
+    fn exp_fam_log_density(&self, x: &X) -> F
+    where
+        Self::NaturalParam: DotProduct<Self::SufficientStat, Output = F>,
+    {
+        let natural_params = self.to_natural();
+        let sufficient_stats = self.sufficient_statistic(x);
+        let log_partition = self.log_partition();
+
+        // η·T(x) - A(η) - the universal exponential family formula
+        natural_params.dot(&sufficient_stats) - log_partition
+    }
 }
 
 /// A marker trait for measures that are exponential families

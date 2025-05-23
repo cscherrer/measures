@@ -13,5 +13,5 @@ pub mod multivariate;
 pub use continuous::Normal;
 pub use continuous::StdNormal;
 pub use discrete::poisson::Poisson;
-pub use multivariate::multinormal::MultivariateNormal;
-pub use nalgebra::{DMatrix, DVector};
+// pub use multivariate::multinormal::MultivariateNormal;
+// pub use nalgebra::{DMatrix, DVector};
