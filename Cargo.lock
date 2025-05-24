@@ -823,6 +823,7 @@ dependencies = [
  "num-traits",
  "pprof",
  "profiling",
+ "rusymbols",
  "rv",
  "tracy-client",
 ]
@@ -1377,6 +1378,12 @@ name = "rustversion"
 version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a0d197bd2c9dc6e53b84da9556a69ba4cdfab8619eb41a8bd1cc2027a0f6b1d"
+
+[[package]]
+name = "rusymbols"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c608f5fc6985d9c3fa5d1f2826004cf7cf79d7037dbcf2a60278d15d98fc1f3"
 
 [[package]]
 name = "rv"
