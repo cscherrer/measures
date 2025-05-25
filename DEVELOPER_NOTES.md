@@ -225,6 +225,28 @@ impl<T> ExponentialFamily<T, T> for Exponential<T> {
 }
 ```
 
+**Why not add a scalar `DotProduct` implementation?** This would create trait coherence issues and ambiguous method resolution. If we had both:
+
+```rust
+// Existing array implementation
+impl<T: Float, const N: usize> DotProduct for [T; N] {
+    type Output = T;
+    fn dot(&self, other: &Self) -> Self::Output { ... }
+}
+
+// Hypothetical scalar implementation - DON'T DO THIS
+impl<T: Float> DotProduct<T> for T {
+    type Output = T;
+    fn dot(&self, other: &T) -> T { ... }
+}
+```
+
+Then for `[T; 1]`, the compiler wouldn't know which implementation to use, creating trait coherence ambiguity. The `[T; 1]` pattern elegantly avoids this by:
+- Maintaining uniform interface (everything uses arrays)
+- Avoiding trait implementation conflicts
+- Zero runtime cost (`[T; 1]` compiles to same code as `T`)
+- Clear semantics (natural parameters are always "vectors", even 1D ones)
+
 ### 3. Base Measure Chain Rule
 The exponential family implementation automatically handles the chain rule:
 ```
