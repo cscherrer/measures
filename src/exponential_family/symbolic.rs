@@ -29,8 +29,8 @@ where
 
     /// Generate an enhanced optimized function with advanced constant extraction.
     fn generate_enhanced_function(&self) -> EnhancedOptimizedFunction<X, F> {
-        // For now, create a simplified enhanced function
-        // TODO: Complete implementation in JIT phase
+        // TODO: Implement advanced constant extraction and subexpression elimination
+        // This is a simplified implementation that provides basic functionality
         let basic_function = self.generate_optimized_function();
 
         EnhancedOptimizedFunction {
@@ -39,9 +39,9 @@ where
             optimized_expression: basic_function.source_expression,
             metrics: OptimizationMetrics {
                 constants_extracted: basic_function.constants.len(),
-                subexpressions_eliminated: 0,
+                subexpressions_eliminated: 0, // TODO: Implement subexpression elimination
                 parameter_constants: basic_function.constants.len(),
-                complexity_reduction: 0.3,
+                complexity_reduction: 0.3, // Placeholder estimate
                 memory_footprint_bytes: basic_function.constants.len() * 8,
             },
         }

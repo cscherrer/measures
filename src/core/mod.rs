@@ -6,6 +6,7 @@
 pub mod density;
 pub mod measure;
 pub mod types;
+pub mod utils;
 
 // Re-export key types for convenient use
 pub use density::{

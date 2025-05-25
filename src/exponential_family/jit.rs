@@ -265,8 +265,8 @@ fn generate_generic_log_density(
     _symbolic: &SymbolicLogDensity,
     _constants: &ConstantPool,
 ) -> Result<Value, JITError> {
-    // Placeholder: return a constant for now
-    // Real implementation would parse the symbolic expression and generate CLIF IR
+    // TODO: Implement proper symbolic expression parsing and CLIF IR generation
+    // For now, return a placeholder that computes a simple function
     let result = builder.ins().f64const(0.0);
     Ok(result)
 }
