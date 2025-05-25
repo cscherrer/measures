@@ -235,7 +235,7 @@ impl<T: Float, const N: usize> DotProduct for [T; N] {
 }
 
 // Hypothetical scalar implementation - DON'T DO THIS
-impl<T: Float> DotProduct<T> for T {
+impl<T: Float> DotProduct for T {
     type Output = T;
     fn dot(&self, other: &T) -> T { ... }
 }
@@ -336,4 +336,76 @@ When implementing `ExponentialFamily`:
 - [DESIGN_NOTES.md](DESIGN_NOTES.md) - Overall architecture and design philosophy
 - [SIMPLIFICATION_PROPOSAL.md](SIMPLIFICATION_PROPOSAL.md) - Recent simplification analysis
 - [Rust Reference - Associated Types](https://doc.rust-lang.org/reference/items/associated-items.html#associated-types)
-- [Rust Reference - Const Generics](https://doc.rust-lang.org/reference/items/generics.html#const-generics) 
+- [Rust Reference - Const Generics](https://doc.rust-lang.org/reference/items/generics.html#const-generics)
+
+## Scalar DotProduct Implementations Are Ruled Out
+
+**TL;DR**: We cannot add scalar `DotProduct` implementations due to trait coherence issues.
+
+### The Problem
+If we tried to add both array and scalar implementations:
+
+```rust
+// Existing array implementation
+impl<T: Float, const N: usize> DotProduct for [T; N] {
+    type Output = T;
+    fn dot(&self, other: &Self) -> Self::Output { ... }
+}
+
+// Hypothetical scalar implementation - DON'T DO THIS
+impl<T: Float> DotProduct for T {
+    type Output = T;
+    fn dot(&self, other: &Self) -> Self::Output { *self * *other }
+}
+```
+
+This creates **trait coherence violations** because:
+1. `T` could be `[f64; 1]`, making both impls applicable
+2. Rust cannot determine which implementation to use
+3. The compiler would reject this with overlapping implementations error
+
+### The Solution
+For exponential families with scalar natural parameters, use `[T; 1]` instead of `T`:
+
+```rust
+impl<T> ExponentialFamily<T, T> for Exponential<T> {
+    type NaturalParam = [T; 1];  // ← Not just T
+    type SufficientStat = [T; 1];
+    // ...
+}
+```
+
+This ensures compatibility with `DotProduct` without ambiguity issues.
+
+## Density Trait Simplification
+
+**TL;DR**: We removed redundant density traits that provided no additional functionality over the builder pattern.
+
+### What Was Removed
+- `HasLogDensityWrt<T, F, BaseMeasure>`: Never implemented or used
+- `LogDensityEval<T, F>`: Never implemented or used  
+- `GeneralLogDensity<T, F>`: Redundant with builder pattern
+- Duplicate `LogDensityBuilder` definition in `density.rs`
+
+### Why These Were Safe to Remove
+1. **`HasLogDensityWrt`** and **`LogDensityEval`**: Dead code with no implementations
+2. **`GeneralLogDensity`**: Only provided `log_density_wrt_measure()` which just did:
+   ```rust
+   self.log_density_wrt_root(x) - base_measure.log_density_wrt_root(x)
+   ```
+   This is exactly what the builder pattern provides with `.wrt()`:
+   ```rust
+   // Old way (removed)
+   normal1.log_density_wrt_measure(&normal2, &x)
+   
+   // New way (cleaner)
+   normal1.log_density().wrt(normal2).at(&x)
+   ```
+
+### Essential Traits Kept
+- `HasLogDensity<T, F>`: Core trait for density computation
+- `LogDensityBuilder<T>`: Builder pattern entry point (in `measure.rs`)
+- `LogDensityTrait<T>`: For the `LogDensity` struct
+- `EvaluateAt<T, F>`: For polymorphic evaluation
+
+This simplification reduces the API surface while maintaining all functionality. 

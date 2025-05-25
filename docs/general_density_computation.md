@@ -27,14 +27,12 @@ This leverages the mathematical relationship that log-densities form a vector sp
 ### Core Interfaces
 
 1. **`.wrt()` method**: Change the base measure for density computation
-2. **`GeneralLogDensity` trait**: Direct methods for computing relative densities
-3. **Optimization support**: Zero-overhead and JIT compilation for custom base measures
+2. **Optimization support**: Zero-overhead and JIT compilation for custom base measures
 
 ### Basic Usage
 
 ```rust
 use measures::{Normal, LogDensityBuilder};
-use measures::core::GeneralLogDensity;
 
 let normal1 = Normal::new(0.0, 1.0);  // Standard normal
 let normal2 = Normal::new(1.0, 2.0);  // Different parameters
@@ -44,13 +42,7 @@ let x = 0.5;
 let density1: f64 = normal1.log_density().at(&x);
 
 // Relative density (normal1 wrt normal2)
-let relative_density: f64 = normal1.log_density().wrt(normal2.clone()).at(&x);
-
-// Using the GeneralLogDensity trait
-let relative_density2: f64 = normal1.log_density_wrt_measure(&normal2, &x);
-
-// These should be equivalent
-assert!((relative_density - relative_density2).abs() < 1e-10);
+let relative_density = normal1.log_density().wrt(normal2).at(&x);
 ```
 
 ## Performance Optimization
@@ -252,7 +244,6 @@ The implementation ensures mathematical correctness through:
 ### 1. Choose the Right Method
 
 - **`.wrt()`**: For fluent API and type safety
-- **`.log_density_wrt_measure()`**: For direct computation
 - **Optimization methods**: For repeated evaluations
 
 ### 2. Performance Considerations
@@ -284,3 +275,24 @@ Planned enhancements include:
 - Automatic detection of conjugate relationships
 - Integration with automatic differentiation frameworks
 - GPU acceleration for batch computations 
+
+## Approaches to General Density Computation
+
+The measures library provides several approaches for computing log-densities with respect to different base measures:
+
+1. **Builder pattern with `.wrt()`**: Fluent API for changing the base measure
+2. **Direct computation**: Manual computation using individual log-densities
+
+### 1. Builder Pattern Approach
+
+```rust
+use measures::{LogDensityBuilder, Normal};
+
+let normal1 = Normal::new(0.0, 1.0);
+let normal2 = Normal::new(1.0, 2.0);
+
+// Compute log-density of normal1 with respect to normal2
+let relative_density = normal1.log_density().wrt(normal2).at(&0.5);
+```
+
+This approach provides a clean, fluent API for computing densities with respect to any base measure. 

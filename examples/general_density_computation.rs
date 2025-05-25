@@ -9,7 +9,6 @@
 //!
 //! Run with: cargo run --example `general_density_computation`
 
-use measures::core::GeneralLogDensity;
 use measures::{LogDensityBuilder, Normal};
 
 #[cfg(feature = "jit")]
@@ -77,17 +76,14 @@ fn demonstrate_relative_density_computation(normal1: &Normal<f64>, normal2: &Nor
 }
 
 fn demonstrate_general_log_density_trait(normal1: &Normal<f64>, normal2: &Normal<f64>, x: f64) {
-    println!("=== 3. Using GeneralLogDensity Trait ===");
+    println!("=== 3. Using Builder Pattern for Relative Densities ===");
 
-    // Use the general trait method for computing relative densities
-    let relative_density = normal1.log_density_wrt_measure(normal2, &x);
+    // Use the builder pattern for computing relative densities
+    let relative_density = normal1.log_density().wrt(normal2.clone()).at(&x);
 
-    println!("Using log_density_wrt_measure: {relative_density:.6}");
-    println!("This provides a direct method for computing densities wrt any measure");
-
-    // Check if we can compute this density
-    let can_compute = normal1.can_compute_density_wrt(normal2);
-    println!("Can compute density: {can_compute}");
+    println!("Using builder pattern: {relative_density:.6}");
+    println!("This provides a fluent API for computing densities wrt any measure");
+    println!("The .wrt() method changes the base measure for the computation");
     println!();
 }
 

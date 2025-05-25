@@ -57,29 +57,13 @@ let relative_log_density: f64 = normal.log_density().wrt(other_normal).at(&x);
 The framework supports computing densities with respect to **any** base measure, enabling advanced statistical applications:
 
 ```rust
-use measures::core::GeneralLogDensity;
-use measures::exponential_family::jit::ZeroOverheadOptimizer;
+use measures::{Normal, LogDensityBuilder};
 
 let normal1 = Normal::new(0.0, 1.0);
 let normal2 = Normal::new(1.0, 2.0);
-let x = 0.5;
 
-// Multiple equivalent approaches
-let relative1 = normal1.log_density().wrt(normal2.clone()).at(&x);
-let relative2 = normal1.log_density_wrt_measure(&normal2, &x);
-
-// Optimized for repeated evaluations
-let optimized_fn = normal1.clone().zero_overhead_optimize_wrt(normal2.clone());
-let relative3 = optimized_fn(&x);
-
-// Compile-time macro optimization
-let macro_fn = measures::optimized_exp_fam!(normal1, wrt: normal2);
-let relative4 = macro_fn(&x);
-
-// All methods give identical results
-assert!((relative1 - relative2).abs() < 1e-10);
-assert!((relative1 - relative3).abs() < 1e-10);
-assert!((relative1 - relative4).abs() < 1e-10);
+// Compute density of normal1 with respect to normal2
+let relative_density = normal1.log_density().wrt(normal2).at(&0.5);
 ```
 
 **Applications:**

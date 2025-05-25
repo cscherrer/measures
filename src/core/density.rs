@@ -254,49 +254,6 @@ where
     measure.log_density_wrt_root(x) - base_measure.log_density_wrt_root(x)
 }
 
-/// Trait for measures that can compute their log-density with respect to any other measure.
-///
-/// This is more general than `HasLogDensity` which only computes with respect to the root measure.
-/// It enables the chain rule: log(dm1/dm2) can be computed even when m1 and m2 have different roots.
-pub trait HasLogDensityWrt<T, F, BaseMeasure> {
-    /// Compute the log-density of this measure with respect to the given base measure
-    fn log_density_wrt(&self, base_measure: &BaseMeasure, x: &T) -> F;
-}
-
-/// Extension trait to add general density computation to all measures
-pub trait GeneralLogDensity<T, F>: Measure<T> + HasLogDensity<T, F> {
-    /// Compute log-density with respect to any other measure that shares a computational root
-    fn log_density_wrt_measure<M2>(&self, base_measure: &M2, x: &T) -> F
-    where
-        M2: Measure<T> + HasLogDensity<T, F>,
-        F: std::ops::Sub<Output = F>,
-    {
-        // Use the general computation approach
-        self.log_density_wrt_root(x) - base_measure.log_density_wrt_root(x)
-    }
-
-    /// Check if this measure can compute density with respect to another measure
-    fn can_compute_density_wrt<M2>(&self, _base_measure: &M2) -> bool
-    where
-        M2: Measure<T>,
-    {
-        // For now, assume all measures can compute densities wrt each other
-        // In practice, this would check if they share a computational root
-        true
-    }
-}
-
-/// Blanket implementation for all measures that have log-density computation
-impl<T, F, M> GeneralLogDensity<T, F> for M where M: Measure<T> + HasLogDensity<T, F> {}
-
-/// A helper trait for measures that can provide their own log-density evaluation logic.
-///
-/// This allows different measure types to implement custom evaluation for different
-/// numeric types while keeping the main traits clean.
-pub trait LogDensityEval<T, F> {
-    fn evaluate_log_density(&self, base_measure: &impl Measure<T>, x: &T) -> F;
-}
-
 /// Base trait for measures that can compute their log-density with respect to their root measure.
 ///
 /// This trait provides automatic specialization based on `IsExponentialFamily`:
@@ -420,43 +377,6 @@ where
     L: LogDensityTrait<T>,
     T: Clone,
 {
-}
-
-/// A trait for computing log-densities.
-///
-/// This trait provides a builder pattern for computing log-densities
-/// with explicit control over the reference measure.
-pub trait LogDensityBuilder<T>
-where
-    T: Clone,
-{
-    /// Get the log-density with respect to the root measure.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use measures::{Normal, LogDensityBuilder};
-    ///
-    /// let normal = Normal::new(0.0, 1.0);
-    /// let ld = normal.log_density();
-    /// let log_density_value: f64 = ld.at(&0.0);
-    /// ```
-    fn log_density(&self) -> LogDensity<T, Self>
-    where
-        Self: Measure<T> + Clone;
-}
-
-impl<T, M> LogDensityBuilder<T> for M
-where
-    T: Clone,
-    M: Measure<T>,
-{
-    fn log_density(&self) -> LogDensity<T, Self>
-    where
-        Self: Clone,
-    {
-        LogDensity::new(self.clone())
-    }
 }
 
 /// Helper trait for shared root computation optimization.

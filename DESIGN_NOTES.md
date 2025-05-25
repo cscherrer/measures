@@ -173,15 +173,11 @@ The concrete implementation and entry point:
 - `at()` - evaluate at a point (generic over return type)
 - `cached()` - wrap in caching (via extension trait)
   
-  ### 4. **Algebraic Combinators**
+### 4. **Algebraic Combinators**
 
 Type-level implementations of log-density algebra:
 - `CachedLogDensity<L, T, F>` - memoization wrapper (includes numeric type)
 - Additional operations (addition, composition, etc.) can be added later as needed
-
-### 5. **`LogDensityEval<T, F>`** - Extensible Evaluation for Measures
-
-Allows measures to provide custom evaluation logic for different numeric types without cluttering the main traits.
 
 ## Key Requirements Satisfied
 

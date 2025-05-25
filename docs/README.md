@@ -35,19 +35,13 @@ let relative_log_density: f64 = normal.log_density().wrt(other_normal).at(&0.5);
 The framework supports computing densities with respect to any base measure, not just the root measure:
 
 ```rust
-use measures::core::GeneralLogDensity;
+use measures::{Normal, LogDensityBuilder};
 
 let normal1 = Normal::new(0.0, 1.0);
 let normal2 = Normal::new(1.0, 2.0);
-let x = 0.5;
 
-// Multiple ways to compute relative densities
-let relative1 = normal1.log_density().wrt(normal2.clone()).at(&x);
-let relative2 = normal1.log_density_wrt_measure(&normal2, &x);
-
-// With optimization for repeated evaluations
-let optimized_fn = normal1.clone().zero_overhead_optimize_wrt(normal2);
-let relative3 = optimized_fn(&x);
+// Compute density of normal1 with respect to normal2
+let relative_density = normal1.log_density().wrt(normal2).at(&0.5);
 ```
 
 ### IID Collections
