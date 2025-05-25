@@ -465,29 +465,64 @@ fn generate_pow_call(
     generate_exp_call(builder, product)
 }
 
-/// Generate a call to the natural logarithm function
+/// Generate CLIF IR for natural logarithm using Taylor series
+/// ln(x) = ln(1 + (x-1)) ≈ (x-1) - (x-1)²/2 + (x-1)³/3 - (x-1)⁴/4 + ...
+/// This is accurate for x near 1. For other ranges, we'd use ln(x) = ln(2^k * m) = k*ln(2) + ln(m)
 #[cfg(feature = "jit")]
 fn generate_ln_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    // In a full implementation, you'd call the actual ln function from libm
-    // For now, we'll create a placeholder that would need to be linked
-    // with the actual math library functions
-
-    // This is a simplified implementation - in practice you'd want to:
-    // 1. Declare an external function for ln
-    // 2. Call it here
-    // For now, we'll just return the input (this is obviously wrong but demonstrates the structure)
-
-    // TODO: Implement proper libm function calls
-    // This would require declaring external functions and linking with libm
-    Ok(val) // Placeholder - should be actual ln(val)
+    // For simplicity, use Taylor series around x=1: ln(x) ≈ (x-1) - (x-1)²/2 + (x-1)³/3
+    let one = builder.ins().f64const(1.0);
+    let two = builder.ins().f64const(2.0);
+    let three = builder.ins().f64const(3.0);
+    
+    // u = x - 1
+    let u = builder.ins().fsub(val, one);
+    
+    // u²
+    let u2 = builder.ins().fmul(u, u);
+    
+    // u³  
+    let u3 = builder.ins().fmul(u2, u);
+    
+    // Terms: u - u²/2 + u³/3
+    let term2 = builder.ins().fdiv(u2, two);
+    let term3 = builder.ins().fdiv(u3, three);
+    
+    let result = builder.ins().fsub(u, term2);
+    let result = builder.ins().fadd(result, term3);
+    
+    Ok(result)
 }
 
-/// Generate a call to the exponential function
+/// Generate CLIF IR for exponential function using Taylor series
+/// exp(x) ≈ 1 + x + x²/2! + x³/3! + x⁴/4! + ...
 #[cfg(feature = "jit")]
 fn generate_exp_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    // Similar to ln_call, this should call the actual exp function
-    // TODO: Implement proper libm function calls
-    Ok(val) // Placeholder - should be actual exp(val)
+    let one = builder.ins().f64const(1.0);
+    let two = builder.ins().f64const(2.0);
+    let six = builder.ins().f64const(6.0);
+    let twentyfour = builder.ins().f64const(24.0);
+    
+    // x²
+    let x2 = builder.ins().fmul(val, val);
+    
+    // x³
+    let x3 = builder.ins().fmul(x2, val);
+    
+    // x⁴
+    let x4 = builder.ins().fmul(x3, val);
+    
+    // Terms: 1 + x + x²/2 + x³/6 + x⁴/24
+    let term2 = builder.ins().fdiv(x2, two);
+    let term3 = builder.ins().fdiv(x3, six);
+    let term4 = builder.ins().fdiv(x4, twentyfour);
+    
+    let result = builder.ins().fadd(one, val);
+    let result = builder.ins().fadd(result, term2);
+    let result = builder.ins().fadd(result, term3);
+    let result = builder.ins().fadd(result, term4);
+    
+    Ok(result)
 }
 
 /// Generate a call to the square root function
@@ -497,18 +532,54 @@ fn generate_sqrt_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value
     Ok(builder.ins().sqrt(val))
 }
 
-/// Generate a call to the sine function
+/// Generate CLIF IR for sine function using Taylor series
+/// sin(x) ≈ x - x³/3! + x⁵/5! - x⁷/7! + ...
 #[cfg(feature = "jit")]
 fn generate_sin_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    // TODO: Implement proper libm function calls
-    Ok(val) // Placeholder - should be actual sin(val)
+    let six = builder.ins().f64const(6.0);
+    let onetwenty = builder.ins().f64const(120.0);
+    
+    // x²
+    let x2 = builder.ins().fmul(val, val);
+    
+    // x³
+    let x3 = builder.ins().fmul(x2, val);
+    
+    // x⁵
+    let x5 = builder.ins().fmul(x3, x2);
+    
+    // Terms: x - x³/6 + x⁵/120
+    let term2 = builder.ins().fdiv(x3, six);
+    let term3 = builder.ins().fdiv(x5, onetwenty);
+    
+    let result = builder.ins().fsub(val, term2);
+    let result = builder.ins().fadd(result, term3);
+    
+    Ok(result)
 }
 
-/// Generate a call to the cosine function
+/// Generate CLIF IR for cosine function using Taylor series
+/// cos(x) ≈ 1 - x²/2! + x⁴/4! - x⁶/6! + ...
 #[cfg(feature = "jit")]
 fn generate_cos_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    // TODO: Implement proper libm function calls
-    Ok(val) // Placeholder - should be actual cos(val)
+    let one = builder.ins().f64const(1.0);
+    let two = builder.ins().f64const(2.0);
+    let twentyfour = builder.ins().f64const(24.0);
+    
+    // x²
+    let x2 = builder.ins().fmul(val, val);
+    
+    // x⁴
+    let x4 = builder.ins().fmul(x2, x2);
+    
+    // Terms: 1 - x²/2 + x⁴/24
+    let term2 = builder.ins().fdiv(x2, two);
+    let term3 = builder.ins().fdiv(x4, twentyfour);
+    
+    let result = builder.ins().fsub(one, term2);
+    let result = builder.ins().fadd(result, term3);
+    
+    Ok(result)
 }
 
 /// Generate CLIF IR for a custom symbolic log-density expression

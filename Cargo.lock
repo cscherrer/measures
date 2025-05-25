@@ -1191,7 +1191,6 @@ dependencies = [
  "egglog",
  "iai-callgrind",
  "inferno",
- "libm",
  "nalgebra",
  "num-traits",
  "profiling",
