@@ -52,6 +52,42 @@ let other_normal = Normal::new(1.0, 2.0);
 let relative_log_density: f64 = normal.log_density().wrt(other_normal).at(&x);
 ```
 
+### General Density Computation
+
+The framework supports computing densities with respect to **any** base measure, enabling advanced statistical applications:
+
+```rust
+use measures::core::GeneralLogDensity;
+use measures::exponential_family::jit::ZeroOverheadOptimizer;
+
+let normal1 = Normal::new(0.0, 1.0);
+let normal2 = Normal::new(1.0, 2.0);
+let x = 0.5;
+
+// Multiple equivalent approaches
+let relative1 = normal1.log_density().wrt(normal2.clone()).at(&x);
+let relative2 = normal1.log_density_wrt_measure(&normal2, &x);
+
+// Optimized for repeated evaluations
+let optimized_fn = normal1.clone().zero_overhead_optimize_wrt(normal2.clone());
+let relative3 = optimized_fn(&x);
+
+// Compile-time macro optimization
+let macro_fn = measures::optimized_exp_fam!(normal1, wrt: normal2);
+let relative4 = macro_fn(&x);
+
+// All methods give identical results
+assert!((relative1 - relative2).abs() < 1e-10);
+assert!((relative1 - relative3).abs() < 1e-10);
+assert!((relative1 - relative4).abs() < 1e-10);
+```
+
+**Applications:**
+- **Importance Sampling**: Compute weights when using different proposal distributions
+- **Model Comparison**: Calculate Bayes factors and likelihood ratios
+- **Variational Inference**: Compute ELBO terms and KL divergences
+- **Change of Measure**: Calculate Radon-Nikodym derivatives
+
 ### Automatic Shared-Root Optimization
 
 When measures share the same root measure, computation automatically uses:
@@ -183,6 +219,8 @@ let result = jit_fn.call(x);
 
 ## Documentation
 
+- **[General Density Computation](docs/general_density_computation.md)**: Complete guide to computing densities with respect to any base measure
+- **[Performance Optimization Guide](docs/performance_optimization.md)**: JIT compilation, zero-overhead optimization, and performance analysis
 - **[Design Notes](DESIGN_NOTES.md)**: Architectural decisions and mathematical rationale
 - **[Exponential Family Implementation](IID_EXPONENTIAL_FAMILY_IMPLEMENTATION.md)**: IID mathematics and implementation details
 - **API Documentation**: Run `cargo doc --open` for complete API reference

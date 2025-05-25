@@ -59,6 +59,10 @@ use cranelift_module::{Linkage, Module};
 #[cfg(feature = "jit")]
 use crate::exponential_family::symbolic::{ConstantPool, SymbolicLogDensity};
 
+use crate::core::HasLogDensity;
+use crate::exponential_family::ExponentialFamily;
+use crate::traits::DotProduct;
+
 /// Errors that can occur during JIT compilation
 #[derive(Debug)]
 pub enum JITError {
@@ -311,6 +315,47 @@ where
     }
 }
 
+/// Generic zero-overhead runtime code generation with respect to any base measure
+/// This version allows specifying a custom base measure instead of always using the root
+pub fn generate_zero_overhead_exp_fam_wrt<D, B, X, F>(
+    distribution: D,
+    base_measure: B,
+) -> impl Fn(&X) -> F
+where
+    D: crate::exponential_family::ExponentialFamily<X, F> + Clone,
+    D::NaturalParam: crate::traits::DotProduct<D::SufficientStat, Output = F> + Clone,
+    D::BaseMeasure: crate::core::HasLogDensity<X, F> + Clone,
+    B: crate::core::Measure<X> + crate::core::HasLogDensity<X, F> + Clone,
+    X: Clone,
+    F: num_traits::Float + std::ops::Sub<Output = F> + Clone,
+{
+    use crate::core::HasLogDensity;
+    use crate::traits::DotProduct;
+
+    // Pre-compute natural parameters and log partition at generation time
+    let (natural_params, log_partition) = distribution.natural_and_log_partition();
+    let dist_base_measure = distribution.base_measure();
+
+    // Return a closure that captures the pre-computed values
+    // This will be inlined by LLVM with zero overhead
+    move |x: &X| -> F {
+        // Compute sufficient statistics
+        let sufficient_stats = distribution.sufficient_statistic(x);
+
+        // Exponential family part: η·T(x) - A(η)
+        let exp_fam_part = natural_params.dot(&sufficient_stats) - log_partition;
+
+        // Chain rule part: log h(x) where h is the base measure of the exponential family
+        let dist_base_density = dist_base_measure.log_density_wrt_root(x);
+
+        // Convert to the desired base measure using the general computation
+        // log(distribution/base_measure) = log(distribution/root) - log(base_measure/root)
+        let base_density = base_measure.log_density_wrt_root(x);
+
+        exp_fam_part + dist_base_density - base_density
+    }
+}
+
 /// Extension trait to add zero-overhead optimization to any exponential family
 pub trait ZeroOverheadOptimizer<X, F>:
     crate::exponential_family::ExponentialFamily<X, F> + Sized + Clone
@@ -323,6 +368,15 @@ where
     /// Generate a zero-overhead optimized function for this distribution
     fn zero_overhead_optimize(self) -> impl Fn(&X) -> F {
         generate_zero_overhead_exp_fam(self)
+    }
+
+    /// Generate a zero-overhead optimized function with respect to a custom base measure
+    fn zero_overhead_optimize_wrt<B>(self, base_measure: B) -> impl Fn(&X) -> F
+    where
+        B: crate::core::Measure<X> + crate::core::HasLogDensity<X, F> + Clone,
+        F: std::ops::Sub<Output = F>,
+    {
+        generate_zero_overhead_exp_fam_wrt(self, base_measure)
     }
 }
 
@@ -344,14 +398,37 @@ macro_rules! optimized_exp_fam {
     ($distribution:expr) => {{
         // Pre-compute at expansion time (but runtime evaluation)
         let dist = $distribution;
-        let (natural_params, log_partition) = dist.natural_and_log_partition();
-        let base_measure = dist.base_measure();
+        let (natural_params, log_partition) =
+            $crate::exponential_family::ExponentialFamily::natural_and_log_partition(&dist);
+        let base_measure = $crate::exponential_family::ExponentialFamily::base_measure(&dist);
 
         move |x| {
-            let sufficient_stats = dist.sufficient_statistic(x);
-            let exp_fam_part = natural_params.dot(&sufficient_stats) - log_partition;
-            let chain_rule_part = base_measure.log_density_wrt_root(x);
+            let sufficient_stats =
+                $crate::exponential_family::ExponentialFamily::sufficient_statistic(&dist, x);
+            let exp_fam_part =
+                $crate::traits::DotProduct::dot(&natural_params, &sufficient_stats) - log_partition;
+            let chain_rule_part =
+                $crate::core::HasLogDensity::log_density_wrt_root(&base_measure, x);
             exp_fam_part + chain_rule_part
+        }
+    }};
+    ($distribution:expr, wrt: $base_measure:expr) => {{
+        // Pre-compute at expansion time with custom base measure
+        let dist = $distribution;
+        let base = $base_measure;
+        let (natural_params, log_partition) =
+            $crate::exponential_family::ExponentialFamily::natural_and_log_partition(&dist);
+        let dist_base_measure = $crate::exponential_family::ExponentialFamily::base_measure(&dist);
+
+        move |x| {
+            let sufficient_stats =
+                $crate::exponential_family::ExponentialFamily::sufficient_statistic(&dist, x);
+            let exp_fam_part =
+                $crate::traits::DotProduct::dot(&natural_params, &sufficient_stats) - log_partition;
+            let dist_base_density =
+                $crate::core::HasLogDensity::log_density_wrt_root(&dist_base_measure, x);
+            let base_density = $crate::core::HasLogDensity::log_density_wrt_root(&base, x);
+            exp_fam_part + dist_base_density - base_density
         }
     }};
 }

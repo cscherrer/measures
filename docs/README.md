@@ -4,9 +4,9 @@ This directory contains detailed documentation for the measures crate.
 
 ## Contents
 
-- [Measure Theory Concepts](measure_theory.md) - Mathematical background on measure theory
-- [Exponential Family](exponential_family.md) - Details on exponential family distributions
-- [Usage Guide](usage_guide.md) - Examples and patterns for using the library
+- [Capabilities Summary](capabilities_summary.md) - High-level overview of all framework capabilities
+- [General Density Computation](general_density_computation.md) - Computing densities with respect to any base measure
+- [Performance Optimization](performance_optimization.md) - JIT compilation and zero-overhead optimization techniques
 
 ## Getting Started
 
@@ -30,6 +30,26 @@ let other_normal = Normal::new(1.0, 2.0);
 let relative_log_density: f64 = normal.log_density().wrt(other_normal).at(&0.5);
 ```
 
+### General Density Computation
+
+The framework supports computing densities with respect to any base measure, not just the root measure:
+
+```rust
+use measures::core::GeneralLogDensity;
+
+let normal1 = Normal::new(0.0, 1.0);
+let normal2 = Normal::new(1.0, 2.0);
+let x = 0.5;
+
+// Multiple ways to compute relative densities
+let relative1 = normal1.log_density().wrt(normal2.clone()).at(&x);
+let relative2 = normal1.log_density_wrt_measure(&normal2, &x);
+
+// With optimization for repeated evaluations
+let optimized_fn = normal1.clone().zero_overhead_optimize_wrt(normal2);
+let relative3 = optimized_fn(&x);
+```
+
 ### IID Collections
 
 ```rust
@@ -41,5 +61,28 @@ let iid_normal = normal.iid();
 let samples = vec![0.5, -0.3, 1.2];
 let iid_log_density: f64 = iid_normal.iid_log_density(&samples);
 ```
+
+## Key Features
+
+### 🎯 General Density Computation
+- Compute densities with respect to any base measure
+- Automatic optimization for measures with shared roots
+- Applications in importance sampling, model comparison, and variational inference
+
+### 🚀 Performance Optimization  
+- Zero-overhead runtime code generation
+- Compile-time macro optimization
+- JIT compilation with Cranelift
+- Comprehensive performance analysis and best practices
+
+### 🔧 Type Safety
+- Compile-time verification of measure compatibility
+- Generic numeric types (f64, f32, dual numbers for autodiff)
+- Zero-cost abstractions with static dispatch
+
+### 📊 Exponential Families
+- Unified interface for exponential family distributions
+- Automatic IID handling with efficient batch computation
+- Natural parameter and sufficient statistic access
 
 For more examples, see the `examples/` directory in the repository. 

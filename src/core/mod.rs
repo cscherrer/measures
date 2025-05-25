@@ -8,7 +8,9 @@ pub mod measure;
 pub mod types;
 
 // Re-export key types for convenient use
-pub use density::{EvaluateAt, HasLogDensity, LogDensity, LogDensityTrait};
+pub use density::{
+    EvaluateAt, GeneralLogDensity, HasLogDensity, HasLogDensityWrt, LogDensity, LogDensityTrait,
+};
 pub use measure::{LogDensityBuilder, Measure, MeasureMarker, PrimitiveMeasure};
 pub use types::{
     Default, ExponentialFamily, False, LogDensityMethod, Specialized, True, TypeLevelBool,
