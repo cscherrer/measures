@@ -33,6 +33,9 @@
 //! // let dual_result: Dual64 = normal.log_density().at(&dual_x);  // With autodiff library
 //! ```
 
+#![warn(missing_docs)]
+#![allow(unstable_name_collisions)]
+
 // Core abstractions
 pub mod core;
 pub mod distributions;
