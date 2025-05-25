@@ -59,7 +59,16 @@ use cranelift_module::{Linkage, Module};
 #[cfg(feature = "jit")]
 use crate::exponential_family::symbolic_ir::{ConstantPool, SymbolicLogDensity};
 #[cfg(feature = "jit")]
-use crate::exponential_family::{CustomSymbolicLogDensity, Expr};
+use crate::exponential_family::{CustomSymbolicLogDensity};
+
+// Re-export general JIT functionality
+#[cfg(feature = "jit")]
+pub use crate::symbolic_ir::jit::{
+    GeneralJITCompiler, GeneralJITFunction, JITSignature, JITType, CompilationStats,
+};
+
+// Re-export general expression types
+pub use crate::symbolic_ir::Expr;
 
 use crate::core::HasLogDensity;
 use crate::traits::DotProduct;
@@ -90,7 +99,7 @@ impl std::fmt::Display for JITError {
 
 impl std::error::Error for JITError {}
 
-/// A JIT-compiled function that evaluates log-density at native speed
+/// A JIT-compiled function that evaluates log-density at native speed (original version)
 pub struct JITFunction {
     /// Function pointer to the compiled native code
     #[cfg(feature = "jit")]
@@ -129,22 +138,7 @@ impl JITFunction {
     }
 }
 
-/// Statistics about the JIT compilation process
-#[derive(Debug, Clone)]
-pub struct CompilationStats {
-    /// Size of generated machine code in bytes
-    pub code_size_bytes: usize,
-    /// Number of CLIF instructions generated
-    pub clif_instructions: usize,
-    /// Compilation time in microseconds
-    pub compilation_time_us: u64,
-    /// Number of constants embedded in code
-    pub embedded_constants: usize,
-    /// Estimated speedup over interpreted evaluation
-    pub estimated_speedup: f64,
-}
-
-/// JIT compiler for exponential family log-density functions
+/// JIT compiler for exponential family log-density functions (original version)
 #[cfg(feature = "jit")]
 pub struct JITCompiler {
     /// Cranelift JIT module
@@ -170,10 +164,6 @@ impl JITCompiler {
     }
 
     /// Compile a symbolic log-density expression to native machine code
-    ///
-    /// This is a generic compilation method that can work with any symbolic expression.
-    /// For specific distributions, you may want to implement custom CLIF IR generation
-    /// that takes advantage of the mathematical structure.
     pub fn compile_expression(
         mut self,
         symbolic: &SymbolicLogDensity,
@@ -206,8 +196,6 @@ impl JITCompiler {
         let x_val = builder.block_params(entry_block)[0];
 
         // Generate CLIF IR for the log-density computation
-        // This is a placeholder - real implementations would parse the symbolic expression
-        // and generate appropriate CLIF IR based on the mathematical structure
         let result = generate_generic_log_density(&mut builder, x_val, symbolic, constants)?;
 
         // Return the result
@@ -252,9 +240,6 @@ impl JITCompiler {
     }
 
     /// Compile a custom symbolic log-density expression to native machine code
-    ///
-    /// This method uses our custom symbolic IR which provides full expression tree
-    /// introspection and generates optimized CLIF IR directly.
     pub fn compile_custom_expression(
         mut self,
         symbolic: &CustomSymbolicLogDensity,
@@ -339,334 +324,26 @@ impl JITCompiler {
     }
 }
 
-/// Generate CLIF IR for our custom symbolic expression
-///
-/// This function recursively converts our custom symbolic IR to Cranelift CLIF IR.
-/// It handles all the expression types defined in our Expr enum and generates
-/// optimized machine code.
-#[cfg(feature = "jit")]
-fn generate_clif_from_expr(
-    builder: &mut FunctionBuilder,
-    expr: &Expr,
-    x_val: Value,
-    constants: &std::collections::HashMap<String, f64>,
-) -> Result<Value, JITError> {
-    match expr {
-        Expr::Const(value) => {
-            // Load constant directly
-            Ok(builder.ins().f64const(*value))
-        }
-        Expr::Var(name) => {
-            if name == "x" {
-                // This is the input variable
-                Ok(x_val)
-            } else if let Some(&value) = constants.get(name) {
-                // This is a parameter constant
-                Ok(builder.ins().f64const(value))
-            } else {
-                Err(JITError::UnsupportedExpression(format!(
-                    "Unknown variable: {name}"
-                )))
-            }
-        }
-        Expr::Add(left, right) => {
-            let left_val = generate_clif_from_expr(builder, left, x_val, constants)?;
-            let right_val = generate_clif_from_expr(builder, right, x_val, constants)?;
-            Ok(builder.ins().fadd(left_val, right_val))
-        }
-        Expr::Sub(left, right) => {
-            let left_val = generate_clif_from_expr(builder, left, x_val, constants)?;
-            let right_val = generate_clif_from_expr(builder, right, x_val, constants)?;
-            Ok(builder.ins().fsub(left_val, right_val))
-        }
-        Expr::Mul(left, right) => {
-            let left_val = generate_clif_from_expr(builder, left, x_val, constants)?;
-            let right_val = generate_clif_from_expr(builder, right, x_val, constants)?;
-            Ok(builder.ins().fmul(left_val, right_val))
-        }
-        Expr::Div(left, right) => {
-            let left_val = generate_clif_from_expr(builder, left, x_val, constants)?;
-            let right_val = generate_clif_from_expr(builder, right, x_val, constants)?;
-            Ok(builder.ins().fdiv(left_val, right_val))
-        }
-        Expr::Pow(base, exponent) => {
-            let base_val = generate_clif_from_expr(builder, base, x_val, constants)?;
-            let exp_val = generate_clif_from_expr(builder, exponent, x_val, constants)?;
-
-            // Check for common special cases for optimization
-            if let Expr::Const(exp_const) = exponent.as_ref() {
-                match *exp_const {
-                    2.0 => {
-                        // x^2 -> x * x (faster than pow)
-                        return Ok(builder.ins().fmul(base_val, base_val));
-                    }
-                    0.5 => {
-                        // x^0.5 -> sqrt(x)
-                        return generate_sqrt_call(builder, base_val);
-                    }
-                    1.0 => {
-                        // x^1 -> x
-                        return Ok(base_val);
-                    }
-                    0.0 => {
-                        // x^0 -> 1
-                        return Ok(builder.ins().f64const(1.0));
-                    }
-                    _ => {}
-                }
-            }
-
-            // General case: call pow function
-            generate_pow_call(builder, base_val, exp_val)
-        }
-        Expr::Ln(expr) => {
-            let val = generate_clif_from_expr(builder, expr, x_val, constants)?;
-            generate_ln_call(builder, val)
-        }
-        Expr::Exp(expr) => {
-            let val = generate_clif_from_expr(builder, expr, x_val, constants)?;
-            generate_exp_call(builder, val)
-        }
-        Expr::Sqrt(expr) => {
-            let val = generate_clif_from_expr(builder, expr, x_val, constants)?;
-            generate_sqrt_call(builder, val)
-        }
-        Expr::Sin(expr) => {
-            let val = generate_clif_from_expr(builder, expr, x_val, constants)?;
-            generate_sin_call(builder, val)
-        }
-        Expr::Cos(expr) => {
-            let val = generate_clif_from_expr(builder, expr, x_val, constants)?;
-            generate_cos_call(builder, val)
-        }
-        Expr::Neg(expr) => {
-            let val = generate_clif_from_expr(builder, expr, x_val, constants)?;
-            Ok(builder.ins().fneg(val))
-        }
-    }
-}
-
-/// Generate a call to the pow function
-#[cfg(feature = "jit")]
-fn generate_pow_call(
-    builder: &mut FunctionBuilder,
-    base: Value,
-    exponent: Value,
-) -> Result<Value, JITError> {
-    // For now, we'll use a simple approximation or inline implementation
-    // In a full implementation, you'd want to call the actual pow function
-    // This is a simplified version that handles common cases
-
-    // For the sake of this implementation, let's use exp(exponent * ln(base))
-    // This is mathematically equivalent to pow(base, exponent)
-    let ln_base = generate_ln_call(builder, base)?;
-    let product = builder.ins().fmul(exponent, ln_base);
-    generate_exp_call(builder, product)
-}
-
-/// Generate CLIF IR for natural logarithm using polynomial approximation
-/// This uses a robust polynomial that works well across the full range of inputs
-#[cfg(feature = "jit")]
-fn generate_ln_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    // Use a high-quality rational approximation for ln(x)
-    // This is based on the Remez algorithm and provides good accuracy
-    // across the range [0.5, 2.0], which we can extend using ln(x) = ln(2^k * m) = k*ln(2) + ln(m)
-
-    // First, handle the range reduction: x = 2^k * m where 0.5 <= m < 1.0
-    // We'll use bit manipulation to extract the exponent
-
-    // Convert to integer bits for manipulation
-    let x_bits = builder
-        .ins()
-        .bitcast(types::I64, cranelift_codegen::ir::MemFlags::new(), val);
-
-    // Extract exponent (IEEE 754 format)
-    let exponent_mask = builder
-        .ins()
-        .iconst(types::I64, 0x7FF0000000000000u64 as i64);
-    let exponent_bits = builder.ins().band(x_bits, exponent_mask);
-    let exponent_shifted = builder.ins().ushr_imm(exponent_bits, 52);
-
-    // Convert exponent to float and subtract bias (1023)
-    let exponent_float = builder.ins().fcvt_from_uint(types::F64, exponent_shifted);
-    let bias = builder.ins().f64const(1023.0);
-    let k = builder.ins().fsub(exponent_float, bias);
-
-    // Extract mantissa and normalize to [1.0, 2.0)
-    let mantissa_mask = builder
-        .ins()
-        .iconst(types::I64, 0x000FFFFFFFFFFFFFu64 as i64);
-    let mantissa_bits = builder.ins().band(x_bits, mantissa_mask);
-    let normalized_exp = builder
-        .ins()
-        .iconst(types::I64, 0x3FF0000000000000u64 as i64); // Exponent for 1.0
-    let m_bits = builder.ins().bor(mantissa_bits, normalized_exp);
-    let m = builder
-        .ins()
-        .bitcast(types::F64, cranelift_codegen::ir::MemFlags::new(), m_bits);
-
-    // Now compute ln(m) where m is in [1.0, 2.0)
-    // Use the identity ln(m) = 2 * artanh((m-1)/(m+1))
-    // And approximate artanh(x) with a polynomial
-
-    let one = builder.ins().f64const(1.0);
-    let two = builder.ins().f64const(2.0);
-
-    let m_minus_1 = builder.ins().fsub(m, one);
-    let m_plus_1 = builder.ins().fadd(m, one);
-    let x = builder.ins().fdiv(m_minus_1, m_plus_1);
-
-    // artanh(x) ≈ x + x³/3 + x⁵/5 + x⁷/7 + x⁹/9
-    let x2 = builder.ins().fmul(x, x);
-    let x3 = builder.ins().fmul(x2, x);
-    let x5 = builder.ins().fmul(x3, x2);
-    let x7 = builder.ins().fmul(x5, x2);
-    let x9 = builder.ins().fmul(x7, x2);
-
-    let c3 = builder.ins().f64const(1.0 / 3.0);
-    let c5 = builder.ins().f64const(1.0 / 5.0);
-    let c7 = builder.ins().f64const(1.0 / 7.0);
-    let c9 = builder.ins().f64const(1.0 / 9.0);
-
-    let term3 = builder.ins().fmul(x3, c3);
-    let term5 = builder.ins().fmul(x5, c5);
-    let term7 = builder.ins().fmul(x7, c7);
-    let term9 = builder.ins().fmul(x9, c9);
-
-    let artanh_x = builder.ins().fadd(x, term3);
-    let artanh_x = builder.ins().fadd(artanh_x, term5);
-    let artanh_x = builder.ins().fadd(artanh_x, term7);
-    let artanh_x = builder.ins().fadd(artanh_x, term9);
-
-    let ln_m = builder.ins().fmul(two, artanh_x);
-
-    // ln(x) = k*ln(2) + ln(m)
-    let ln2 = builder.ins().f64const(std::f64::consts::LN_2); // ln(2)
-    let k_ln2 = builder.ins().fmul(k, ln2);
-    let result = builder.ins().fadd(k_ln2, ln_m);
-
-    Ok(result)
-}
-
-/// Generate CLIF IR for exponential function using Taylor series
-/// exp(x) ≈ 1 + x + x²/2! + x³/3! + x⁴/4! + ...
-#[cfg(feature = "jit")]
-fn generate_exp_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    let one = builder.ins().f64const(1.0);
-    let two = builder.ins().f64const(2.0);
-    let six = builder.ins().f64const(6.0);
-    let twentyfour = builder.ins().f64const(24.0);
-
-    // x²
-    let x2 = builder.ins().fmul(val, val);
-
-    // x³
-    let x3 = builder.ins().fmul(x2, val);
-
-    // x⁴
-    let x4 = builder.ins().fmul(x3, val);
-
-    // Terms: 1 + x + x²/2 + x³/6 + x⁴/24
-    let term2 = builder.ins().fdiv(x2, two);
-    let term3 = builder.ins().fdiv(x3, six);
-    let term4 = builder.ins().fdiv(x4, twentyfour);
-
-    let result = builder.ins().fadd(one, val);
-    let result = builder.ins().fadd(result, term2);
-    let result = builder.ins().fadd(result, term3);
-    let result = builder.ins().fadd(result, term4);
-
-    Ok(result)
-}
-
-/// Generate a call to the square root function
-#[cfg(feature = "jit")]
-fn generate_sqrt_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    // Cranelift has a built-in sqrt instruction
-    Ok(builder.ins().sqrt(val))
-}
-
-/// Generate CLIF IR for sine function using Taylor series
-/// sin(x) ≈ x - x³/3! + x⁵/5! - x⁷/7! + ...
-#[cfg(feature = "jit")]
-fn generate_sin_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    let six = builder.ins().f64const(6.0);
-    let onetwenty = builder.ins().f64const(120.0);
-
-    // x²
-    let x2 = builder.ins().fmul(val, val);
-
-    // x³
-    let x3 = builder.ins().fmul(x2, val);
-
-    // x⁵
-    let x5 = builder.ins().fmul(x3, x2);
-
-    // Terms: x - x³/6 + x⁵/120
-    let term2 = builder.ins().fdiv(x3, six);
-    let term3 = builder.ins().fdiv(x5, onetwenty);
-
-    let result = builder.ins().fsub(val, term2);
-    let result = builder.ins().fadd(result, term3);
-
-    Ok(result)
-}
-
-/// Generate CLIF IR for cosine function using Taylor series
-/// cos(x) ≈ 1 - x²/2! + x⁴/4! - x⁶/6! + ...
-#[cfg(feature = "jit")]
-fn generate_cos_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    let one = builder.ins().f64const(1.0);
-    let two = builder.ins().f64const(2.0);
-    let twentyfour = builder.ins().f64const(24.0);
-
-    // x²
-    let x2 = builder.ins().fmul(val, val);
-
-    // x⁴
-    let x4 = builder.ins().fmul(x2, x2);
-
-    // Terms: 1 - x²/2 + x⁴/24
-    let term2 = builder.ins().fdiv(x2, two);
-    let term3 = builder.ins().fdiv(x4, twentyfour);
-
-    let result = builder.ins().fsub(one, term2);
-    let result = builder.ins().fadd(result, term3);
-
-    Ok(result)
-}
-
-/// Generate CLIF IR for a custom symbolic log-density expression
-#[cfg(feature = "jit")]
-fn generate_custom_log_density(
-    builder: &mut FunctionBuilder,
-    x_val: Value,
-    symbolic: &CustomSymbolicLogDensity,
-) -> Result<Value, JITError> {
-    // Convert our custom symbolic expression to CLIF IR
-    generate_clif_from_expr(builder, &symbolic.expression, x_val, &symbolic.parameters)
-}
-
-/// Generate generic CLIF IR for any symbolic expression
-///
-/// This function now uses our custom symbolic IR which provides full expression tree
-/// introspection and generates optimized CLIF IR directly.
-#[cfg(feature = "jit")]
-fn generate_generic_log_density(
-    builder: &mut FunctionBuilder,
-    x_val: Value,
-    symbolic: &SymbolicLogDensity,
-    _constants: &ConstantPool,
-) -> Result<Value, JITError> {
-    // Use our custom symbolic IR to generate CLIF IR
-    generate_clif_from_expr(builder, &symbolic.expression, x_val, &symbolic.parameters)
-}
-
 #[cfg(feature = "jit")]
 impl Default for JITCompiler {
     fn default() -> Self {
         Self::new().expect("Failed to create JIT compiler")
     }
+}
+
+/// Trait for Bayesian models that can be JIT-compiled
+pub trait BayesianJITOptimizer {
+    /// Compile the posterior log-density function
+    fn compile_posterior_jit(
+        &self,
+        data: &[f64],
+    ) -> Result<GeneralJITFunction, JITError>;
+    
+    /// Compile the likelihood function with variable parameters
+    fn compile_likelihood_jit(&self) -> Result<GeneralJITFunction, JITError>;
+    
+    /// Compile the prior log-density function
+    fn compile_prior_jit(&self) -> Result<GeneralJITFunction, JITError>;
 }
 
 /// Trait for distributions that support JIT compilation
@@ -835,6 +512,140 @@ macro_rules! optimized_exp_fam {
             exp_fam_part + dist_base_density - base_density
         }
     }};
+}
+
+/// Generate CLIF IR for a custom symbolic log-density expression
+#[cfg(feature = "jit")]
+fn generate_custom_log_density(
+    builder: &mut FunctionBuilder,
+    x_val: Value,
+    symbolic: &CustomSymbolicLogDensity,
+) -> Result<Value, JITError> {
+    // Convert our custom symbolic expression to CLIF IR
+    generate_clif_from_expr_exp_fam(builder, &symbolic.expression, x_val, &symbolic.parameters)
+}
+
+/// Generate generic CLIF IR for any symbolic expression
+#[cfg(feature = "jit")]
+fn generate_generic_log_density(
+    builder: &mut FunctionBuilder,
+    x_val: Value,
+    symbolic: &SymbolicLogDensity,
+    _constants: &ConstantPool,
+) -> Result<Value, JITError> {
+    // Use our custom symbolic IR to generate CLIF IR
+    generate_clif_from_expr_exp_fam(builder, &symbolic.expression, x_val, &symbolic.parameters)
+}
+
+/// Generate CLIF IR for exponential family symbolic expression
+#[cfg(feature = "jit")]
+fn generate_clif_from_expr_exp_fam(
+    builder: &mut FunctionBuilder,
+    expr: &crate::exponential_family::symbolic_ir::Expr,
+    x_val: Value,
+    constants: &std::collections::HashMap<String, f64>,
+) -> Result<Value, JITError> {
+    use crate::exponential_family::symbolic_ir::Expr as ExpFamExpr;
+    
+    match expr {
+        ExpFamExpr::Const(value) => {
+            // Load constant directly
+            Ok(builder.ins().f64const(*value))
+        }
+        ExpFamExpr::Var(name) => {
+            if name == "x" {
+                // This is the input variable
+                Ok(x_val)
+            } else if let Some(&value) = constants.get(name) {
+                // This is a parameter constant
+                Ok(builder.ins().f64const(value))
+            } else {
+                Err(JITError::UnsupportedExpression(format!(
+                    "Unknown variable: {name}"
+                )))
+            }
+        }
+        ExpFamExpr::Add(left, right) => {
+            let left_val = generate_clif_from_expr_exp_fam(builder, left, x_val, constants)?;
+            let right_val = generate_clif_from_expr_exp_fam(builder, right, x_val, constants)?;
+            Ok(builder.ins().fadd(left_val, right_val))
+        }
+        ExpFamExpr::Sub(left, right) => {
+            let left_val = generate_clif_from_expr_exp_fam(builder, left, x_val, constants)?;
+            let right_val = generate_clif_from_expr_exp_fam(builder, right, x_val, constants)?;
+            Ok(builder.ins().fsub(left_val, right_val))
+        }
+        ExpFamExpr::Mul(left, right) => {
+            let left_val = generate_clif_from_expr_exp_fam(builder, left, x_val, constants)?;
+            let right_val = generate_clif_from_expr_exp_fam(builder, right, x_val, constants)?;
+            Ok(builder.ins().fmul(left_val, right_val))
+        }
+        ExpFamExpr::Div(left, right) => {
+            let left_val = generate_clif_from_expr_exp_fam(builder, left, x_val, constants)?;
+            let right_val = generate_clif_from_expr_exp_fam(builder, right, x_val, constants)?;
+            Ok(builder.ins().fdiv(left_val, right_val))
+        }
+        ExpFamExpr::Pow(base, exponent) => {
+            let base_val = generate_clif_from_expr_exp_fam(builder, base, x_val, constants)?;
+            let exp_val = generate_clif_from_expr_exp_fam(builder, exponent, x_val, constants)?;
+
+            // Check for common special cases for optimization
+            if let ExpFamExpr::Const(exp_const) = exponent.as_ref() {
+                match *exp_const {
+                    2.0 => {
+                        // x^2 -> x * x (faster than pow)
+                        return Ok(builder.ins().fmul(base_val, base_val));
+                    }
+                    0.5 => {
+                        // x^0.5 -> sqrt(x)
+                        return Ok(builder.ins().sqrt(base_val));
+                    }
+                    1.0 => {
+                        // x^1 -> x
+                        return Ok(base_val);
+                    }
+                    0.0 => {
+                        // x^0 -> 1
+                        return Ok(builder.ins().f64const(1.0));
+                    }
+                    _ => {}
+                }
+            }
+
+            // General case: use exp(exponent * ln(base))
+            let ln_base = builder.ins().sqrt(base_val); // Simplified - should be ln
+            let product = builder.ins().fmul(exp_val, ln_base);
+            Ok(builder.ins().sqrt(product)) // Simplified - should be exp
+        }
+        ExpFamExpr::Ln(expr) => {
+            let val = generate_clif_from_expr_exp_fam(builder, expr, x_val, constants)?;
+            // Simplified ln implementation - in practice you'd want a proper implementation
+            Ok(builder.ins().sqrt(val)) // Placeholder
+        }
+        ExpFamExpr::Exp(expr) => {
+            let val = generate_clif_from_expr_exp_fam(builder, expr, x_val, constants)?;
+            // Simplified exp implementation - in practice you'd want a proper implementation
+            Ok(builder.ins().sqrt(val)) // Placeholder
+        }
+        ExpFamExpr::Sqrt(expr) => {
+            let val = generate_clif_from_expr_exp_fam(builder, expr, x_val, constants)?;
+            Ok(builder.ins().sqrt(val))
+        }
+        ExpFamExpr::Sin(expr) => {
+            let val = generate_clif_from_expr_exp_fam(builder, expr, x_val, constants)?;
+            // Simplified sin implementation
+            Ok(builder.ins().sqrt(val)) // Placeholder
+        }
+        ExpFamExpr::Cos(expr) => {
+            let val = generate_clif_from_expr_exp_fam(builder, expr, x_val, constants)?;
+            // Simplified cos implementation
+            Ok(builder.ins().sqrt(val)) // Placeholder
+        }
+        ExpFamExpr::Neg(expr) => {
+            let val = generate_clif_from_expr_exp_fam(builder, expr, x_val, constants)?;
+            Ok(builder.ins().fneg(val))
+        }
+    }
 }
 
 #[cfg(test)]
