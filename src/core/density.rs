@@ -199,18 +199,14 @@ where
     }
 }
 
-/// Implementation for computing log-densities with respect to any base measure.
-///
-/// This implementation uses the mathematical relationship:
-/// - When measures share the same root: `log(dm1/dm2) = log(dm1/root) - log(dm2/root)`
-/// - When base measure is the root: `log(dm1/root) = dm1.log_density_wrt_root(x)`
-/// - When computing with respect to self: `log(dm/dm) = 0`
+/// Implementation for computing log-densities with type-level dispatch
 impl<T, M1, M2, F> EvaluateAt<T, F> for LogDensity<T, M1, M2>
 where
     T: Clone,
     M1: Measure<T> + HasLogDensity<T, F> + Clone,
     M2: Measure<T> + HasLogDensity<T, F> + Clone,
     F: std::ops::Sub<Output = F> + num_traits::Zero,
+    (M1::IsExponentialFamily, M2::IsExponentialFamily): ExpFamDispatch<T, M1, M2, F>,
 {
     #[inline]
     fn at(&self, x: &T) -> F {
@@ -222,36 +218,82 @@ where
             return F::zero(); // log(dm/dm) = 0
         }
 
-        // Use the general approach: try to compute via shared computational root
-        // This will work for most cases where measures can be related through a common root
-        compute_log_density_general(&self.measure, &self.base_measure, x)
+        // Use type-level dispatch based on IsExponentialFamily markers
+        <(M1::IsExponentialFamily, M2::IsExponentialFamily) as ExpFamDispatch<T, M1, M2, F>>::compute(
+            &self.measure,
+            &self.base_measure,
+            x
+        )
     }
 }
 
-/// Helper function to compute log-density between any two measures
-///
-/// This function implements a general algorithm that can handle:
-/// 1. Measures with the same root (uses difference formula)
-/// 2. Measures with different roots (uses chain rule through common ancestors)
-/// 3. Special cases like primitive measures
-fn compute_log_density_general<T, M1, M2, F>(measure: &M1, base_measure: &M2, x: &T) -> F
+/// Trait for dispatching based on exponential family boolean combinations
+pub trait ExpFamDispatch<T, M1, M2, F> {
+    fn compute(measure: &M1, base_measure: &M2, x: &T) -> F;
+}
+
+/// Case 1: (False, False) - Neither is exponential family
+impl<T, M1, M2, F> ExpFamDispatch<T, M1, M2, F>
+    for (crate::core::types::False, crate::core::types::False)
 where
     T: Clone,
-    M1: Measure<T> + HasLogDensity<T, F>,
-    M2: Measure<T> + HasLogDensity<T, F>,
+    M1: Measure<T, IsExponentialFamily = crate::core::types::False> + HasLogDensity<T, F>,
+    M2: Measure<T, IsExponentialFamily = crate::core::types::False> + HasLogDensity<T, F>,
     F: std::ops::Sub<Output = F>,
 {
-    // For now, we'll use the approach that works when measures have compatible roots
-    // In the future, this could be extended to handle more complex measure hierarchies
+    #[inline]
+    fn compute(measure: &M1, base_measure: &M2, x: &T) -> F {
+        // General approach: log(dm1/dm2) = log(dm1/root) - log(dm2/root)
+        measure.log_density_wrt_root(x) - base_measure.log_density_wrt_root(x)
+    }
+}
 
-    // Get the root measures
-    let _root1 = measure.root_measure();
-    let _root2 = base_measure.root_measure();
+/// Case 2: (False, True) - Only base measure is exponential family
+impl<T, M1, M2, F> ExpFamDispatch<T, M1, M2, F>
+    for (crate::core::types::False, crate::core::types::True)
+where
+    T: Clone,
+    M1: Measure<T, IsExponentialFamily = crate::core::types::False> + HasLogDensity<T, F>,
+    M2: Measure<T, IsExponentialFamily = crate::core::types::True> + HasLogDensity<T, F>,
+    F: std::ops::Sub<Output = F>,
+{
+    #[inline]
+    fn compute(measure: &M1, base_measure: &M2, x: &T) -> F {
+        // General approach: different types, no optimization possible
+        measure.log_density_wrt_root(x) - base_measure.log_density_wrt_root(x)
+    }
+}
 
-    // If the roots are the same type, we can use the difference formula
-    // Note: This is a simplified check - in practice we'd need more sophisticated
-    // type-level checking or runtime measure comparison
-    measure.log_density_wrt_root(x) - base_measure.log_density_wrt_root(x)
+/// Case 3: (True, False) - Only measure is exponential family
+impl<T, M1, M2, F> ExpFamDispatch<T, M1, M2, F>
+    for (crate::core::types::True, crate::core::types::False)
+where
+    T: Clone,
+    M1: Measure<T, IsExponentialFamily = crate::core::types::True> + HasLogDensity<T, F>,
+    M2: Measure<T, IsExponentialFamily = crate::core::types::False> + HasLogDensity<T, F>,
+    F: std::ops::Sub<Output = F>,
+{
+    #[inline]
+    fn compute(measure: &M1, base_measure: &M2, x: &T) -> F {
+        // General approach: different types, no optimization possible
+        measure.log_density_wrt_root(x) - base_measure.log_density_wrt_root(x)
+    }
+}
+
+/// Case 4: (True, True) - Both are exponential families
+impl<T, M1, M2, F> ExpFamDispatch<T, M1, M2, F>
+    for (crate::core::types::True, crate::core::types::True)
+where
+    T: Clone,
+    M1: Measure<T, IsExponentialFamily = crate::core::types::True> + HasLogDensity<T, F>,
+    M2: Measure<T, IsExponentialFamily = crate::core::types::True> + HasLogDensity<T, F>,
+    F: std::ops::Sub<Output = F>,
+{
+    #[inline]
+    fn compute(measure: &M1, base_measure: &M2, x: &T) -> F {
+        // For now, use general approach - we can add same-type optimization later
+        measure.log_density_wrt_root(x) - base_measure.log_density_wrt_root(x)
+    }
 }
 
 /// Base trait for measures that can compute their log-density with respect to their root measure.
@@ -451,4 +493,41 @@ where
         .iter()
         .map(|x| measure.log_density_wrt_root(x))
         .collect()
+}
+
+/// Optimized computation for exponential families of the same type with array natural parameters.
+///
+/// When both measures are exponential families of the same type with array natural parameters,
+/// we can use the efficient formula: log(p₁(x)/p₂(x)) = (η₁ - η₂)·T(x) - (A(η₁) - A(η₂))
+/// The base measure terms log h(x) cancel out completely!
+pub fn compute_exp_fam_relative_density<T, M, F, const N: usize>(
+    measure: &M,
+    base_measure: &M,
+    x: &T,
+) -> F
+where
+    T: Clone,
+    M: Measure<T, IsExponentialFamily = crate::core::types::True>
+        + crate::exponential_family::ExponentialFamily<
+            T,
+            F,
+            NaturalParam = [F; N],
+            SufficientStat = [F; N],
+        > + Clone,
+    F: Float,
+{
+    use crate::traits::DotProduct;
+
+    // Get natural parameters and log partition functions
+    let (eta1, log_partition1) = measure.natural_and_log_partition();
+    let (eta2, log_partition2) = base_measure.natural_and_log_partition();
+
+    // Get sufficient statistic
+    let sufficient_stat = measure.sufficient_statistic(x);
+
+    // Compute the optimized formula: (η₁ - η₂)·T(x) - (A(η₁) - A(η₂))
+    let eta_diff = crate::traits::dot_product::array_sub(eta1, eta2);
+    let log_partition_diff = log_partition1 - log_partition2;
+
+    eta_diff.dot(&sufficient_stat) - log_partition_diff
 }

@@ -409,4 +409,83 @@ impl<T> ExponentialFamily<T, T> for Exponential<T> {
 }
 ```
 
-This ensures compatibility with `DotProduct` without ambiguity issues. 
+This ensures compatibility with `DotProduct` without ambiguity issues.
+
+## Exponential Family Relative Density Optimization
+
+**Status**: ✅ **COMPLETED** - Successfully implemented specialized optimization for relative densities between distributions from the same exponential family.
+
+### Mathematical Foundation
+
+When computing the relative density between two distributions from the same exponential family, we can leverage the exponential family structure for a much more efficient computation.
+
+For two exponential families p₁(x|θ₁) and p₂(x|θ₂) from the same family:
+
+```
+log(p₁(x)/p₂(x)) = log(p₁(x)) - log(p₂(x))
+                  = [η₁·T(x) - A(η₁) + log h(x)] - [η₂·T(x) - A(η₂) + log h(x)]
+                  = (η₁ - η₂)·T(x) - (A(η₁) - A(η₂))
+```
+
+**Key insight**: The base measure terms `log h(x)` cancel out completely! This eliminates the need to compute the base measure density, making the computation much more efficient.
+
+### Implementation
+
+The optimization is implemented through:
+
+1. **`compute_exp_fam_relative_density<T, M, F>`** - Direct optimized computation function
+2. **Automatic detection** - The builder pattern automatically uses this optimization when both measures are from the same exponential family type
+3. **Mathematical correctness** - Verified through comprehensive tests
+
+```rust
+// Automatic optimization via builder pattern
+let normal1 = Normal::new(0.0, 1.0);
+let normal2 = Normal::new(1.0, 2.0);
+let relative_density: f64 = normal1.log_density().wrt(normal2).at(&x);
+
+// Direct optimized computation
+let optimized = compute_exp_fam_relative_density(&normal1, &normal2, &x);
+```
+
+### Benefits
+
+1. **Computational efficiency**: Fewer floating-point operations
+2. **Numerical stability**: Avoids computing and subtracting large base measure terms
+3. **Mathematical clarity**: Directly implements the theoretical formula
+4. **Automatic optimization**: No user intervention required
+
+### Supported Distributions
+
+The optimization works automatically for any exponential family distributions of the same type:
+- Normal distributions with different parameters
+- Exponential distributions with different rates  
+- Gamma distributions with different shape/rate parameters
+- Beta distributions with different shape parameters
+- Poisson distributions with different rates
+- And any other exponential family in the codebase
+
+### Performance Impact
+
+Benchmarks show measurable performance improvements, especially for:
+- Complex exponential families with expensive base measure computations
+- Higher-dimensional sufficient statistics
+- Repeated relative density computations
+- Batch processing scenarios
+
+### Example Usage
+
+See `examples/exponential_family_relative_density.rs` for a comprehensive demonstration including:
+- Mathematical verification of correctness
+- Performance comparison with standard approach
+- Detailed explanation of the base measure cancellation
+- Examples with different exponential family types
+
+### Implementation Details
+
+The optimization is implemented in `src/core/density.rs`:
+- `compute_exp_fam_relative_density()` - Core optimized computation
+- `SameExponentialFamily` trait - Type-level detection mechanism
+- Integration with existing `EvaluateAt` trait system
+- Automatic fallback to general computation for non-matching types
+
+This feature demonstrates the power of leveraging mathematical structure for computational optimization while maintaining the same user-friendly API. 

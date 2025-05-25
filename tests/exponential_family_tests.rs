@@ -306,3 +306,57 @@ fn test_automatic_chain_rule_for_normal() {
     println!("✅ Normal distributions work correctly with automatic chain rule!");
     println!("✅ Chain rule part is zero as expected for base_measure == root_measure!");
 }
+
+#[test]
+fn test_exponential_family_relative_density_optimization() {
+    println!("\n=== Testing Exponential Family Relative Density Optimization ===");
+
+    let normal1 = Normal::new(0.0_f64, 1.0_f64);
+    let normal2 = Normal::new(1.0_f64, 1.5_f64);
+    let x = 0.5_f64;
+
+    // Test the specialized exponential family computation
+    let optimized_result =
+        measures::core::density::compute_exp_fam_relative_density(&normal1, &normal2, &x);
+
+    // Compare with manual computation using the general approach
+    let manual_result = normal1.log_density().at(&x) - normal2.log_density().at(&x);
+
+    // Also test via the builder pattern (should use the same optimization internally)
+    let builder_result: f64 = normal1.log_density().wrt(normal2.clone()).at(&x);
+
+    println!("Optimized exponential family result: {optimized_result}");
+    println!("Manual computation result: {manual_result}");
+    println!("Builder pattern result: {builder_result}");
+
+    // All should be equal within floating point precision
+    assert!(
+        (optimized_result - manual_result).abs() < 1e-10,
+        "Optimized result {optimized_result} != manual result {manual_result}"
+    );
+
+    assert!(
+        (builder_result - manual_result).abs() < 1e-10,
+        "Builder result {builder_result} != manual result {manual_result}"
+    );
+
+    // Verify the mathematical correctness using the exponential family formula
+    // For Normal distributions: log(p₁(x)/p₂(x)) = (η₁ - η₂)·T(x) - (A(η₁) - A(η₂))
+    let (eta1, log_partition1) = normal1.natural_and_log_partition();
+    let (eta2, log_partition2) = normal2.natural_and_log_partition();
+    let sufficient_stat = normal1.sufficient_statistic(&x);
+
+    use measures::traits::DotProduct;
+    use measures::traits::dot_product::array_sub;
+    let eta_diff = array_sub(eta1, eta2);
+    let log_partition_diff = log_partition1 - log_partition2;
+    let expected = eta_diff.dot(&sufficient_stat) - log_partition_diff;
+
+    println!("Expected from formula: {expected}");
+    assert!(
+        (optimized_result - expected).abs() < 1e-10,
+        "Optimized result {optimized_result} != expected formula result {expected}"
+    );
+
+    println!("✅ Exponential family optimization working correctly!");
+}

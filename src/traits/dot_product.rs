@@ -43,3 +43,15 @@ impl<T: Float> DotProduct for Vec<T> {
         result
     }
 }
+
+/// Helper function for element-wise array subtraction
+///
+/// This is needed for exponential family relative density computation where
+/// we compute (η₁ - η₂)·T(x) - (A(η₁) - A(η₂)).
+pub fn array_sub<T: Float, const N: usize>(a: [T; N], b: [T; N]) -> [T; N] {
+    let mut result = [T::zero(); N];
+    for i in 0..N {
+        result[i] = a[i] - b[i];
+    }
+    result
+}
