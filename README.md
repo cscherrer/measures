@@ -172,7 +172,6 @@ measures = { version = "0.1", features = ["jit"] }
 ## Future Work
 
 ### Planned Improvements
-- Complete libm integration for JIT compilation
 - Performance optimization for zero-overhead techniques
 - Extended distribution family support
 - Multivariate distribution implementations
