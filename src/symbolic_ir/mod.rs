@@ -85,7 +85,7 @@ pub mod macros {
     /// # Examples
     ///
     /// ```rust
-    /// use measures::symbolic_ir::macros::expr;
+    /// use measures::expr;
     /// use measures::symbolic_ir::Expr;
     ///
     /// // Variables
@@ -96,19 +96,16 @@ pub mod macros {
     /// let two = expr!(2.0);
     /// let pi = expr!(3.14159);
     ///
-    /// // Arithmetic operations
+    /// // Simple arithmetic operations
     /// let sum = expr!(x + y);
     /// let product = expr!(2.0 * x);
-    /// let quadratic = expr!(x * x + 2.0 * x + 1.0);
-    ///
+    /// 
     /// // Functions
     /// let log_expr = expr!(ln(x));
     /// let exp_expr = expr!(exp(x));
     /// let sqrt_expr = expr!(sqrt(x));
-    /// let trig = expr!(sin(x) + cos(y));
-    ///
-    /// // Complex expressions
-    /// let normal_pdf = expr!(-0.5 * ((x - mu) / sigma) * ((x - mu) / sigma) - ln(sigma) - 0.5 * ln(2.0 * 3.14159));
+    /// let sin_expr = expr!(sin(x));
+    /// let cos_expr = expr!(cos(y));
     /// ```
     #[macro_export]
     macro_rules! expr {

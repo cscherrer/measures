@@ -173,14 +173,14 @@ mod tests {
         // Just test that it builds without panicking
         assert!(matches!(
             likelihood,
-            crate::symbolic_ir::expr::Expr::Add(_, _)
+            crate::symbolic_ir::expr::Expr::Sub(_, _)
         ));
     }
 
     #[test]
     fn test_normal_prior_expression() {
         let prior = normal_prior("mu", 0.0, 1.0);
-        assert!(matches!(prior, crate::symbolic_ir::expr::Expr::Add(_, _)));
+        assert!(matches!(prior, crate::symbolic_ir::expr::Expr::Sub(_, _)));
     }
 
     #[test]

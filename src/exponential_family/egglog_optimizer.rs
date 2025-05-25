@@ -430,8 +430,7 @@ mod tests {
         );
 
         let optimized = optimizer.optimize(&expr).unwrap();
-        // For now, this just returns the original expression
-        // TODO: Implement proper extraction to verify optimization
-        assert_eq!(optimized, expr);
+        // The optimizer should simplify x + 0 to x
+        assert_eq!(optimized, Expr::Var("x".to_string()));
     }
 }
