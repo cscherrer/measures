@@ -45,8 +45,18 @@ pub mod traits;
 pub use core::{
     DotProduct, EvaluateAt, HasLogDensity, LogDensity, LogDensityTrait, Measure, PrimitiveMeasure,
 };
+pub use distributions::continuous::beta::Beta;
+pub use distributions::continuous::cauchy::Cauchy;
+pub use distributions::continuous::chi_squared::ChiSquared;
+pub use distributions::continuous::exponential::Exponential;
+pub use distributions::continuous::gamma::Gamma;
 pub use distributions::continuous::normal::Normal;
 pub use distributions::continuous::stdnormal::StdNormal;
+pub use distributions::discrete::bernoulli::Bernoulli;
+pub use distributions::discrete::binomial::Binomial;
+pub use distributions::discrete::categorical::Categorical;
+pub use distributions::discrete::geometric::Geometric;
+pub use distributions::discrete::negative_binomial::NegativeBinomial;
 pub use distributions::discrete::poisson::Poisson;
 pub use exponential_family::IIDExtension;
 

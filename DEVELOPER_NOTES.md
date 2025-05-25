@@ -338,6 +338,40 @@ When implementing `ExponentialFamily`:
 - [Rust Reference - Associated Types](https://doc.rust-lang.org/reference/items/associated-items.html#associated-types)
 - [Rust Reference - Const Generics](https://doc.rust-lang.org/reference/items/generics.html#const-generics)
 
+## Density Trait Simplification (Completed)
+
+**Status**: ✅ **COMPLETED** - Successfully simplified density traits without breaking functionality.
+
+### What Was Removed
+- `HasLogDensityWrt<T, F, BaseMeasure>` - Never implemented or used
+- `LogDensityEval<T, F>` - Never implemented or used  
+- `GeneralLogDensity<T, F>` - Redundant with builder pattern
+- Duplicate `LogDensityBuilder` definition in `density.rs`
+
+### What Remains
+- `HasLogDensity<T, F>` - Core trait for log-density computation
+- `LogDensityTrait<T, F>` - Used in builder pattern
+- `LogDensityBuilder<T>` - Builder pattern entry point (in `measure.rs`)
+- `EvaluateAt<T, F>` - Used by builder pattern
+- `LogDensity<T, M, R>` - Builder pattern implementation
+- `CachedLogDensity<L, T, F>` - Caching wrapper
+- `DensityMeasure<T, F, M>` - Density as measure
+- `SharedRootMeasure<T, F>` - Optimization trait
+
+### Verification
+✅ **Non-Exponential Family Support Verified**: Added Cauchy distribution as test case
+- Cauchy is NOT an exponential family (heavy tails, no finite moments)
+- Requires manual `HasLogDensity` implementation
+- Works seamlessly with same API as exponential families
+- Type-level dispatch correctly routes to manual implementation
+- All tests pass, relative density computation works correctly
+
+### Key Insights
+1. **Type-level dispatch works perfectly**: `IsExponentialFamily = False` correctly routes to manual implementations
+2. **API consistency maintained**: Both exponential and non-exponential families use identical API
+3. **Performance preserved**: No runtime overhead from trait dispatch
+4. **Composability intact**: Relative densities work between different distribution types
+
 ## Scalar DotProduct Implementations Are Ruled Out
 
 **TL;DR**: We cannot add scalar `DotProduct` implementations due to trait coherence issues.
@@ -375,37 +409,4 @@ impl<T> ExponentialFamily<T, T> for Exponential<T> {
 }
 ```
 
-This ensures compatibility with `DotProduct` without ambiguity issues.
-
-## Density Trait Simplification
-
-**TL;DR**: We removed redundant density traits that provided no additional functionality over the builder pattern.
-
-### What Was Removed
-- `HasLogDensityWrt<T, F, BaseMeasure>`: Never implemented or used
-- `LogDensityEval<T, F>`: Never implemented or used  
-- `GeneralLogDensity<T, F>`: Redundant with builder pattern
-- Duplicate `LogDensityBuilder` definition in `density.rs`
-
-### Why These Were Safe to Remove
-1. **`HasLogDensityWrt`** and **`LogDensityEval`**: Dead code with no implementations
-2. **`GeneralLogDensity`**: Only provided `log_density_wrt_measure()` which just did:
-   ```rust
-   self.log_density_wrt_root(x) - base_measure.log_density_wrt_root(x)
-   ```
-   This is exactly what the builder pattern provides with `.wrt()`:
-   ```rust
-   // Old way (removed)
-   normal1.log_density_wrt_measure(&normal2, &x)
-   
-   // New way (cleaner)
-   normal1.log_density().wrt(normal2).at(&x)
-   ```
-
-### Essential Traits Kept
-- `HasLogDensity<T, F>`: Core trait for density computation
-- `LogDensityBuilder<T>`: Builder pattern entry point (in `measure.rs`)
-- `LogDensityTrait<T>`: For the `LogDensity` struct
-- `EvaluateAt<T, F>`: For polymorphic evaluation
-
-This simplification reduces the API surface while maintaining all functionality. 
+This ensures compatibility with `DotProduct` without ambiguity issues. 
