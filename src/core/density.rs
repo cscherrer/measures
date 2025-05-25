@@ -295,8 +295,7 @@ where
     #[inline]
     fn compute(measure: &M1, base_measure: &M2, x: &T) -> F {
         // General approach for exponential families (both same and different types)
-        // The optimization for same-type exponential families is available via
-        // the compute_exp_fam_relative_density function for manual use
+        // Zero-overhead optimization is available via the JIT system
         measure.log_density_wrt_root(x) - base_measure.log_density_wrt_root(x)
     }
 }
@@ -500,41 +499,4 @@ where
         .iter()
         .map(|x| measure.log_density_wrt_root(x))
         .collect()
-}
-
-/// Optimized computation for exponential families of the same type with array natural parameters.
-///
-/// When both measures are exponential families of the same type with array natural parameters,
-/// we can use the efficient formula: log(p₁(x)/p₂(x)) = (η₁ - η₂)·T(x) - (A(η₁) - A(η₂))
-/// The base measure terms log h(x) cancel out completely!
-pub fn compute_exp_fam_relative_density<T, M, F, const N: usize>(
-    measure: &M,
-    base_measure: &M,
-    x: &T,
-) -> F
-where
-    T: Clone,
-    M: Measure<T, IsExponentialFamily = crate::core::types::True>
-        + crate::exponential_family::ExponentialFamily<
-            T,
-            F,
-            NaturalParam = [F; N],
-            SufficientStat = [F; N],
-        > + Clone,
-    F: Float,
-{
-    use crate::traits::DotProduct;
-
-    // Get natural parameters and log partition functions
-    let (eta1, log_partition1) = measure.natural_and_log_partition();
-    let (eta2, log_partition2) = base_measure.natural_and_log_partition();
-
-    // Get sufficient statistic
-    let sufficient_stat = measure.sufficient_statistic(x);
-
-    // Compute the optimized formula: (η₁ - η₂)·T(x) - (A(η₁) - A(η₂))
-    let eta_diff = crate::traits::dot_product::array_sub(eta1, eta2);
-    let log_partition_diff = log_partition1 - log_partition2;
-
-    eta_diff.dot(&sufficient_stat) - log_partition_diff
 }

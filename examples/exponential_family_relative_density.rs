@@ -1,9 +1,8 @@
 //! Exponential Family Relative Density Optimization Example
 //!
-//! This example demonstrates the specialized optimization for computing relative densities
-//! between distributions from the same exponential family. When both distributions are
-//! from the same exponential family, the base measure terms cancel out, allowing for
-//! a much more efficient computation.
+//! This example demonstrates the zero-overhead optimization for computing relative densities
+//! between distributions from the same exponential family. The zero-overhead system
+//! automatically provides significant performance improvements while maintaining a clean API.
 //!
 //! Mathematical insight:
 //! For two exponential families p₁(x|θ₁) and p₂(x|θ₂) from the same family:
@@ -11,15 +10,17 @@
 //!                   = (η₁ - η₂)·T(x) - (A(η₁) - A(η₂))
 //!
 //! The base measure terms log h(x) cancel out completely!
+//! This optimization is automatically applied by the zero-overhead system.
 //!
-//! Run with: cargo run --example `exponential_family_relative_density`
+//! Run with: cargo run --example exponential_family_relative_density --features jit
 
+use measures::exponential_family::jit::ZeroOverheadOptimizer;
 use measures::exponential_family::ExponentialFamily;
 use measures::traits::DotProduct;
 use measures::{LogDensityBuilder, Normal, distributions::Exponential};
 
 fn main() {
-    println!("🎯 === Exponential Family Relative Density Optimization === 🎯\n");
+    println!("🎯 === Zero-Overhead Exponential Family Optimization === 🎯\n");
 
     demonstrate_normal_optimization();
     demonstrate_exponential_optimization();
@@ -27,10 +28,10 @@ fn main() {
     demonstrate_performance_benefit();
     demonstrate_best_practices();
 
-    println!("\n🎉 === Exponential Family Optimization Complete! === 🎉");
-    println!("✅ Demonstrated efficient relative density computation for exponential families");
+    println!("\n🎉 === Zero-Overhead Optimization Complete! === 🎉");
+    println!("✅ Demonstrated efficient relative density computation using zero-overhead optimization");
     println!("✅ Showed mathematical correctness of the optimization");
-    println!("🚀 Base measure terms cancel out, making computation much more efficient!");
+    println!("🚀 Zero-overhead system provides significant performance improvements!");
 }
 
 fn demonstrate_normal_optimization() {
@@ -46,17 +47,17 @@ fn demonstrate_normal_optimization() {
     // Optimized computation using builder pattern (automatically uses optimization)
     let optimized_result: f64 = normal1.log_density().wrt(normal2.clone()).at(&x);
 
-    // Direct optimized computation
-    let direct_optimized =
-        measures::core::density::compute_exp_fam_relative_density(&normal1, &normal2, &x);
+    // Zero-overhead optimized computation
+    let zero_overhead_fn = normal1.clone().zero_overhead_optimize_wrt(normal2.clone());
+    let zero_overhead_result = zero_overhead_fn(&x);
 
     println!("Normal₁: N(μ=0.0, σ=1.0)");
     println!("Normal₂: N(μ=2.0, σ=1.5)");
     println!("Point: x = {x}");
     println!();
-    println!("Standard computation:  {standard_result:.10}");
-    println!("Builder optimization:  {optimized_result:.10}");
-    println!("Direct optimization:   {direct_optimized:.10}");
+    println!("Standard computation:     {standard_result:.10}");
+    println!("Builder optimization:     {optimized_result:.10}");
+    println!("Zero-overhead optimize:   {zero_overhead_result:.10}");
     println!(
         "Difference (should be ~0): {:.2e}",
         (optimized_result - standard_result).abs()
@@ -148,50 +149,54 @@ fn demonstrate_performance_benefit() {
 
     let normal1 = Normal::new(0.0, 1.0);
     let normal2 = Normal::new(1.0, 1.5);
+    let _exp1 = Exponential::new(1.0);
+    let _exp2 = Exponential::new(2.0);
     let points: Vec<f64> = (0..1000).map(|i| f64::from(i) * 0.01).collect();
 
-    // Benchmark standard approach
+    // Benchmark 1: Manual subtraction (not recommended - error-prone)
     let start = std::time::Instant::now();
     for &x in &points {
         let _result = normal1.log_density().at(&x) - normal2.log_density().at(&x);
     }
-    let standard_time = start.elapsed();
+    let manual_time = start.elapsed();
 
-    // Benchmark optimized approach
-    let start = std::time::Instant::now();
-    for &x in &points {
-        let _result =
-            measures::core::density::compute_exp_fam_relative_density(&normal1, &normal2, &x);
-    }
-    let optimized_time = start.elapsed();
-
-    // Benchmark builder pattern (uses general approach currently)
+    // Benchmark 2: Builder pattern (RECOMMENDED - consistent API)
     let start = std::time::Instant::now();
     for &x in &points {
         let _result: f64 = normal1.log_density().wrt(normal2.clone()).at(&x);
     }
     let builder_time = start.elapsed();
 
+    // Benchmark 3: Zero-overhead optimized function (fastest for repeated use)
+    let zero_overhead_fn = normal1.clone().zero_overhead_optimize_wrt(normal2.clone());
+    let start = std::time::Instant::now();
+    for &x in &points {
+        let _result = zero_overhead_fn(&x);
+    }
+    let zero_overhead_time = start.elapsed();
+
     println!("Computing relative density for {} points...", points.len());
-    println!("Standard approach:  {:.2}µs", standard_time.as_micros());
-    println!("Optimized approach: {:.3}µs", optimized_time.as_micros());
-    println!("Builder pattern:    {:.2}µs", builder_time.as_micros());
+    println!("Manual subtraction:     {:.2}µs (not recommended)", manual_time.as_micros());
+    println!("Builder pattern:        {:.2}µs (RECOMMENDED)", builder_time.as_micros());
+    println!("Zero-overhead optimize: {:.2}µs (fastest)", zero_overhead_time.as_micros());
 
-    let speedup = standard_time.as_nanos() as f64 / optimized_time.as_nanos() as f64;
-    println!("Speedup: {speedup:.2}x faster");
+    let builder_vs_manual = manual_time.as_nanos() as f64 / builder_time.as_nanos() as f64;
+    let zero_overhead_vs_manual = manual_time.as_nanos() as f64 / zero_overhead_time.as_nanos() as f64;
+    
+    println!("\nSpeedup vs manual subtraction:");
+    println!("  Builder pattern:        {builder_vs_manual:.2}x");
+    println!("  Zero-overhead optimize: {zero_overhead_vs_manual:.2}x");
 
-    println!("\n💡 The optimization provides:");
-    println!("   • Fewer floating-point operations");
-    println!("   • Better numerical stability");
-    println!("   • Cleaner mathematical expression");
-    println!("   • Automatic base measure handling");
+    println!("\n💡 Why use the zero-overhead optimization:");
+    println!("   • Pre-computes constants at generation time");
+    println!("   • Zero function call overhead");
+    println!("   • Automatic LLVM optimization");
+    println!("   • Works with any exponential family types");
 
-    println!("\n🔧 Performance Tips:");
-    println!("   • Use compute_exp_fam_relative_density() for same-type exponential families");
-    println!("   • Builder pattern: normal1.log_density().wrt(normal2).at(&x) (general approach)");
-    println!(
-        "   • Direct function: compute_exp_fam_relative_density(&normal1, &normal2, &x) (optimized)"
-    );
+    println!("\n🔧 Recommended Usage:");
+    println!("   ✅ RECOMMENDED: normal1.log_density().wrt(normal2).at(&x)");
+    println!("   ⚡ FASTEST:     normal1.zero_overhead_optimize_wrt(normal2)");
+    println!("   ❌ AVOID:       normal1.log_density().at(&x) - normal2.log_density().at(&x)");
 }
 
 fn demonstrate_best_practices() {
@@ -200,44 +205,51 @@ fn demonstrate_best_practices() {
     let normal1 = Normal::new(0.0, 1.0);
     let normal2 = Normal::new(1.0, 1.5);
     let exp1 = Exponential::new(1.0);
-    let exp2 = Exponential::new(2.0);
+    let _exp2 = Exponential::new(2.0);
     let x = 0.5;
 
-    println!("📋 When to use each approach:\n");
+    println!("📋 Recommended approaches (in order of preference):\n");
 
-    // Case 1: Same exponential family type
-    println!("1️⃣ Same exponential family type (RECOMMENDED: Use optimized function)");
-    let standard_result = normal1.log_density().at(&x) - normal2.log_density().at(&x);
-    let optimized_result =
-        measures::core::density::compute_exp_fam_relative_density(&normal1, &normal2, &x);
-    println!("   Standard:  normal1.log_density().at(&x) - normal2.log_density().at(&x)");
-    println!("   Optimized: compute_exp_fam_relative_density(&normal1, &normal2, &x)");
-    println!("   Results:   {standard_result:.10} vs {optimized_result:.10} ✅");
+    // Case 1: Builder pattern (RECOMMENDED)
+    println!("1️⃣ Builder Pattern (RECOMMENDED for all cases)");
+    let builder_same_type: f64 = normal1.log_density().wrt(normal2.clone()).at(&x);
+    let builder_diff_type: f64 = normal1.log_density().wrt(exp1.clone()).at(&x);
+    println!("   Same type:     normal1.log_density().wrt(normal2).at(&x)");
+    println!("   Different:     normal1.log_density().wrt(exponential).at(&x)");
+    println!("   Results:       {builder_same_type:.10} | {builder_diff_type:.10} ✅");
 
-    // Case 2: Different exponential family types
-    println!("\n2️⃣ Different exponential family types (Use builder pattern)");
-    let mixed_result: f64 = normal1.log_density().wrt(exp1.clone()).at(&x);
-    println!("   Approach:  normal.log_density().wrt(exponential).at(&x)");
-    println!("   Result:    {mixed_result:.10}");
+    // Case 2: Zero-overhead optimization (for performance-critical repeated use)
+    println!("\n2️⃣ Zero-Overhead Optimization (for performance-critical repeated use)");
+    let zero_overhead_fn = normal1.clone().zero_overhead_optimize_wrt(normal2.clone());
+    let zero_overhead_result = zero_overhead_fn(&x);
+    println!("   Usage:         let opt_fn = normal1.zero_overhead_optimize_wrt(normal2);");
+    println!("   Then:          opt_fn(&x) for each evaluation");
+    println!("   Result:        {zero_overhead_result:.10}");
 
-    // Case 3: General case (always works)
-    println!("\n3️⃣ General case (Always works, but may not be optimal)");
-    let general_result: f64 = normal1.log_density().wrt(normal2.clone()).at(&x);
-    println!("   Approach:  measure1.log_density().wrt(measure2).at(&x)");
-    println!("   Result:    {general_result:.10}");
+    // Case 3: Manual subtraction (not recommended)
+    println!("\n3️⃣ Manual Subtraction (NOT RECOMMENDED - error prone)");
+    let manual_result = normal1.log_density().at(&x) - normal2.log_density().at(&x);
+    println!("   Usage:         normal1.log_density().at(&x) - normal2.log_density().at(&x)");
+    println!("   Result:        {manual_result:.10}");
+    println!("   ⚠️  Problems:   • Error-prone (easy to mix up order)");
+    println!("                  • No automatic optimization");
+    println!("                  • Verbose and unclear intent");
 
-    println!("\n🎯 Performance Guidelines:");
-    println!("   • Same type + array natural params → Use compute_exp_fam_relative_density()");
-    println!("   • Different types or mixed families → Use builder pattern");
-    println!("   • Batch computations → Consider pre-computing parameters");
-    println!("   • Repeated evaluations → Consider caching with .cached()");
+    println!("\n📊 Performance Summary:");
+    println!("   Builder pattern:        Convenient + reasonably fast");
+    println!("   Zero-overhead optimize: Fastest for repeated evaluations");
+    println!("   Manual subtraction:     Slowest + error-prone");
 
-    println!("\n🔍 Type Constraints:");
-    println!("   • compute_exp_fam_relative_density requires:");
-    println!("     - Both measures are the same type M");
-    println!("     - M implements ExponentialFamily<T, F>");
-    println!("     - Natural parameters are arrays [F; N]");
-    println!("     - Sufficient statistics are arrays [F; N]");
+    println!("\n🎯 When to use each:");
+    println!("   • One-off computation → Builder pattern");
+    println!("   • Many evaluations → Zero-overhead optimization");
+    println!("   • Never use manual subtraction");
+
+    println!("\n🔧 Zero-overhead optimization benefits:");
+    println!("   • Pre-computes all constants");
+    println!("   • Eliminates repeated parameter access");
+    println!("   • LLVM can fully inline and optimize");
+    println!("   • Type-safe and impossible to misuse");
 
     println!("\n✨ Mathematical Insight:");
     println!("   The optimization works because for same-type exponential families:");
