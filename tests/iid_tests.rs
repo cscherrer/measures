@@ -198,6 +198,78 @@ fn test_iid_is_proper_exponential_family() {
     println!("=== IID is now a proper exponential family! ===");
 }
 
+#[test]
+fn test_iid_standard_api() {
+    // Create a normal distribution and IID version
+    let normal = Normal::new(0.0, 1.0);
+    let iid_normal = normal.clone().iid();
+
+    let samples = vec![0.0, 1.0, -1.0];
+
+    // Test the new standard API: iid_normal.log_density().at(&samples)
+    let standard_api_result: f64 = iid_normal.log_density().at(&samples);
+
+    // Compare with the manual method
+    let manual_method_result: f64 = iid_normal.iid_log_density(&samples);
+
+    // Compare with manual summation
+    let manual_sum: f64 = samples.iter().map(|&x| normal.log_density().at(&x)).sum();
+
+    println!("Standard API result: {standard_api_result:.6}");
+    println!("Manual method result: {manual_method_result:.6}");
+    println!("Manual sum result: {manual_sum:.6}");
+
+    // All three should be equal
+    assert!(
+        (standard_api_result - manual_method_result).abs() < 1e-10,
+        "Standard API should match manual method: {standard_api_result} vs {manual_method_result}"
+    );
+
+    assert!(
+        (standard_api_result - manual_sum).abs() < 1e-10,
+        "Standard API should match manual sum: {standard_api_result} vs {manual_sum}"
+    );
+
+    println!("✓ Standard API iid_normal.log_density().at(&samples) works correctly!");
+    println!("✓ All computation methods produce identical results");
+}
+
+#[test]
+fn test_iid_standard_api_discrete() {
+    // Test with Poisson distribution (discrete)
+    let poisson = Poisson::new(3.0_f64);
+    let iid_poisson = poisson.clone().iid();
+
+    let samples = vec![2, 3, 4, 1];
+
+    // Test the new standard API with discrete distribution
+    let standard_api_result: f64 = iid_poisson.log_density().at(&samples);
+
+    // Compare with the manual method
+    let manual_method_result: f64 = iid_poisson.iid_log_density(&samples);
+
+    // Compare with manual summation
+    let manual_sum: f64 = samples.iter().map(|&x| poisson.log_density().at(&x)).sum();
+
+    println!("Poisson Standard API result: {standard_api_result:.6}");
+    println!("Poisson Manual method result: {manual_method_result:.6}");
+    println!("Poisson Manual sum result: {manual_sum:.6}");
+
+    // All three should be equal
+    assert!(
+        (standard_api_result - manual_method_result).abs() < 1e-10,
+        "Standard API should match manual method: {standard_api_result} vs {manual_method_result}"
+    );
+
+    assert!(
+        (standard_api_result - manual_sum).abs() < 1e-10,
+        "Standard API should match manual sum: {standard_api_result} vs {manual_sum}"
+    );
+
+    println!("✓ Standard API works correctly for discrete distributions!");
+    println!("✓ Poisson IID computation produces identical results across all methods");
+}
+
 // TODO: More complete ExponentialFamily implementation would enable:
 // - Automatic HasLogDensity implementation for IID<D>
 // - Using .log_density().at(&samples) syntax

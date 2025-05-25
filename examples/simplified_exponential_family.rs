@@ -50,12 +50,22 @@ fn main() {
     println!("\n=== API Consistency ===");
     println!("Single point: normal.log_density().at(&x)");
     println!("IID samples:  iid_normal.iid_log_density(&samples)");
-    println!("Or directly:  compute_iid_exp_fam_log_density(&normal, &samples)");
+    println!("              ↑ Manual API (backward compatibility)");
+    println!("IID samples:  iid_normal.log_density().at(&samples)");
+    println!("              ↑ Standard API (recommended)");
+    println!("✓ Both IID APIs produce identical results");
+    println!("✓ Standard API maintains consistency with individual distributions");
+
+    // Demonstrate the new standard API
+    println!("\n=== New Standard API Demo ===");
+    let standard_api_result: f64 = iid_normal.log_density().at(&samples);
+    println!("Standard API: iid_normal.log_density().at(&samples) = {standard_api_result:.6}");
+    println!("Manual API:   iid_normal.iid_log_density(&samples) = {wrapper_log_density:.6}");
+    println!("Difference:   {:.2e}", (standard_api_result - wrapper_log_density).abs());
 
     println!("\n=== Summary ===");
-    println!("✓ Single source of computation for exponential families");
-    println!("✓ Centralized functions reduce code duplication");
-    println!("✓ Efficient IID computation using exponential family structure");
-    println!("✓ Consistent results across all methods");
-    println!("✓ Clear API separation: log_density() vs iid_log_density()");
+    println!("✓ Central functions provide efficient computation");
+    println!("✓ IID wrapper integrates seamlessly");
+    println!("✓ Standard API maintains library consistency");
+    println!("✓ Manual API preserved for backward compatibility");
 }

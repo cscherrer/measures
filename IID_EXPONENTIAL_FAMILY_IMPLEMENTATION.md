@@ -39,7 +39,7 @@ This maintains exponential family form with:
 1. **IID Wrapper** (`src/exponential_family/iid.rs`)
    - `IID<D>` struct wraps any exponential family distribution
    - Implements `Measure<Vec<X>>` for vector observations
-   - Provides `iid_log_density()` method
+   - Provides both standard and manual API methods
 
 2. **Extension Trait** 
    - `IIDExtension` adds `.iid()` method to all exponential families
@@ -52,20 +52,23 @@ This maintains exponential family form with:
 
 ### Key Features
 
+#### Consistent API Design
+The IID implementation provides **two equivalent APIs**:
+
+```rust
+// Standard API (recommended) - consistent with individual distributions
+let log_density: f64 = iid_normal.log_density().at(&samples);
+
+// Manual API (backward compatibility)
+let log_density: f64 = iid_normal.iid_log_density(&samples);
+```
+
+Both APIs produce identical results and use the same efficient computation under the hood.
+
 #### Correct Mathematical Implementation
 - Log-density computation follows `log p(x₁,...,xₙ) = ∑ᵢ log p(xᵢ)`
 - Handles empty samples correctly (log-density = 0)
 - Proper scaling with sample size
-
-#### Type Safety
-- Generic over distribution type `D` and numeric type `F`
-- Maintains type relationships between individual and IID measures
-- Compile-time verification of exponential family structure
-
-#### Integration with Framework
-- Works with existing `LogDensityBuilder` interface
-- Compatible with caching mechanisms
-- Supports both continuous (Normal) and discrete (Poisson) distributions
 
 ## Usage Examples
 
@@ -76,8 +79,12 @@ use measures::{IIDExtension, LogDensityBuilder, Normal};
 
 let normal = Normal::new(0.0, 1.0);
 let iid_normal = normal.iid();
+let samples = vec![0.0, 1.0, -1.0];
 
-let samples = vec![0.5, -0.3, 1.2];
+// Standard API (recommended)
+let log_density = iid_normal.log_density().at(&samples);
+
+// Manual API (backward compatibility)  
 let log_density = iid_normal.iid_log_density(&samples);
 ```
 
@@ -85,50 +92,55 @@ let log_density = iid_normal.iid_log_density(&samples);
 
 ```rust
 // Maximum likelihood estimation
-let observed_data = vec![2.1, 3.2, 1.8, 2.9];
 let candidates = vec![
-    Normal::new(2.0, 1.0),
-    Normal::new(2.5, 1.2), 
-    Normal::new(3.0, 1.5),
+    Normal::new(0.0, 1.0),
+    Normal::new(1.0, 1.5),
+    Normal::new(2.0, 0.8),
 ];
 
-let mut best_log_likelihood = f64::NEG_INFINITY;
-let mut best_model = &candidates[0];
+let observed_data = vec![0.5, 1.2, 0.8, 1.1];
 
-for model in &candidates {
-    let iid_model = model.clone().iid();
-    let log_likelihood = iid_model.iid_log_density(&observed_data);
-    if log_likelihood > best_log_likelihood {
-        best_log_likelihood = log_likelihood;
-        best_model = model;
-    }
-}
+let best_model = candidates
+    .iter()
+    .max_by(|a, b| {
+        let log_likelihood_a = a.clone().iid().log_density().at(&observed_data);
+        let log_likelihood_b = b.clone().iid().log_density().at(&observed_data);
+        log_likelihood_a.partial_cmp(&log_likelihood_b).unwrap()
+    })
+    .unwrap();
 ```
 
-## Examples
+## API Design Philosophy
 
-### 1. `examples/iid_example.rs`
-Comprehensive testing and validation:
-- Multiple sample sizes including edge cases
-- Mathematical property verification
-- Performance comparison of different computation methods
+### Consistency with Individual Distributions
 
-### 2. `examples/iid_statistical_inference.rs`
-Real-world statistical applications:
-- Maximum likelihood parameter estimation
-- Model comparison via likelihood ratios
-- Sample size scaling effects
+The standard API maintains consistency across the library:
 
-### 3. `examples/iid_exponential_family_theory.rs`
-Theoretical foundation demonstration:
-- Exponential family structure preservation
-- Sufficient statistics summation
-- Natural parameter invariance
-- Log-partition scaling
+```rust
+// Individual observation
+let x = 1.5;
+let log_density = normal.log_density().at(&x);
+
+// IID observations  
+let samples = vec![1.5, 2.0, 1.8];
+let log_density = iid_normal.log_density().at(&samples);
+```
+
+### Backward Compatibility
+
+The manual API is preserved for existing code:
+
+```rust
+// Still works
+let log_density = iid_normal.iid_log_density(&samples);
+```
 
 ## Mathematical Properties Verified
 
-### ✓ Additivity
+### ✓ Exponential Family Structure
+IID maintains all exponential family properties with proper parameter scaling
+
+### ✓ Additivity  
 For independent samples: `log p(x,y) = log p(x) + log p(y)`
 
 ### ✓ Sample Size Scaling  
@@ -156,7 +168,7 @@ Multiple computation methods yield identical results (within numerical precision
 - **Model Evidence**: Marginal likelihood computation
 
 ### Computational Efficiency
-- **Batch Processing**: Single cache for multiple density evaluations
+- **Batch Processing**: Single computation for multiple density evaluations
 - **Parallel Computation**: Independent samples enable parallelization  
 - **Memory Efficiency**: Avoid redundant parameter computations
 
@@ -167,7 +179,9 @@ Multiple computation methods yield identical results (within numerical precision
 ExponentialFamily<X, F>
     ↓ IIDExtension
 IID<D> : Measure<Vec<X>>
-    ↓ iid_log_density
+    ↓ HasLogDensity (automatic)
+LogDensity<Vec<X>, IID<D>>
+    ↓ EvaluateAt
 f64 (or F: Float)
 ```
 
@@ -176,21 +190,27 @@ f64 (or F: Float)
 - IID: `IID<D>: Measure<Vec<X>>`
 - Root measures: `D::RootMeasure` → `IIDRootMeasure::IIDRoot`
 
+### Implementation Strategy
+
+The standard API works through:
+
+1. **Automatic `HasLogDensity` Implementation**: IID distributions automatically get `HasLogDensity<Vec<X>, F>` via the blanket implementation for exponential families
+2. **Overridden `exp_fam_log_density`**: The IID implementation overrides this method to handle sample size scaling correctly
+3. **Efficient Computation**: Uses the specialized `compute_iid_exp_fam_log_density` function under the hood
+
 ### Future Extensions
 The current implementation provides the foundation for:
-1. **Full ExponentialFamily Implementation**: Complete trait implementation for IID measures
+1. **Full ExponentialFamily Integration**: Complete trait implementation for IID measures
 2. **Automatic Caching**: Integration with generic exponential family cache
 3. **SIMD Optimization**: Vectorized operations for large samples
 4. **Conjugate Prior Support**: Bayesian inference capabilities
 
 ## Conclusion
 
-This implementation successfully realizes the mathematical principle that IID collections of exponential family random variables form exponential families themselves. It provides:
+The IID implementation successfully bridges individual and joint distributions while maintaining:
+- **Mathematical Correctness**: Proper exponential family structure
+- **API Consistency**: Standard interface matching individual distributions  
+- **Performance**: Efficient computation using exponential family properties
+- **Flexibility**: Support for both standard and manual APIs
 
-- **Correct mathematical foundation** following probability theory
-- **Type-safe implementation** with compile-time verification
-- **Practical applications** for statistical inference
-- **Integration** with existing framework components
-- **Extensible design** for future enhancements
-
-The implementation enables efficient likelihood-based inference while maintaining the mathematical rigor required for statistical computing applications. 
+This provides a solid foundation for statistical computing applications requiring IID sample handling. 
