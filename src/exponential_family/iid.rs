@@ -261,10 +261,10 @@ where
         (natural_params, log_partition)
     }
 
-    /// Override exp_fam_log_density to handle IID sample size scaling correctly
+    /// Override `exp_fam_log_density` to handle IID sample size scaling correctly
     ///
-    /// This enables the standard API: iid_normal.log_density().at(&samples)
-    /// The automatic HasLogDensity implementation will call this method.
+    /// This enables the standard API: `iid_normal.log_density().at(&samples)`
+    /// The automatic `HasLogDensity` implementation will call this method.
     fn exp_fam_log_density(&self, xs: &Vec<X>) -> F
     where
         Self::NaturalParam: DotProduct<Self::SufficientStat, Output = F>,

@@ -55,7 +55,7 @@ fn main() {
 
     println!("\n=== Different Sample Sizes ===");
     for n in [1, 2, 5, 10] {
-        let test_samples: Vec<f64> = (0..n).map(|i| i as f64 * 0.1).collect();
+        let test_samples: Vec<f64> = (0..n).map(|i| f64::from(i) * 0.1).collect();
         let log_density = iid_normal.log_density().at(&test_samples);
         println!("n={n:2}: log p({test_samples:?}) = {log_density:.6}");
     }
@@ -72,4 +72,4 @@ fn main() {
     println!("📈 Users can use the familiar .log_density().at() pattern");
     println!("🔧 Backward compatibility maintained with .iid_log_density()");
     println!("⚡ Efficient exponential family computation under the hood");
-} 
+}

@@ -61,7 +61,10 @@ fn main() {
     let standard_api_result: f64 = iid_normal.log_density().at(&samples);
     println!("Standard API: iid_normal.log_density().at(&samples) = {standard_api_result:.6}");
     println!("Manual API:   iid_normal.iid_log_density(&samples) = {wrapper_log_density:.6}");
-    println!("Difference:   {:.2e}", (standard_api_result - wrapper_log_density).abs());
+    println!(
+        "Difference:   {:.2e}",
+        (standard_api_result - wrapper_log_density).abs()
+    );
 
     println!("\n=== Summary ===");
     println!("✓ Central functions provide efficient computation");

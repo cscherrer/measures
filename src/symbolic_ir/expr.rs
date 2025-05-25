@@ -282,6 +282,65 @@ impl fmt::Display for Expr {
     }
 }
 
+impl Expr {
+    /// Format as LaTeX for mathematical documents
+    #[must_use]
+    pub fn to_latex(&self) -> String {
+        match self {
+            Expr::Const(value) => {
+                if value.fract() == 0.0 && value.abs() < 1e10 {
+                    format!("{}", *value as i64)
+                } else {
+                    format!("{value}")
+                }
+            }
+            Expr::Var(name) => name.clone(),
+            Expr::Add(left, right) => format!("{} + {}", left.to_latex(), right.to_latex()),
+            Expr::Sub(left, right) => format!("{} - {}", left.to_latex(), right.to_latex()),
+            Expr::Mul(left, right) => match (left.as_ref(), right.as_ref()) {
+                (Expr::Const(c), _) if *c == 1.0 => right.to_latex(),
+                (Expr::Const(c), _) if *c == -1.0 => format!("-{}", right.to_latex()),
+                (Expr::Const(_), Expr::Var(_)) => {
+                    format!("{}{}", left.to_latex(), right.to_latex())
+                }
+                _ => format!("{} \\cdot {}", left.to_latex(), right.to_latex()),
+            },
+            Expr::Div(left, right) => {
+                format!("\\frac{{{}}}{{{}}}", left.to_latex(), right.to_latex())
+            }
+            Expr::Pow(base, exponent) => format!("{}^{{{}}}", base.to_latex(), exponent.to_latex()),
+            Expr::Ln(expr) => format!("\\ln({})", expr.to_latex()),
+            Expr::Exp(expr) => format!("e^{{{}}}", expr.to_latex()),
+            Expr::Sqrt(expr) => format!("\\sqrt{{{}}}", expr.to_latex()),
+            Expr::Sin(expr) => format!("\\sin({})", expr.to_latex()),
+            Expr::Cos(expr) => format!("\\cos({})", expr.to_latex()),
+            Expr::Neg(expr) => format!("-({})", expr.to_latex()),
+        }
+    }
+
+    /// Format as Python code for numerical evaluation
+    #[must_use]
+    pub fn to_python(&self) -> String {
+        match self {
+            Expr::Const(value) => format!("{value}"),
+            Expr::Var(name) => name.clone(),
+            Expr::Add(left, right) => format!("({} + {})", left.to_python(), right.to_python()),
+            Expr::Sub(left, right) => format!("({} - {})", left.to_python(), right.to_python()),
+            Expr::Mul(left, right) => format!("({} * {})", left.to_python(), right.to_python()),
+            Expr::Div(left, right) => format!("({} / {})", left.to_python(), right.to_python()),
+            Expr::Pow(base, exponent) => {
+                format!("({} ** {})", base.to_python(), exponent.to_python())
+            }
+            Expr::Ln(expr) => format!("math.log({})", expr.to_python()),
+            Expr::Exp(expr) => format!("math.exp({})", expr.to_python()),
+            Expr::Sqrt(expr) => format!("math.sqrt({})", expr.to_python()),
+            Expr::Sin(expr) => format!("math.sin({})", expr.to_python()),
+            Expr::Cos(expr) => format!("math.cos({})", expr.to_python()),
+            Expr::Neg(expr) => format!("-({})", expr.to_python()),
+        }
+    }
+}
+
 // Implement standard operator traits to avoid confusion with method names
 impl Add for Expr {
     type Output = Self;
@@ -320,6 +379,154 @@ impl Neg for Expr {
 
     fn neg(self) -> Self::Output {
         Expr::Neg(Box::new(self))
+    }
+}
+
+// Enhanced conversion traits for ergonomic usage
+impl From<f64> for Expr {
+    fn from(value: f64) -> Self {
+        Expr::Const(value)
+    }
+}
+
+impl From<i32> for Expr {
+    fn from(value: i32) -> Self {
+        Expr::Const(f64::from(value))
+    }
+}
+
+impl From<&str> for Expr {
+    fn from(name: &str) -> Self {
+        Expr::Var(name.to_string())
+    }
+}
+
+impl From<String> for Expr {
+    fn from(name: String) -> Self {
+        Expr::Var(name)
+    }
+}
+
+// Allow mixing Expr with numeric types
+impl Add<f64> for Expr {
+    type Output = Self;
+
+    fn add(self, rhs: f64) -> Self::Output {
+        self + Expr::from(rhs)
+    }
+}
+
+impl Add<Expr> for f64 {
+    type Output = Expr;
+
+    fn add(self, rhs: Expr) -> Self::Output {
+        Expr::from(self) + rhs
+    }
+}
+
+impl Sub<f64> for Expr {
+    type Output = Self;
+
+    fn sub(self, rhs: f64) -> Self::Output {
+        self - Expr::from(rhs)
+    }
+}
+
+impl Sub<Expr> for f64 {
+    type Output = Expr;
+
+    fn sub(self, rhs: Expr) -> Self::Output {
+        Expr::from(self) - rhs
+    }
+}
+
+impl Mul<f64> for Expr {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        self * Expr::from(rhs)
+    }
+}
+
+impl Mul<Expr> for f64 {
+    type Output = Expr;
+
+    fn mul(self, rhs: Expr) -> Self::Output {
+        Expr::from(self) * rhs
+    }
+}
+
+impl Div<f64> for Expr {
+    type Output = Self;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        self / Expr::from(rhs)
+    }
+}
+
+impl Div<Expr> for f64 {
+    type Output = Expr;
+
+    fn div(self, rhs: Expr) -> Self::Output {
+        Expr::from(self) / rhs
+    }
+}
+
+// Enhanced mathematical functions as methods
+impl Expr {
+    /// Raise this expression to a power
+    #[must_use]
+    pub fn powf(self, exponent: impl Into<Expr>) -> Self {
+        Expr::Pow(Box::new(self), Box::new(exponent.into()))
+    }
+
+    /// Take the natural logarithm of this expression (instance method)
+    #[must_use]
+    pub fn natural_log(self) -> Self {
+        Expr::Ln(Box::new(self))
+    }
+
+    /// Take the exponential of this expression (instance method)
+    #[must_use]
+    pub fn exponential(self) -> Self {
+        Expr::Exp(Box::new(self))
+    }
+
+    /// Take the square root of this expression (instance method)
+    #[must_use]
+    pub fn square_root(self) -> Self {
+        Expr::Sqrt(Box::new(self))
+    }
+
+    /// Take the sine of this expression
+    #[must_use]
+    pub fn sin(self) -> Self {
+        Expr::Sin(Box::new(self))
+    }
+
+    /// Take the cosine of this expression
+    #[must_use]
+    pub fn cos(self) -> Self {
+        Expr::Cos(Box::new(self))
+    }
+
+    /// Square this expression (x^2)
+    #[must_use]
+    pub fn square(self) -> Self {
+        self.clone() * self
+    }
+
+    /// Cube this expression (x^3)
+    #[must_use]
+    pub fn cube(self) -> Self {
+        let x = self.clone();
+        x.clone() * x.clone() * x
+    }
+
+    /// Absolute value using sqrt(x^2)
+    #[must_use]
+    pub fn abs(self) -> Self {
+        self.square().square_root()
     }
 }
 

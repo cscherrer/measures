@@ -21,10 +21,11 @@
 //! # #[cfg(feature = "jit")]
 //! # {
 //! use measures::bayesian::BayesianJITOptimizer;
-//! use measures::symbolic_ir::expr::Expr;
+//! use measures::symbolic_ir::{Expr, builders, display};
+//! use measures::{var, const_expr};
 //! use std::collections::HashMap;
 //!
-//! // Define a simple Bayesian model
+//! // Define a simple Bayesian model using the ergonomic interface
 //! struct SimpleModel {
 //!     data: Vec<f64>,
 //! }
@@ -34,7 +35,19 @@
 //!         &self,
 //!         data: &[f64],
 //!     ) -> Result<measures::symbolic_ir::jit::GeneralJITFunction, measures::symbolic_ir::jit::JITError> {
-//!         // Note: Current implementation uses placeholder code
+//!         // Example: Build a normal likelihood with ergonomic syntax
+//!         let x = var!("x");
+//!         let mu = var!("mu");
+//!         let sigma = var!("sigma");
+//!         
+//!         // Natural syntax for building the likelihood
+//!         let likelihood = builders::normal_log_pdf(x, mu.clone(), sigma.clone());
+//!         let prior = builders::normal_log_pdf(mu, 0.0, 10.0);
+//!         let posterior = likelihood + prior;
+//!         
+//!         println!("Posterior: {}", display::equation("log p(μ|x)", &posterior));
+//!         
+//!         // Note: Actual JIT compilation would go here
 //!         todo!("Posterior compilation not yet implemented")
 //!     }
 //!     
@@ -75,73 +88,78 @@ pub trait BayesianJITOptimizer {
 
 /// Utilities for building Bayesian model expressions
 pub mod expressions {
-    use crate::symbolic_ir::expr::Expr;
+    use crate::symbolic_ir::{Expr, builders};
+    use crate::{const_expr, var};
 
-    /// Build a normal likelihood expression: log p(x|μ,σ) = -½((x-μ)/σ)² - log(σ√(2π))
+    /// Build a normal likelihood expression using ergonomic syntax
+    ///
+    /// This is much cleaner than the previous hand-built version!
     #[must_use]
     pub fn normal_likelihood(x_var: &str, mu_var: &str, sigma_var: &str) -> Expr {
-        let x = Expr::Var(x_var.to_string());
-        let mu = Expr::Var(mu_var.to_string());
-        let sigma = Expr::Var(sigma_var.to_string());
+        let x = var!(x_var);
+        let mu = var!(mu_var);
+        let sigma = var!(sigma_var);
 
-        // (x - μ)
-        let diff = Expr::Sub(Box::new(x), Box::new(mu));
-
-        // (x - μ) / σ
-        let standardized = Expr::Div(Box::new(diff), Box::new(sigma.clone()));
-
-        // ((x - μ) / σ)²
-        let squared = Expr::Pow(Box::new(standardized), Box::new(Expr::Const(2.0)));
-
-        // -½((x - μ) / σ)²
-        let quadratic_term = Expr::Mul(Box::new(Expr::Const(-0.5)), Box::new(squared));
-
-        // log(σ)
-        let log_sigma = Expr::Ln(Box::new(sigma));
-
-        // log(√(2π)) = ½log(2π)
-        let log_sqrt_2pi = Expr::Const(0.5 * (2.0 * std::f64::consts::PI).ln());
-
-        // -log(σ√(2π)) = -log(σ) - log(√(2π))
-        let normalization = Expr::Sub(
-            Box::new(Expr::Neg(Box::new(log_sigma))),
-            Box::new(log_sqrt_2pi),
-        );
-
-        // Final: -½((x-μ)/σ)² - log(σ√(2π))
-        Expr::Add(Box::new(quadratic_term), Box::new(normalization))
+        builders::normal_log_pdf(x, mu, sigma)
     }
 
-    /// Build a normal prior expression: log p(μ) = -½((μ-μ₀)/σ₀)² - log(σ₀√(2π))
+    /// Build a normal prior expression using ergonomic syntax
     #[must_use]
     pub fn normal_prior(param_var: &str, prior_mean: f64, prior_std: f64) -> Expr {
-        let param = Expr::Var(param_var.to_string());
-        let prior_mean_expr = Expr::Const(prior_mean);
-        let prior_std_expr = Expr::Const(prior_std);
-
-        // (μ - μ₀)
-        let diff = Expr::Sub(Box::new(param), Box::new(prior_mean_expr));
-
-        // (μ - μ₀) / σ₀
-        let standardized = Expr::Div(Box::new(diff), Box::new(prior_std_expr));
-
-        // ((μ - μ₀) / σ₀)²
-        let squared = Expr::Pow(Box::new(standardized), Box::new(Expr::Const(2.0)));
-
-        // -½((μ - μ₀) / σ₀)²
-        let quadratic_term = Expr::Mul(Box::new(Expr::Const(-0.5)), Box::new(squared));
-
-        // Normalization constant (can be omitted for MCMC)
-        let log_normalization =
-            Expr::Const(-0.5 * (2.0 * std::f64::consts::PI * prior_std * prior_std).ln());
-
-        Expr::Add(Box::new(quadratic_term), Box::new(log_normalization))
+        let param = var!(param_var);
+        builders::normal_log_pdf(param, prior_mean, prior_std)
     }
 
     /// Combine likelihood and prior into posterior (up to normalization constant)
     #[must_use]
     pub fn posterior_log_density(likelihood: Expr, prior: Expr) -> Expr {
-        Expr::Add(Box::new(likelihood), Box::new(prior))
+        likelihood + prior
+    }
+
+    /// Build a more complex hierarchical model
+    #[must_use]
+    pub fn hierarchical_normal(
+        x_var: &str,
+        mu_var: &str,
+        sigma_var: &str,
+        tau_var: &str,
+        alpha: f64,
+        beta: f64,
+    ) -> Expr {
+        let x = var!(x_var);
+        let mu = var!(mu_var);
+        let sigma = var!(sigma_var);
+        let tau = var!(tau_var);
+
+        // Likelihood: x ~ Normal(μ, σ)
+        let likelihood = builders::normal_log_pdf(x, mu.clone(), sigma.clone());
+
+        // Prior on μ: μ ~ Normal(0, τ)
+        let mu_prior = builders::normal_log_pdf(mu, 0.0, tau.clone());
+
+        // Prior on σ: log(σ) ~ Normal(α, β) (log-normal prior)
+        let log_sigma = sigma.natural_log();
+        let sigma_prior = builders::normal_log_pdf(log_sigma, alpha, beta);
+
+        // Combine all components
+        likelihood + mu_prior + sigma_prior
+    }
+
+    /// Build a mixture model likelihood
+    #[must_use]
+    pub fn mixture_likelihood(x_var: &str, weights: &[f64], means: &[f64], stds: &[f64]) -> Expr {
+        assert_eq!(weights.len(), means.len());
+        assert_eq!(means.len(), stds.len());
+
+        let x = var!(x_var);
+        let mut mixture = const_expr!(0.0);
+
+        for ((&weight, &mean), &std) in weights.iter().zip(means).zip(stds) {
+            let component = const_expr!(weight) * builders::gaussian_kernel(x.clone(), mean, std);
+            mixture = mixture + component;
+        }
+
+        mixture.natural_log()
     }
 }
 
