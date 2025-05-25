@@ -172,7 +172,6 @@ where
     }
 }
 
-
 // JIT optimization implementation
 #[cfg(feature = "jit")]
 impl<T> crate::exponential_family::jit::JITOptimizer<u64, T> for NegativeBinomial<T>

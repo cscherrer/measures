@@ -17,7 +17,7 @@ use measures::{LogDensityBuilder, Normal};
 use measures::exponential_family::jit::ZeroOverheadOptimizer;
 
 #[cfg(feature = "jit")]
-use measures::exponential_family::{JITOptimizer, CustomJITOptimizer};
+use measures::exponential_family::CustomJITOptimizer;
 
 fn main() {
     println!("🚀 === JIT Compilation for Exponential Families === 🚀\n");

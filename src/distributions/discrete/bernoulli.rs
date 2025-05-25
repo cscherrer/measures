@@ -19,7 +19,6 @@
 
 use crate::core::types::{False, True};
 use crate::core::utils::float_constant;
-use crate::core::utils::safe_convert;
 use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::counting::CountingMeasure;
@@ -122,7 +121,6 @@ where
         (natural_param, log_partition)
     }
 }
-
 
 // JIT optimization implementation
 #[cfg(feature = "jit")]

@@ -143,7 +143,6 @@ fn gamma_ln<T: Float>(x: T) -> T {
     }
 }
 
-
 // JIT optimization implementation
 #[cfg(feature = "jit")]
 impl<T> crate::exponential_family::jit::JITOptimizer<T, T> for ChiSquared<T>

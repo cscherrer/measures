@@ -191,7 +191,6 @@ where
     }
 }
 
-
 // JIT optimization implementation
 #[cfg(feature = "jit")]
 impl<T> crate::exponential_family::jit::JITOptimizer<usize, T> for Categorical<T>

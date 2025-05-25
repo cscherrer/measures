@@ -8,9 +8,9 @@
 //! - Automatic derivation of optimized implementations
 //! - IID (independent and identically distributed) extensions
 
-pub mod traits;
 pub mod iid;
 pub mod implementations;
+pub mod traits;
 
 #[cfg(feature = "jit")]
 pub mod symbolic_ir;
@@ -26,12 +26,12 @@ pub mod egglog_optimizer;
 
 // Re-export core traits
 pub use traits::{
-    compute_exp_fam_log_density, compute_iid_exp_fam_log_density, ExponentialFamily,
-    ExponentialFamilyMeasure, SumSufficientStats,
+    ExponentialFamily, ExponentialFamilyMeasure, SumSufficientStats, compute_exp_fam_log_density,
+    compute_iid_exp_fam_log_density,
 };
 
 // Re-export IID functionality
-pub use iid::{IIDExtension, IID};
+pub use iid::{IID, IIDExtension};
 
 // Re-export implementations
 pub use implementations::ExpFam;
@@ -41,7 +41,7 @@ pub use implementations::ExpFam;
 pub use symbolic_ir::{EvalError, Expr, SymbolicLogDensity as CustomSymbolicLogDensity};
 
 #[cfg(feature = "jit")]
-pub use jit::{CompilationStats, JITError, JITFunction, JITOptimizer, CustomJITOptimizer};
+pub use jit::{CompilationStats, CustomJITOptimizer, JITError, JITFunction, JITOptimizer};
 
 #[cfg(feature = "jit")]
 pub use auto_jit::{AutoJITExt, AutoJITOptimizer, AutoJITPattern, AutoJITRegistry};
