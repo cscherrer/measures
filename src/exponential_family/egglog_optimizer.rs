@@ -177,7 +177,7 @@ impl EgglogOptimizer {
         // Parse the extracted result back to our Expr type
         if let Some(extracted) = result.into_iter().next() {
             let extracted_str = extracted.to_string();
-            println!("DEBUG: Extracted from egglog: {}", extracted_str);
+            println!("DEBUG: Extracted from egglog: {extracted_str}");
             
             if let Some(optimized_expr) = Self::egglog_to_expr(&extracted_str) {
                 return Ok(optimized_expr);
@@ -265,45 +265,35 @@ impl EgglogOptimizer {
         }
         
         // Handle binary operations
-        if trimmed.starts_with("(Add ") && trimmed.ends_with(')') {
-            if let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len()-1]) {
-                if let (Some(left_expr), Some(right_expr)) = (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right)) {
+        if trimmed.starts_with("(Add ") && trimmed.ends_with(')')
+            && let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len()-1])
+                && let (Some(left_expr), Some(right_expr)) = (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right)) {
                     return Some(Expr::Add(Box::new(left_expr), Box::new(right_expr)));
                 }
-            }
-        }
         
-        if trimmed.starts_with("(Mul ") && trimmed.ends_with(')') {
-            if let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len()-1]) {
-                if let (Some(left_expr), Some(right_expr)) = (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right)) {
+        if trimmed.starts_with("(Mul ") && trimmed.ends_with(')')
+            && let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len()-1])
+                && let (Some(left_expr), Some(right_expr)) = (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right)) {
                     return Some(Expr::Mul(Box::new(left_expr), Box::new(right_expr)));
                 }
-            }
-        }
         
-        if trimmed.starts_with("(Sub ") && trimmed.ends_with(')') {
-            if let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len()-1]) {
-                if let (Some(left_expr), Some(right_expr)) = (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right)) {
+        if trimmed.starts_with("(Sub ") && trimmed.ends_with(')')
+            && let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len()-1])
+                && let (Some(left_expr), Some(right_expr)) = (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right)) {
                     return Some(Expr::Sub(Box::new(left_expr), Box::new(right_expr)));
                 }
-            }
-        }
         
-        if trimmed.starts_with("(Div ") && trimmed.ends_with(')') {
-            if let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len()-1]) {
-                if let (Some(left_expr), Some(right_expr)) = (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right)) {
+        if trimmed.starts_with("(Div ") && trimmed.ends_with(')')
+            && let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len()-1])
+                && let (Some(left_expr), Some(right_expr)) = (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right)) {
                     return Some(Expr::Div(Box::new(left_expr), Box::new(right_expr)));
                 }
-            }
-        }
         
-        if trimmed.starts_with("(Pow ") && trimmed.ends_with(')') {
-            if let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len()-1]) {
-                if let (Some(left_expr), Some(right_expr)) = (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right)) {
+        if trimmed.starts_with("(Pow ") && trimmed.ends_with(')')
+            && let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len()-1])
+                && let (Some(left_expr), Some(right_expr)) = (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right)) {
                     return Some(Expr::Pow(Box::new(left_expr), Box::new(right_expr)));
                 }
-            }
-        }
         
         // Handle unary operations
         if trimmed.starts_with("(Ln ") && trimmed.ends_with(')') {

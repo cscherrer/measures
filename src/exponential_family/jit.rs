@@ -729,16 +729,16 @@ fn generate_efficient_exp_call(builder: &mut FunctionBuilder, val: Value) -> Res
     // Then exp(x) = 2^k * exp(r), where exp(r) is computed with polynomial approximation
     
     // Constants from libm implementation
-    let ln2_hi = builder.ins().f64const(6.93147180369123816490e-01); // 0x3fe62e42, 0xfee00000
-    let ln2_lo = builder.ins().f64const(1.90821492927058770002e-10); // 0x3dea39ef, 0x35793c76
-    let inv_ln2 = builder.ins().f64const(1.44269504088896338700e+00); // 0x3ff71547, 0x652b82fe
+    let ln2_hi = builder.ins().f64const(6.931_471_803_691_238e-1); // 0x3fe62e42, 0xfee00000
+    let ln2_lo = builder.ins().f64const(1.908_214_929_270_587_7e-10); // 0x3dea39ef, 0x35793c76
+    let inv_ln2 = builder.ins().f64const(1.442_695_040_888_963_4); // 0x3ff71547, 0x652b82fe
     
     // Polynomial coefficients for exp(r) approximation (Remez algorithm)
-    let p1 = builder.ins().f64const(1.66666666666666019037e-01); // 0x3FC55555, 0x5555553E
-    let p2 = builder.ins().f64const(-2.77777777770155933842e-03); // 0xBF66C16C, 0x16BEBD93
-    let p3 = builder.ins().f64const(6.61375632143793436117e-05); // 0x3F11566A, 0xAF25DE2C
-    let p4 = builder.ins().f64const(-1.65339022054652515390e-06); // 0xBEBBBD41, 0xC5D26BF1
-    let p5 = builder.ins().f64const(4.13813679705723846039e-08); // 0x3E663769, 0x72BEA4D0
+    let p1 = builder.ins().f64const(1.666_666_666_666_660_2e-1); // 0x3FC55555, 0x5555553E
+    let p2 = builder.ins().f64const(-2.777_777_777_701_559_3e-3); // 0xBF66C16C, 0x16BEBD93
+    let p3 = builder.ins().f64const(6.613_756_321_437_934e-5); // 0x3F11566A, 0xAF25DE2C
+    let p4 = builder.ins().f64const(-1.653_390_220_546_525_2e-6); // 0xBEBBBD41, 0xC5D26BF1
+    let p5 = builder.ins().f64const(4.138_136_797_057_238_5e-8); // 0x3E663769, 0x72BEA4D0
     
     let zero = builder.ins().f64const(0.0);
     let one = builder.ins().f64const(1.0);
@@ -890,7 +890,7 @@ pub struct StaticInlineJITCompiler;
 
 impl StaticInlineJITCompiler {
     /// Compile a Normal distribution to a truly zero-overhead function
-    pub fn compile_normal(mu: f64, sigma: f64) -> StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync> {
+    #[must_use] pub fn compile_normal(mu: f64, sigma: f64) -> StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync> {
         let start_time = std::time::Instant::now();
         
         // Pre-compute all constants at compile time
@@ -922,7 +922,7 @@ impl StaticInlineJITCompiler {
     }
     
     /// Compile an Exponential distribution to a truly zero-overhead function
-    pub fn compile_exponential(lambda: f64) -> StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync> {
+    #[must_use] pub fn compile_exponential(lambda: f64) -> StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync> {
         let start_time = std::time::Instant::now();
         
         // Pre-compute constants

@@ -6,10 +6,10 @@
 //! - Memory usage during optimization
 //! - Scalability with expression size
 //!
-//! Run with: cargo run --example egglog_benchmark --features jit --release
+//! Run with: cargo run --example `egglog_benchmark` --features jit --release
 
 use measures::exponential_family::symbolic_ir::Expr;
-use measures::exponential_family::egglog_optimizer::{EgglogOptimizer, EgglogOptimize};
+use measures::exponential_family::egglog_optimizer::EgglogOptimize;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -73,8 +73,8 @@ fn benchmark_basic_optimizations() -> Result<(), Box<dyn std::error::Error>> {
         total_complexity_reduction += complexity_reduction;
     }
 
-    println!("  Average time: {:.2}μs", total_time.as_micros() as f64 / total_optimizations as f64);
-    println!("  Total complexity reduction: {}", total_complexity_reduction);
+    println!("  Average time: {:.2}μs", total_time.as_micros() as f64 / f64::from(total_optimizations));
+    println!("  Total complexity reduction: {total_complexity_reduction}");
     println!();
 
     Ok(())
@@ -121,7 +121,7 @@ fn benchmark_advanced_optimizations() -> Result<(), Box<dyn std::error::Error>> 
         total_optimizations += 1;
     }
 
-    println!("  Average time: {:.2}μs", total_time.as_micros() as f64 / total_optimizations as f64);
+    println!("  Average time: {:.2}μs", total_time.as_micros() as f64 / f64::from(total_optimizations));
     println!();
 
     Ok(())
@@ -238,7 +238,7 @@ fn benchmark_real_world_cases() -> Result<(), Box<dyn std::error::Error>> {
             (Ok(orig), Ok(opt)) => {
                 let error = (orig - opt).abs();
                 if error > 1e-10 {
-                    println!("    ⚠️  Accuracy warning: {:.2e} error", error);
+                    println!("    ⚠️  Accuracy warning: {error:.2e} error");
                 }
             }
             _ => println!("    ❌ Evaluation error"),

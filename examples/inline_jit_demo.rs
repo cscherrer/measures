@@ -6,7 +6,7 @@
 //! The inline JIT approach should significantly reduce the overhead compared to
 //! the standard JIT compilation while maintaining the benefits of optimization.
 //!
-//! Run with: cargo run --example inline_jit_demo --features jit --release
+//! Run with: cargo run --example `inline_jit_demo` --features jit --release
 
 use measures::core::LogDensityBuilder;
 use measures::distributions::continuous::Normal;
@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Generate varying inputs to prevent constant folding
     let test_inputs: Vec<f64> = (0..num_iterations)
-        .map(|i| 2.5 + (i as f64) * 0.001 / num_iterations as f64)
+        .map(|i| 2.5 + f64::from(i) * 0.001 / f64::from(num_iterations))
         .collect();
 
     // 1. Standard evaluation (baseline)
@@ -107,8 +107,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
 
             // Verify correctness (compare averages)
-            let avg_static = result_static_inline_jit / num_iterations as f64;
-            let avg_standard = result_standard / num_iterations as f64;
+            let avg_static = result_static_inline_jit / f64::from(num_iterations);
+            let avg_standard = result_standard / f64::from(num_iterations);
             let error = (avg_static - avg_standard).abs();
             println!("      • Accuracy: {error:.2e} error");
             println!();
@@ -157,8 +157,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("      • Speedup vs standard: {speedup_jit:.2}x");
 
                 // Verify correctness (compare averages)
-                let avg_jit = result_jit / num_iterations as f64;
-                let avg_standard = result_standard / num_iterations as f64;
+                let avg_jit = result_jit / f64::from(num_iterations);
+                let avg_standard = result_standard / f64::from(num_iterations);
                 let error = (avg_jit - avg_standard).abs();
                 println!("      • Accuracy: {error:.2e} error");
                 println!();

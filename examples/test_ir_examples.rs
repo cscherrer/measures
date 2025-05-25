@@ -95,7 +95,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (description, expr) in test_cases {
-        println!("📊 Testing: {}", description);
+        println!("📊 Testing: {description}");
         println!("   Original: {}", format_expr(&expr));
         println!("   Complexity: {}", expr.complexity());
         
@@ -121,13 +121,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 match (expr.evaluate(&vars), egglog_optimized.evaluate(&vars)) {
                     (Ok(orig), Ok(opt)) => {
                         let error = (orig - opt).abs();
-                        println!("   Functional equivalence: {:.2e} error", error);
+                        println!("   Functional equivalence: {error:.2e} error");
                     }
                     _ => println!("   Functional equivalence: evaluation error"),
                 }
             }
             Err(e) => {
-                println!("   Egglog optimization failed: {}", e);
+                println!("   Egglog optimization failed: {e}");
             }
         }
         
@@ -153,7 +153,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Optimized: {}", format_expr(&optimized));
         }
         Err(e) => {
-            println!("Optimization failed: {}", e);
+            println!("Optimization failed: {e}");
         }
     }
 
@@ -162,7 +162,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn format_expr(expr: &Expr) -> String {
     match expr {
-        Expr::Const(c) => format!("{}", c),
+        Expr::Const(c) => format!("{c}"),
         Expr::Var(name) => name.clone(),
         Expr::Add(left, right) => format!("({} + {})", format_expr(left), format_expr(right)),
         Expr::Sub(left, right) => format!("({} - {})", format_expr(left), format_expr(right)),

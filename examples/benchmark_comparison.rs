@@ -3,10 +3,10 @@
 //! This benchmark compares the performance of egglog optimization
 //! before and after adding enhanced mathematical rules.
 //!
-//! Run with: cargo run --example benchmark_comparison --features jit --release
+//! Run with: cargo run --example `benchmark_comparison` --features jit --release
 
 use measures::exponential_family::symbolic_ir::Expr;
-use measures::exponential_family::egglog_optimizer::{EgglogOptimizer, EgglogOptimize};
+use measures::exponential_family::egglog_optimizer::EgglogOptimize;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -76,8 +76,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n## 📈 Performance Analysis");
     println!("- **Average optimization time**: {:.0}μs", total_time.as_micros() as f64 / 10.0);
-    println!("- **Total complexity reduction**: {}", total_reductions);
-    println!("- **Successful optimizations**: {}/10", successful_optimizations);
+    println!("- **Total complexity reduction**: {total_reductions}");
+    println!("- **Successful optimizations**: {successful_optimizations}/10");
     println!("- **Success rate**: {}%", (successful_optimizations * 100) / 10);
 
     // Detailed analysis of key improvements
@@ -267,7 +267,7 @@ fn create_mixed_operations() -> Expr {
 
 fn format_expr(expr: &Expr) -> String {
     match expr {
-        Expr::Const(c) => format!("{}", c),
+        Expr::Const(c) => format!("{c}"),
         Expr::Var(name) => name.clone(),
         Expr::Add(left, right) => format!("({} + {})", format_expr(left), format_expr(right)),
         Expr::Sub(left, right) => format!("({} - {})", format_expr(left), format_expr(right)),

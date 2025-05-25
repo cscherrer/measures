@@ -6,7 +6,7 @@
 //! 3. Static Inline JIT (runtime closures with embedded constants)
 //! 4. Auto-JIT (symbolic derivation + Cranelift compilation)
 //!
-//! Run with: cargo bench --bench jit_comparison_bench --features jit
+//! Run with: cargo bench --bench `jit_comparison_bench` --features jit
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use measures::{LogDensityBuilder, Normal};
@@ -127,7 +127,8 @@ fn benchmark_compilation_overhead(c: &mut Criterion) {
     #[cfg(feature = "jit")]
     group.bench_function("static_inline_jit_compilation", |b| {
         b.iter(|| {
-            let _jit_fn = black_box(normal.clone())
+            let normal_clone = normal.clone();
+            let _jit_fn = normal_clone
                 .compile_static_inline_jit()
                 .expect("Static inline JIT should succeed");
         });

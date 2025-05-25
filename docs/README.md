@@ -1,82 +1,105 @@
 # Measures Documentation
 
-This directory contains detailed documentation for the measures crate.
+Technical documentation for the `measures` crate - a Rust library for statistical computing with measure theory foundations.
 
-## Contents
+## Documentation Structure
 
-- [Capabilities Summary](capabilities_summary.md) - High-level overview of all framework capabilities
-- [General Density Computation](general_density_computation.md) - Computing densities with respect to any base measure
-- [Performance Optimization](performance_optimization.md) - JIT compilation and zero-overhead optimization techniques
+- **[Architecture Guide](architecture.md)** - Core design principles and mathematical foundations
+- **[Performance Guide](performance.md)** - Optimization strategies and benchmarking
+- **[API Reference](api.md)** - Complete API documentation with examples
 
-## Getting Started
+## Quick Start
 
-The `measures` crate provides a type-safe framework for working with measure theory
-and probability distributions. At its core, it separates measures from densities
-to enable flexible computation of probabilities and likelihood functions.
-
-### Basic Example
+The `measures` crate separates measures from densities to enable flexible probability computation:
 
 ```rust
 use measures::{Normal, LogDensityBuilder};
 
-// Create a standard normal distribution
 let normal = Normal::new(0.0, 1.0);
 
-// Compute log-density at x = 0.5
-let log_density: f64 = normal.log_density().at(&0.5);
+// Standard density (w.r.t. Lebesgue measure)
+let density = normal.log_density().at(&0.5);
 
-// Compute log-density with respect to another measure
+// Relative density (w.r.t. another measure)
 let other_normal = Normal::new(1.0, 2.0);
-let relative_log_density: f64 = normal.log_density().wrt(other_normal).at(&0.5);
+let relative_density = normal.log_density().wrt(other_normal).at(&0.5);
 ```
 
-### General Density Computation
+## Key Concepts
 
-The framework supports computing densities with respect to any base measure, not just the root measure:
+### Measure Theory Foundation
+
+Traditional probability libraries compute densities only with respect to canonical base measures (Lebesgue for continuous, counting for discrete). This library generalizes to arbitrary base measures, enabling:
+
+- **Importance sampling**: Compute densities w.r.t. proposal distributions
+- **Model comparison**: Direct density ratios between models
+- **Variational inference**: Densities w.r.t. variational approximations
+
+### Type System Design
+
+The library uses a split trait design for type safety and performance:
 
 ```rust
-use measures::{Normal, LogDensityBuilder};
+// Mathematical structure (minimal interface)
+trait LogDensityTrait<T> { /* ... */ }
 
-let normal1 = Normal::new(0.0, 1.0);
-let normal2 = Normal::new(1.0, 2.0);
+// Generic evaluation (any numeric type)
+trait EvaluateAt<T, F> { /* ... */ }
 
-// Compute density of normal1 with respect to normal2
-let relative_density = normal1.log_density().wrt(normal2).at(&0.5);
+// Builder pattern (fluent interface)
+struct LogDensity<T, M, B> { /* ... */ }
 ```
 
-### IID Collections
+This enables:
+- Automatic differentiation support
+- Compile-time optimization
+- Zero-cost abstractions
+
+### Exponential Family Framework
+
+Unified interface for exponential family distributions:
 
 ```rust
-use measures::{IIDExtension, Normal};
+use measures::{Normal, IIDExtension};
 
 let normal = Normal::new(0.0, 1.0);
-let iid_normal = normal.iid();
 
-let samples = vec![0.5, -0.3, 1.2];
-let iid_log_density: f64 = iid_normal.iid_log_density(&samples);
+// Access natural parameters and sufficient statistics
+let params = normal.to_natural();
+let stats = normal.sufficient_statistic(&x);
+
+// Efficient IID computation
+let iid_normal = normal.iid();
+let joint_density = iid_normal.iid_log_density(&samples);
 ```
 
-## Key Features
+## Performance
 
-### 🎯 General Density Computation
-- Compute densities with respect to any base measure
-- Automatic optimization for measures with shared roots
-- Applications in importance sampling, model comparison, and variational inference
+Multiple optimization strategies with different trade-offs:
 
-### 🚀 Performance Optimization  
-- Zero-overhead runtime code generation
-- Compile-time macro optimization
-- JIT compilation with Cranelift
-- Comprehensive performance analysis and best practices
+| Method | Time per call | Use case |
+|--------|---------------|----------|
+| Standard evaluation | ~154 ns | General purpose |
+| Zero-overhead optimization | ~106 ns | Pre-computed constants |
+| JIT compilation | Experimental | Placeholder implementations |
 
-### 🔧 Type Safety
-- Compile-time verification of measure compatibility
-- Generic numeric types (f64, f32, dual numbers for autodiff)
-- Zero-cost abstractions with static dispatch
+See the [Performance Guide](performance.md) for detailed analysis and best practices.
 
-### 📊 Exponential Families
-- Unified interface for exponential family distributions
-- Automatic IID handling with efficient batch computation
-- Natural parameter and sufficient statistic access
+## Examples
 
-For more examples, see the `examples/` directory in the repository. 
+Complete examples are available in the repository's `examples/` directory:
+
+- `general_density_computation.rs` - Computing densities with custom base measures
+- `optimization_comparison.rs` - Performance comparison of optimization strategies  
+- `iid_exponential_family_theory.rs` - Mathematical foundations and usage
+
+## Mathematical Correctness
+
+The library maintains correctness through:
+
+1. **Type safety**: Incompatible operations are compile-time errors
+2. **Measure compatibility**: Automatic checking of measure relationships  
+3. **Numerical stability**: Log-space computation throughout
+4. **Identity preservation**: Automatic use of mathematical identities
+
+For detailed architectural information, see the [Architecture Guide](architecture.md). 

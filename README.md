@@ -1,11 +1,10 @@
 # Measures
 
-A Rust library for statistical computing with measure theory foundations, exponential family distributions, and experimental JIT compilation.
+A Rust library for statistical computing with measure theory foundations and exponential family distributions.
 
-## Core Features
+## Architecture
 
-### General Density Computation
-Compute densities with respect to any base measure, not just the root measure:
+The library separates **measures** from **densities** to enable flexible probability computation. This design allows computing densities with respect to any base measure, not just the canonical one.
 
 ```rust
 use measures::{Normal, LogDensityBuilder};
@@ -13,28 +12,81 @@ use measures::{Normal, LogDensityBuilder};
 let normal1 = Normal::new(0.0, 1.0);
 let normal2 = Normal::new(1.0, 2.0);
 
-// Compute density of normal1 with respect to normal2
+// Standard: density w.r.t. Lebesgue measure
+let density = normal1.log_density().at(&0.5);
+
+// General: density of normal1 w.r.t. normal2
 let relative_density = normal1.log_density().wrt(normal2).at(&0.5);
 ```
 
-### Exponential Family Framework
-Unified interface for exponential family distributions with automatic optimization:
+### Core Components
+
+- **Measures**: Mathematical objects that assign "size" to sets
+- **Densities**: Functions that describe how one measure relates to another
+- **Distributions**: Concrete probability measures (Normal, Poisson, etc.)
+- **Exponential Families**: Unified interface for exponential family distributions
+
+### Type System Design
+
+The library uses a split trait design for type safety and optimization:
 
 ```rust
-use measures::{Normal, exponential_family::jit::ZeroOverheadOptimizer};
+// LogDensityTrait<T>: Mathematical structure (minimal)
+// EvaluateAt<T, F>: Generic evaluation with any numeric type F
+// LogDensity<T, M, B>: Builder with fluent interface
+
+let normal = Normal::new(0.0, 1.0);
+let ld = normal.log_density();
+
+// Same mathematical object, different numeric types
+let f64_result: f64 = ld.at(&x);           // Standard evaluation
+let f32_result: f32 = ld.at(&(x as f32));  // Lower precision
+// let dual_result: Dual64 = ld.at(&dual_x); // Automatic differentiation
+```
+
+## Key Features
+
+### General Density Computation
+
+Compute densities with respect to arbitrary base measures:
+
+```rust
+use measures::{Normal, Poisson, LogDensityBuilder};
+
+// Continuous distributions
+let normal1 = Normal::new(0.0, 1.0);
+let normal2 = Normal::new(2.0, 0.5);
+let continuous_ratio = normal1.log_density().wrt(normal2).at(&1.0);
+
+// Mixed measure types (when mathematically valid)
+let discrete = Poisson::new(3.0);
+// Note: normal.wrt(discrete) would be a compile-time error
+```
+
+**Mathematical foundation**: When measures share the same root measure, the library automatically uses the identity `log(dμ₁/dμ₂) = log(dμ₁/dν) - log(dμ₂/dν)` for efficient computation.
+
+### Exponential Family Framework
+
+Unified interface for exponential family distributions:
+
+```rust
+use measures::{Normal, Poisson, exponential_family::ExponentialFamily};
 
 let normal = Normal::new(2.0, 1.5);
+let poisson = Poisson::new(3.0);
 
-// Standard evaluation
-let result1 = normal.log_density().at(&1.0);
+// Access natural parameters and sufficient statistics
+let normal_params = normal.to_natural();
+let poisson_params = poisson.to_natural();
 
-// Optimized evaluation (pre-computes constants)
-let optimized_fn = normal.zero_overhead_optimize();
-let result2 = optimized_fn(&1.0);
+// Compute sufficient statistics
+let normal_stats = normal.sufficient_statistic(&x);
+let poisson_stats = poisson.sufficient_statistic(&k);
 ```
 
 ### IID Collections
-Efficient computation for independent and identically distributed samples:
+
+Efficient computation for independent samples:
 
 ```rust
 use measures::{Normal, IIDExtension};
@@ -46,62 +98,46 @@ let samples = vec![0.5, -0.3, 1.2];
 let joint_log_density = iid_normal.iid_log_density(&samples);
 ```
 
-## Performance Optimization
+## Performance
 
-The library provides multiple optimization strategies with different trade-offs:
+The library provides multiple optimization strategies:
 
-### Standard Evaluation
-Traditional trait-based evaluation using Rust's type system:
-
-```rust
-let result = normal.log_density().at(&x);  // ~414 ps/call
-```
-
-### Zero-Overhead Optimization
-Pre-compute constants and generate optimized closures:
+| Method | Time per call | Use Case |
+|--------|---------------|----------|
+| Standard evaluation | ~154 ns | General purpose |
+| Zero-overhead optimization | ~106 ns | Pre-computed constants |
+| JIT compilation | Experimental | Placeholder implementations |
 
 ```rust
-// Pre-compute constants once
-let optimized_fn = normal.zero_overhead_optimize();
-let result = optimized_fn(&x);  // ~515 ps/call
-```
+// Standard evaluation
+let result = normal.log_density().at(&x);
 
-**Note**: "Zero-overhead" refers to reduced function call overhead, not elimination of all computational overhead.
-
-### Experimental JIT Compilation
-Runtime compilation to native machine code (experimental, not production-ready):
-
-```rust
+// Zero-overhead optimization (pre-computes constants)
 #[cfg(feature = "jit")]
 {
-    let jit_function = normal.compile_custom_jit()?;
-    let result = jit_function.call(x);  // Currently slower due to implementation limitations
+    use measures::exponential_family::jit::ZeroOverheadOptimizer;
+    let optimized_fn = normal.zero_overhead_optimize();
+    let result = optimized_fn(&x);
+}
+
+// Experimental JIT compilation
+#[cfg(feature = "jit")]
+{
+    use measures::exponential_family::AutoJITExt;
+    if let Ok(jit_fn) = normal.auto_jit() {
+        let result = jit_fn.call(x);
+    }
 }
 ```
 
-**Current JIT Status**: 
-- Infrastructure exists but uses placeholder implementations for mathematical functions
-- Performance overhead compared to standard evaluation
-- Suitable for experimentation only
+**Note**: JIT compilation is experimental and currently slower than standard evaluation due to placeholder implementations for mathematical functions.
 
-## Performance Results
-
-Based on actual benchmarks (not estimates):
-
-| Method | Time per call | Performance vs Standard |
-|--------|---------------|------------------------|
-| Standard evaluation | 414.49 ps | 1.0x (baseline) |
-| Zero-overhead optimization | 515.45 ps | 0.8x (slower) |
-| JIT compilation | 1,309.4 ps | 0.32x (3x slower) |
-
-**Note**: Performance varies by hardware and use case. Zero-overhead optimization may provide benefits for specific scenarios despite average overhead.
-
-## Symbolic IR and Expression System
+## Symbolic Computation
 
 Basic symbolic computation for mathematical expressions:
 
 ```rust
-use measures::symbolic_ir::expr::Expr;
+use measures::symbolic_ir::Expr;
 
 // Build expressions programmatically
 let expr = Expr::add(
@@ -110,27 +146,10 @@ let expr = Expr::add(
 );
 
 // Basic simplification
-let simplified = expr.simplify(); // Constant folding, identity elimination
+let simplified = expr.simplify();
 ```
-
-## Bayesian Modeling (Experimental)
-
-Basic infrastructure for Bayesian inference:
-
-```rust
-use measures::bayesian::expressions::{normal_likelihood, normal_prior, posterior_log_density};
-
-// Build Bayesian model expressions
-let likelihood = normal_likelihood("x", "mu", "sigma");
-let prior = normal_prior("mu", 0.0, 1.0);
-let posterior = posterior_log_density(likelihood, prior);
-```
-
-**Status**: Expression building works, but JIT compilation uses placeholder implementations.
 
 ## Installation
-
-Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -142,60 +161,33 @@ measures = { version = "0.1", features = ["jit"] }
 
 ## Examples
 
-- **[General Density Computation](examples/general_density_computation.rs)**: Computing densities with respect to custom base measures
-- **[Optimization Comparison](examples/optimization_comparison.rs)**: Performance comparison of different optimization strategies
-- **[IID Exponential Family](examples/iid_exponential_family_theory.rs)**: Mathematical foundations and practical usage
+See the `examples/` directory for complete examples:
+
+- `general_density_computation.rs`: Computing densities with custom base measures
+- `optimization_comparison.rs`: Performance comparison of optimization strategies
+- `iid_exponential_family_theory.rs`: Mathematical foundations and usage
 
 ## Documentation
 
-- **[General Density Computation](docs/general_density_computation.md)**: Complete guide to computing densities with respect to any base measure
-- **[Performance Optimization Guide](docs/performance_optimization.md)**: Optimization techniques and performance analysis
-- **[Design Notes](DESIGN_NOTES.md)**: Architectural decisions and mathematical rationale
+- [Architecture Guide](docs/architecture.md): Core design principles and mathematical foundations
+- [Performance Guide](docs/performance.md): Optimization strategies and benchmarking
+- [API Reference](docs/api.md): Complete API documentation with examples
 
 ## Current Limitations
 
-### JIT Compilation
-- Uses placeholder implementations for ln(), exp(), sin(), cos() functions
-- Performance overhead compared to standard evaluation
-- Experimental status, not suitable for production
-
-### Zero-Overhead Optimization
-- Still computes base measures in some cases
-- May have overhead for simple operations
-- Benefits depend on specific use patterns
-
-### Bayesian Module
-- Basic expression building only
-- JIT compilation not implemented (uses todo!() placeholders)
-- Suitable for experimentation and development
-
-## Future Work
-
-### Planned Improvements
-- Performance optimization for zero-overhead techniques
-- Extended distribution family support
-- Multivariate distribution implementations
-
-### Research Directions
-- Variational inference automation
-- Information geometry integration
-- GPU acceleration exploration
-- Probabilistic programming language integration
+- **JIT compilation**: Uses placeholder implementations for transcendental functions
+- **Bayesian module**: Basic expression building only, JIT not implemented
+- **Multivariate distributions**: Limited support
 
 ## Development
 
 ```bash
 cargo test                    # Run test suite
-cargo bench                   # Performance benchmarks  
-cargo doc --open             # Build and view documentation
-cargo run --example <name>   # Run specific examples
+cargo bench                   # Performance benchmarks
+cargo doc --open             # Build documentation
+cargo run --example <name>   # Run examples
 ```
 
 ## License
 
-Licensed under either of
-
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option. 
+Licensed under either of Apache License, Version 2.0 or MIT license at your option. 
