@@ -13,9 +13,10 @@
 //! ```
 
 use crate::core::types::False;
+use crate::core::utils::float_constant;
 use crate::core::{HasLogDensity, Measure, MeasureMarker};
-use crate::measures::primitive::LebesgueMeasure;
-use num_traits::{Float, NumCast};
+use crate::measures::primitive::lebesgue::LebesgueMeasure;
+use num_traits::{Float, FloatConst, NumCast};
 use std::f64::consts::PI;
 
 /// Cauchy distribution with location parameter `location` and scale parameter `scale`.
@@ -97,9 +98,17 @@ impl<T: Float + Clone> Measure<T> for Cauchy<T> {
 /// Manual implementation of `HasLogDensity` for Cauchy since it's not an exponential family.
 ///
 /// This demonstrates how non-exponential family distributions implement log-density computation.
-impl<T: Float + Clone + NumCast> HasLogDensity<T, T> for Cauchy<T> {
+impl<T: Float + FloatConst> HasLogDensity<T, T> for Cauchy<T> {
     fn log_density_wrt_root(&self, x: &T) -> T {
-        self.log_pdf(*x)
+        let pi = float_constant::<T>(PI);
+        let standardized = (*x - self.location) / self.scale;
+        -(T::one() + standardized * standardized).ln() - self.scale.ln() - pi.ln()
+    }
+}
+
+impl<T: Float> Default for Cauchy<T> {
+    fn default() -> Self {
+        Self::new(float_constant::<T>(0.0), float_constant::<T>(1.0))
     }
 }
 

@@ -17,6 +17,7 @@
 //! ```
 
 use crate::core::types::{False, True};
+use crate::core::utils::float_constant;
 use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
@@ -85,7 +86,7 @@ where
 
     fn from_natural(param: Self::NaturalParam) -> Self {
         let [eta1, eta2] = param;
-        let sigma2 = -(T::from(2.0).unwrap() * eta2).recip();
+        let sigma2 = -(float_constant::<T>(2.0) * eta2).recip();
         let mu = eta1 * sigma2;
         Self::new(mu, sigma2.sqrt())
     }
@@ -103,10 +104,14 @@ where
         let mu2 = self.mean * self.mean;
         let inv_sigma2 = sigma2.recip();
 
-        let natural_params = [self.mean * inv_sigma2, T::from(-0.5).unwrap() * inv_sigma2];
+        let natural_params = [
+            self.mean * inv_sigma2,
+            float_constant::<T>(-0.5) * inv_sigma2,
+        ];
 
-        let log_partition = (T::from(2.0).unwrap() * T::PI() * sigma2).ln() * T::from(0.5).unwrap()
-            + T::from(0.5).unwrap() * mu2 * inv_sigma2;
+        let log_partition = (float_constant::<T>(2.0) * T::PI() * sigma2).ln()
+            * float_constant::<T>(0.5)
+            + float_constant::<T>(0.5) * mu2 * inv_sigma2;
 
         (natural_params, log_partition)
     }
@@ -119,6 +124,7 @@ where
     T: Float + FloatConst + std::fmt::Debug + 'static,
 {
     fn symbolic_log_density(&self) -> crate::exponential_family::symbolic::SymbolicLogDensity {
+        use crate::core::utils::safe_convert;
         use crate::exponential_family::symbolic::utils::{symbolic_const, symbolic_var};
         use std::collections::HashMap;
 
@@ -126,8 +132,8 @@ where
         let x = symbolic_var("x");
 
         // Build symbolic log-density: -½log(2πσ²) - (x-μ)²/(2σ²)
-        let mu_f64 = self.mean.to_f64().unwrap();
-        let sigma_f64 = self.std_dev.to_f64().unwrap();
+        let mu_f64: f64 = safe_convert(self.mean);
+        let sigma_f64: f64 = safe_convert(self.std_dev);
 
         // Constant term: -½log(2πσ²)
         let two_pi_sigma_sq = 2.0 * std::f64::consts::PI * sigma_f64 * sigma_f64;
@@ -159,19 +165,20 @@ where
     fn generate_optimized_function(
         &self,
     ) -> crate::exponential_family::symbolic::OptimizedFunction<T, T> {
+        use crate::core::utils::{float_constant, safe_convert};
         use std::collections::HashMap;
 
         // Pre-compute constants
-        let mu_f64 = self.mean.to_f64().unwrap();
-        let sigma_f64 = self.std_dev.to_f64().unwrap();
+        let mu_f64: f64 = safe_convert(self.mean);
+        let sigma_f64: f64 = safe_convert(self.std_dev);
         let sigma_sq = sigma_f64 * sigma_f64;
         let log_norm_constant = -0.5 * (2.0 * std::f64::consts::PI * sigma_sq).ln();
         let inv_2sigma_sq = 1.0 / (2.0 * sigma_sq);
 
         // Convert back to T type
-        let mu_t = T::from(mu_f64).unwrap();
-        let log_norm_constant_t = T::from(log_norm_constant).unwrap();
-        let inv_2sigma_sq_t = T::from(inv_2sigma_sq).unwrap();
+        let mu_t = float_constant::<T>(mu_f64);
+        let log_norm_constant_t = float_constant::<T>(log_norm_constant);
+        let inv_2sigma_sq_t = float_constant::<T>(inv_2sigma_sq);
 
         // Create optimized function
         let function = Box::new(move |x: &T| -> T {
@@ -199,5 +206,19 @@ where
 }
 
 // JIT optimization implementation
-// TODO: Implement JIT compilation when the infrastructure is complete
-// For now, this trait is not implemented to avoid stub implementations
+#[cfg(feature = "jit")]
+impl<T> crate::exponential_family::jit::JITOptimizer<T, T> for Normal<T>
+where
+    T: Float + FloatConst + std::fmt::Debug + 'static,
+{
+    fn compile_jit(
+        &self,
+    ) -> Result<crate::exponential_family::jit::JITFunction, crate::exponential_family::jit::JITError>
+    {
+        // JIT compilation is not yet fully implemented
+        // TODO: Implement proper JIT compilation when the infrastructure is complete
+        Err(crate::exponential_family::jit::JITError::UnsupportedExpression(
+            "Normal distribution JIT compilation is not yet implemented. Use zero_overhead_optimize() for high performance instead.".to_string(),
+        ))
+    }
+}

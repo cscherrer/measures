@@ -16,6 +16,7 @@
 //! - The field F for numerical computations (always some Float type)
 
 use crate::core::types::True;
+use crate::core::utils::float_constant;
 use crate::core::{HasLogDensity, Measure};
 use crate::traits::DotProduct;
 use num_traits::Float;
@@ -178,7 +179,7 @@ where
     );
 
     // Exponential family part: η·∑ᵢT(xᵢ) - n·A(η)
-    let n = F::from(samples.len()).unwrap();
+    let n = float_constant::<F>(samples.len() as f64);
     let exp_fam_part = natural_params.dot(&sum_sufficient_stats) - n * log_partition;
 
     // Base measure part: ∑ᵢlog h(xᵢ)

@@ -3,7 +3,7 @@
 use num_traits::Float;
 
 /// Safe conversion from one numeric type to another.
-/// 
+///
 /// This provides a safer alternative to `.unwrap()` calls throughout the codebase.
 /// Returns a default value if conversion fails.
 pub fn safe_convert<T, U>(value: T) -> U
@@ -50,6 +50,7 @@ where
 
 /// Create a constant of the target Float type from a literal.
 /// This is safer than `T::from(literal).unwrap()`.
+#[must_use]
 pub fn float_constant<T: Float>(value: f64) -> T {
     T::from(value).unwrap_or_else(|| {
         // If conversion fails, try to provide a reasonable fallback
@@ -58,7 +59,11 @@ pub fn float_constant<T: Float>(value: f64) -> T {
         } else if value == 1.0 {
             T::one()
         } else if value.is_infinite() {
-            if value > 0.0 { T::infinity() } else { T::neg_infinity() }
+            if value > 0.0 {
+                T::infinity()
+            } else {
+                T::neg_infinity()
+            }
         } else if value.is_nan() {
             T::nan()
         } else {
@@ -66,4 +71,4 @@ pub fn float_constant<T: Float>(value: f64) -> T {
             T::zero()
         }
     })
-} 
+}

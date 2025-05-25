@@ -235,8 +235,12 @@ fn topological_sort(deps: &HashMap<String, Vec<String>>) -> Result<Vec<String>, 
     for (node, dependencies) in deps {
         for dep in dependencies {
             if deps.contains_key(dep) {
-                graph.get_mut(dep).unwrap().push(node.clone());
-                *in_degree.get_mut(node).unwrap() += 1;
+                if let Some(deps) = graph.get_mut(dep) {
+                    deps.push(node.clone());
+                }
+                if let Some(degree) = in_degree.get_mut(node) {
+                    *degree += 1;
+                }
             }
         }
     }
@@ -255,10 +259,11 @@ fn topological_sort(deps: &HashMap<String, Vec<String>>) -> Result<Vec<String>, 
 
         if let Some(neighbors) = graph.get(&node) {
             for neighbor in neighbors {
-                let degree = in_degree.get_mut(neighbor).unwrap();
-                *degree -= 1;
-                if *degree == 0 {
-                    queue.push_back(neighbor.clone());
+                if let Some(degree) = in_degree.get_mut(neighbor) {
+                    *degree -= 1;
+                    if *degree == 0 {
+                        queue.push_back(neighbor.clone());
+                    }
                 }
             }
         }

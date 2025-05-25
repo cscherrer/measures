@@ -5,6 +5,7 @@
 //! distribution that is particularly optimized for computations.
 
 use crate::core::types::{False, True};
+use crate::core::utils::float_constant;
 use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
@@ -81,11 +82,11 @@ where
 
     fn natural_and_log_partition(&self) -> (Self::NaturalParam, T) {
         let natural_params = [
-            T::zero(),              // μ/σ² = 0/1 = 0
-            T::from(-0.5).unwrap(), // -1/(2σ²) = -1/2
+            T::zero(),                 // μ/σ² = 0/1 = 0
+            float_constant::<T>(-0.5), // -1/(2σ²) = -1/2
         ];
 
-        let log_partition = (T::from(2.0).unwrap() * T::PI()).ln() * T::from(0.5).unwrap();
+        let log_partition = (float_constant::<T>(2.0) * T::PI()).ln() * float_constant::<T>(0.5);
 
         (natural_params, log_partition)
     }

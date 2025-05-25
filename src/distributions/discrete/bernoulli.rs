@@ -18,6 +18,8 @@
 //! ```
 
 use crate::core::types::{False, True};
+use crate::core::utils::float_constant;
+use crate::core::utils::safe_convert;
 use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::counting::CountingMeasure;
@@ -38,7 +40,7 @@ pub struct Bernoulli<T> {
 impl<T: Float> Default for Bernoulli<T> {
     fn default() -> Self {
         Self {
-            prob: T::from(0.5).unwrap(),
+            prob: float_constant::<T>(0.5),
         }
     }
 }
@@ -104,7 +106,7 @@ where
     }
 
     fn sufficient_statistic(&self, x: &u8) -> Self::SufficientStat {
-        [T::from(*x).unwrap()]
+        [float_constant::<T>(f64::from(*x))]
     }
 
     fn base_measure(&self) -> Self::BaseMeasure {
@@ -134,19 +136,19 @@ where
         // Create symbolic variable
         let x = symbolic_var("x");
 
-        // Build symbolic log-density: x * log(p/(1-p)) - log(1 + exp(log(p/(1-p))))
-        let prob_f64 = self.prob.to_f64().unwrap();
+        // Build symbolic log-density: x*log(p/(1-p)) + log(1-p)
+        let prob_f64: f64 = safe_convert(self.prob);
         let log_odds = (prob_f64 / (1.0 - prob_f64)).ln();
-        let log_partition = (1.0 + log_odds.exp()).ln();
+        let log_one_minus_p = (1.0 - prob_f64).ln();
 
-        // Expression: x * η - A(η)
-        let expr = x * symbolic_const(log_odds) - symbolic_const(log_partition);
+        // Expression: x*log(p/(1-p)) + log(1-p)
+        let expr = symbolic_const(log_odds) * x + symbolic_const(log_one_minus_p);
 
         // Store parameters
         let mut parameters = HashMap::new();
         parameters.insert("prob".to_string(), prob_f64);
         parameters.insert("log_odds".to_string(), log_odds);
-        parameters.insert("log_partition".to_string(), log_partition);
+        parameters.insert("log_one_minus_p".to_string(), log_one_minus_p);
 
         crate::exponential_family::symbolic::SymbolicLogDensity::new(
             expr,
@@ -161,17 +163,17 @@ where
         use std::collections::HashMap;
 
         // Pre-compute constants
-        let prob_f64 = self.prob.to_f64().unwrap();
+        let prob_f64: f64 = safe_convert(self.prob);
         let log_odds = (prob_f64 / (1.0 - prob_f64)).ln();
         let log_partition = (1.0 + log_odds.exp()).ln();
 
         // Convert back to T type
-        let log_odds_t = T::from(log_odds).unwrap();
-        let log_partition_t = T::from(log_partition).unwrap();
+        let log_odds_t = float_constant::<T>(log_odds);
+        let log_partition_t = float_constant::<T>(log_partition);
 
         // Create optimized function
         let function = Box::new(move |x: &u8| -> T {
-            let x_t = T::from(*x).unwrap();
+            let x_t = float_constant::<T>(f64::from(*x));
             x_t * log_odds_t - log_partition_t
         });
 
@@ -202,7 +204,9 @@ where
         &self,
     ) -> Result<crate::exponential_family::jit::JITFunction, crate::exponential_family::jit::JITError>
     {
-        let _prob_f64 = self.prob.to_f64().unwrap();
+        use crate::core::utils::safe_convert;
+
+        let _prob_f64: f64 = safe_convert(self.prob);
         let _log_odds = (_prob_f64 / (1.0 - _prob_f64)).ln();
         let _log_partition = (1.0 + _log_odds.exp()).ln();
 

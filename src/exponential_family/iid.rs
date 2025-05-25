@@ -14,6 +14,7 @@
 //! - Log partition function: n times the original A(η)
 
 use crate::core::types::{False, True};
+use crate::core::utils::float_constant;
 use crate::core::{HasLogDensity, Measure, MeasureMarker};
 use crate::exponential_family::traits::{ExponentialFamily, SumSufficientStats};
 use crate::measures::derived::factorial::FactorialMeasure;
@@ -246,8 +247,17 @@ where
     }
 
     fn natural_and_log_partition(&self) -> (Self::NaturalParam, F) {
-        let (natural_params, log_partition) = self.distribution.natural_and_log_partition();
-        let n = F::from(1).unwrap(); // This will be multiplied by actual sample size in usage
-        (natural_params, n * log_partition)
+        let (base_natural_params, base_log_partition) =
+            self.distribution.natural_and_log_partition();
+
+        // For IID, natural parameters are the same as base distribution
+        let natural_params = base_natural_params;
+
+        // Log partition is n * A(η) where n is the sample size
+        // For the trait implementation, we use n=1 as a placeholder
+        let n = float_constant::<F>(1.0); // This will be multiplied by actual sample size in usage
+        let log_partition = n * base_log_partition;
+
+        (natural_params, log_partition)
     }
 }

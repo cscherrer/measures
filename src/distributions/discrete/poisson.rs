@@ -5,6 +5,7 @@
 //! in a fixed interval of time or space.
 
 use crate::core::types::{False, True};
+use crate::core::utils::float_constant;
 use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::derived::factorial::FactorialMeasure;
@@ -69,7 +70,7 @@ where
     }
 
     fn sufficient_statistic(&self, x: &u64) -> Self::SufficientStat {
-        [F::from(*x).unwrap()]
+        [float_constant::<F>(*x as f64)]
     }
 
     fn base_measure(&self) -> Self::BaseMeasure {

@@ -18,6 +18,7 @@
 //! ```
 
 use crate::core::types::{False, True};
+use crate::core::utils::{float_constant, safe_convert};
 use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
@@ -121,16 +122,17 @@ where
         let x = symbolic_var("x");
 
         // Build symbolic log-density: log(λ) - λx
-        let rate_f64 = self.rate.to_f64().unwrap();
-        let log_rate = rate_f64.ln();
+        let rate_f64: f64 = safe_convert(self.rate);
 
-        // Expression: log(λ) - λx
-        let expr = symbolic_const(log_rate) - symbolic_const(rate_f64) * x;
+        // Complete expression: log(λ) - λx
+        let log_rate = symbolic_const(rate_f64.ln());
+        let rate_expr = symbolic_const(-rate_f64);
+        let expr = log_rate + rate_expr * x;
 
         // Store parameters
         let mut parameters = HashMap::new();
         parameters.insert("rate".to_string(), rate_f64);
-        parameters.insert("log_rate".to_string(), log_rate);
+        parameters.insert("log_rate".to_string(), rate_f64.ln());
 
         crate::exponential_family::symbolic::SymbolicLogDensity::new(
             expr,
@@ -145,14 +147,14 @@ where
         use std::collections::HashMap;
 
         // Pre-compute constants
-        let rate_f64 = self.rate.to_f64().unwrap();
+        let rate_f64: f64 = safe_convert(self.rate);
         let log_rate = rate_f64.ln();
 
         // Convert back to T type
-        let rate_t = T::from(rate_f64).unwrap();
-        let log_rate_t = T::from(log_rate).unwrap();
+        let rate_t = float_constant::<T>(rate_f64);
+        let log_rate_t = float_constant::<T>(log_rate);
 
-        // Create optimized function
+        // Create optimized function: log(λ) - λx
         let function = Box::new(move |x: &T| -> T { log_rate_t - rate_t * *x });
 
         // Store constants for documentation
@@ -180,7 +182,7 @@ where
         &self,
     ) -> Result<crate::exponential_family::jit::JITFunction, crate::exponential_family::jit::JITError>
     {
-        let _rate_f64 = self.rate.to_f64().unwrap();
+        let _rate_f64: f64 = safe_convert(self.rate);
         let _log_rate = _rate_f64.ln();
 
         // For now, return an error since compile_function is not available
