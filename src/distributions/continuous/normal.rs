@@ -197,3 +197,44 @@ where
         )
     }
 }
+
+// JIT compilation implementation
+#[cfg(feature = "jit")]
+impl<T> crate::exponential_family::jit::JITOptimizer<T, T> for Normal<T>
+where
+    T: Float + FloatConst + std::fmt::Debug + 'static,
+{
+    fn compile_jit(
+        &self,
+    ) -> Result<crate::exponential_family::jit::JITFunction, crate::exponential_family::jit::JITError>
+    {
+        use crate::exponential_family::jit::JITCompiler;
+        use crate::exponential_family::symbolic::{ConstantPool, SymbolicOptimizer};
+
+        // Create the symbolic representation
+        let symbolic = self.symbolic_log_density();
+
+        // Build enhanced constant pool for JIT
+        let mut constants = ConstantPool::new();
+
+        let mu_f64 = self.mean.to_f64().unwrap();
+        let sigma_f64 = self.std_dev.to_f64().unwrap();
+        let sigma_sq = sigma_f64 * sigma_f64;
+        let log_norm_constant = -0.5 * (2.0 * std::f64::consts::PI * sigma_sq).ln();
+        let inv_two_sigma_sq = 1.0 / (2.0 * sigma_sq);
+
+        // Add constants with proper names expected by JIT compiler
+        constants.constants.insert("mu".to_string(), mu_f64);
+        constants.constants.insert("sigma".to_string(), sigma_f64);
+        constants
+            .constants
+            .insert("log_norm_constant".to_string(), log_norm_constant);
+        constants
+            .constants
+            .insert("inv_two_sigma_squared".to_string(), inv_two_sigma_sq);
+
+        // Create JIT compiler and compile the expression
+        let compiler = JITCompiler::new()?;
+        compiler.compile_expression(&symbolic, &constants)
+    }
+}

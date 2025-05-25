@@ -8,10 +8,72 @@ use measures::{Normal, distributions::discrete::poisson::Poisson};
 use pprof::criterion::{Output, PProfProfiler};
 use rv::dist::{Gaussian, Poisson as RvPoisson};
 use rv::prelude::*;
+use rand::{thread_rng, Rng};
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
+
+/// Macro for compile-time optimization when parameters are known at compile time
+macro_rules! optimized_normal {
+    ($mu:expr, $sigma:expr) => {{
+        let mu = $mu;
+        let sigma = $sigma;
+        let sigma_sq = sigma * sigma;
+        let log_norm_constant = -0.5 * (2.0 * std::f64::consts::PI * sigma_sq).ln();
+        let inv_two_sigma_sq = 1.0 / (2.0 * sigma_sq);
+
+        move |x: f64| -> f64 {
+            let diff = x - mu;
+            log_norm_constant - diff * diff * inv_two_sigma_sq
+        }
+    }};
+}
+
+/// Zero-overhead runtime code generation for Normal distribution
+fn generate_zero_overhead_normal(mu: f64, sigma: f64) -> impl Fn(f64) -> f64 {
+    let sigma_sq = sigma * sigma;
+    let log_norm_constant = -0.5 * (2.0 * std::f64::consts::PI * sigma_sq).ln();
+    let inv_two_sigma_sq = 1.0 / (2.0 * sigma_sq);
+
+    move |x: f64| -> f64 {
+        let diff = x - mu;
+        log_norm_constant - diff * diff * inv_two_sigma_sq
+    }
+}
+
+/// Runtime specialization with const generics
+pub struct SpecializedNormal<const MU_TIMES_1000: i32, const SIGMA_TIMES_1000: i32>;
+
+impl<const MU_TIMES_1000: i32, const SIGMA_TIMES_1000: i32> Default
+    for SpecializedNormal<MU_TIMES_1000, SIGMA_TIMES_1000>
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<const MU_TIMES_1000: i32, const SIGMA_TIMES_1000: i32>
+    SpecializedNormal<MU_TIMES_1000, SIGMA_TIMES_1000>
+{
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn log_density(&self, x: f64) -> f64 {
+        let mu = f64::from(MU_TIMES_1000) / 1000.0;
+        let sigma = f64::from(SIGMA_TIMES_1000) / 1000.0;
+        let sigma_sq = sigma * sigma;
+        let log_norm_constant = -0.5 * (2.0 * std::f64::consts::PI * sigma_sq).ln();
+        let inv_two_sigma_sq = 1.0 / (2.0 * sigma_sq);
+
+        let diff = x - mu;
+        log_norm_constant - diff * diff * inv_two_sigma_sq
+    }
+}
 
 /// Benchmark single density evaluations with rv comparisons
 /// Reduced from 5 inputs to 2 representative ones
@@ -324,11 +386,97 @@ fn bench_measure_creation(c: &mut Criterion) {
     group.finish();
 }
 
+/// Benchmark Normal distribution optimization techniques
+fn bench_normal_optimization_techniques(c: &mut Criterion) {
+    let mut group = c.benchmark_group("normal_optimization_techniques");
+    group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Logarithmic));
+
+    // Generate random test values to prevent compiler optimization
+    let mut rng = thread_rng();
+    let test_values: Vec<f64> = (0..1000).map(|_| rng.gen_range(-3.0..3.0)).collect();
+    
+    let normal = Normal::new(0.0_f64, 1.0_f64);
+    let rv_normal = Gaussian::new(0.0, 1.0).unwrap();
+
+    // Standard exponential family evaluation
+    group.bench_function("standard_exp_fam", |b| {
+        b.iter(|| {
+            let mut sum = 0.0;
+            for &x in &test_values {
+                sum += black_box(&normal).exp_fam_log_density(black_box(&x));
+            }
+            black_box(sum)
+        });
+    });
+
+    // Standard log density builder
+    group.bench_function("standard_log_density", |b| {
+        b.iter(|| {
+            let mut sum = 0.0;
+            for &x in &test_values {
+                let ld = black_box(&normal).log_density();
+                sum += ld.at(black_box(&x));
+            }
+            black_box(sum)
+        });
+    });
+
+    // Zero-overhead runtime code generation
+    let zero_overhead_fn = generate_zero_overhead_normal(0.0, 1.0);
+    group.bench_function("zero_overhead_runtime", |b| {
+        b.iter(|| {
+            let mut sum = 0.0;
+            for &x in &test_values {
+                sum += black_box(&zero_overhead_fn)(black_box(x));
+            }
+            black_box(sum)
+        });
+    });
+
+    // Compile-time macro optimization
+    let macro_fn = optimized_normal!(0.0, 1.0);
+    group.bench_function("compile_time_macro", |b| {
+        b.iter(|| {
+            let mut sum = 0.0;
+            for &x in &test_values {
+                sum += black_box(&macro_fn)(black_box(x));
+            }
+            black_box(sum)
+        });
+    });
+
+    // Const generic specialization
+    let specialized: SpecializedNormal<0, 1000> = SpecializedNormal::new();
+    group.bench_function("const_generic_specialized", |b| {
+        b.iter(|| {
+            let mut sum = 0.0;
+            for &x in &test_values {
+                sum += black_box(&specialized).log_density(black_box(x));
+            }
+            black_box(sum)
+        });
+    });
+
+    // Reference implementation (rv crate)
+    group.bench_function("rv_reference", |b| {
+        b.iter(|| {
+            let mut sum = 0.0;
+            for &x in &test_values {
+                sum += black_box(&rv_normal).ln_f(black_box(&x));
+            }
+            black_box(sum)
+        });
+    });
+
+    group.finish();
+}
+
 criterion_group! {
     name = benches;
     config = Criterion::default().with_profiler(PProfProfiler::new(100, Output::Flamegraph(None)));
     targets = bench_single_evaluations, bench_batch_evaluations, bench_factorial_optimization,
-              bench_exponential_family_components, bench_allocation_patterns, bench_measure_creation
+              bench_exponential_family_components, bench_allocation_patterns, bench_measure_creation,
+              bench_normal_optimization_techniques
 }
 
 criterion_main!(benches);

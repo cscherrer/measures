@@ -17,13 +17,19 @@ iai-callgrind = { version = "0.14", optional = true }
 rv = { git = "https://github.com/promised-ai/rv", branch = "release/v0.19.0", optional = true }
 # Symbolic mathematics
 rusymbols = { version = "0.1.2", optional = true }
+# JIT compilation with Cranelift
+cranelift-codegen = { version = "0.120", optional = true }
+cranelift-jit = { version = "0.120", optional = true }
+cranelift-module = { version = "0.120", optional = true }
+cranelift-frontend = { version = "0.120", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports", "cargo_bench_support"] }
-rv = { git = "https://github.com/promised-ai/rv", branch = "release/v0.19.0" }
+dhat = "0.3"
 pprof = { version = "0.13", features = ["flamegraph", "criterion"] }
+rand = "0.8"
+rv = { git = "https://github.com/promised-ai/rv", branch = "release/v0.19.0" }
 inferno = "0.12"      # Better flamegraph generation  
-dhat = "0.3"          # Memory profiling
 
 [profile.profiling]
 inherits = "release"
@@ -47,3 +53,4 @@ tracy = ["dep:tracy-client"]
 callgrind = ["dep:iai-callgrind"]
 dhat-heap = []    # Simple feature flag for heap profiling as per dhat docs
 symbolic = ["dep:rusymbols"]
+jit = ["symbolic", "dep:cranelift-codegen", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-frontend"]

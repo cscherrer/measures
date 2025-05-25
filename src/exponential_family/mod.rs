@@ -40,6 +40,9 @@ pub mod traits;
 #[cfg(feature = "symbolic")]
 pub mod symbolic;
 
+#[cfg(feature = "jit")]
+pub mod jit;
+
 // Re-export core traits and functions
 pub use traits::{
     ExponentialFamily, ExponentialFamilyMeasure, SumSufficientStats, compute_exp_fam_log_density,
@@ -50,3 +53,6 @@ pub use iid::{IID, IIDExtension};
 
 #[cfg(feature = "symbolic")]
 pub use symbolic::{SymbolicExtension, SymbolicOptimizer};
+
+#[cfg(feature = "jit")]
+pub use jit::{CompilationStats, JITError, JITFunction, JITOptimizer};
