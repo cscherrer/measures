@@ -21,6 +21,8 @@ pub mod generic_cache;
 pub mod iid;
 pub mod implementations;
 pub mod traits;
+#[cfg(feature = "symbolic")]
+pub mod symbolic;
 
 // Re-export key types
 pub use cache_trait::ExponentialFamilyCache;

@@ -144,3 +144,83 @@ impl<T: Float + FloatConst> PrecomputeCache<T, T> for Normal<T> {
         self.precompute_generic_cache()
     }
 }
+
+// Symbolic optimization implementation
+#[cfg(feature = "symbolic")]
+impl<T> crate::exponential_family::symbolic::SymbolicOptimizer<T, T> for Normal<T> 
+where 
+    T: Float + FloatConst + std::fmt::Debug + 'static,
+{
+    fn symbolic_log_density(&self) -> crate::exponential_family::symbolic::SymbolicLogDensity {
+        use crate::exponential_family::symbolic::utils::{symbolic_var, symbolic_const, quadratic_term};
+        use std::collections::HashMap;
+        
+        // Create symbolic variable
+        let x = symbolic_var("x");
+        
+        // Build symbolic log-density: -½log(2πσ²) - (x-μ)²/(2σ²)
+        let mu_f64 = self.mean.to_f64().unwrap();
+        let sigma_f64 = self.std_dev.to_f64().unwrap();
+        
+        // Constant term (numerical since rusymbols doesn't have ln)
+        let log_2pi_sigma_sq = (2.0 * std::f64::consts::PI * sigma_f64 * sigma_f64).ln();
+        let log_norm_constant = symbolic_const(-0.5 * log_2pi_sigma_sq);
+        
+        // Quadratic term: -(x-μ)²/(2σ²)
+        let quad_term = quadratic_term(&x, mu_f64, sigma_f64);
+        
+        // Complete expression
+        let full_expression = log_norm_constant + quad_term;
+        
+        // Store parameters
+        let mut parameters = HashMap::new();
+        parameters.insert("mu".to_string(), mu_f64);
+        parameters.insert("sigma".to_string(), sigma_f64);
+        
+        crate::exponential_family::symbolic::SymbolicLogDensity::new(
+            full_expression,
+            parameters,
+            vec!["x".to_string()]
+        )
+    }
+    
+    fn generate_optimized_function(&self) -> crate::exponential_family::symbolic::OptimizedFunction<T, T> {
+        use std::collections::HashMap;
+        
+        // Pre-compute constants
+        let mu_f64 = self.mean.to_f64().unwrap();
+        let sigma_f64 = self.std_dev.to_f64().unwrap();
+        let sigma_sq = sigma_f64 * sigma_f64;
+        let log_norm_constant = -0.5 * (2.0 * std::f64::consts::PI * sigma_sq).ln();
+        let inv_2sigma_sq = 1.0 / (2.0 * sigma_sq);
+        
+        // Convert back to T type
+        let mu_t = T::from(mu_f64).unwrap();
+        let log_norm_constant_t = T::from(log_norm_constant).unwrap();
+        let inv_2sigma_sq_t = T::from(inv_2sigma_sq).unwrap();
+        
+        // Create optimized function
+        let function = Box::new(move |x: &T| -> T {
+            let diff = *x - mu_t;
+            log_norm_constant_t - diff * diff * inv_2sigma_sq_t
+        });
+        
+        // Store constants for documentation
+        let mut constants = HashMap::new();
+        constants.insert("mu".to_string(), mu_f64);
+        constants.insert("sigma".to_string(), sigma_f64);
+        constants.insert("log_norm_constant".to_string(), log_norm_constant);
+        constants.insert("inv_2sigma_sq".to_string(), inv_2sigma_sq);
+        
+        let source_expression = format!(
+            "Normal(μ={}, σ={}): {} - (x - {})² * {}",
+            mu_f64, sigma_f64, log_norm_constant, mu_f64, inv_2sigma_sq
+        );
+        
+        crate::exponential_family::symbolic::OptimizedFunction::new(
+            function,
+            constants,
+            source_expression
+        )
+    }
+}
