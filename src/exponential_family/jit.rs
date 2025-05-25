@@ -724,19 +724,97 @@ fn generate_efficient_ln_call(builder: &mut FunctionBuilder, val: Value) -> Resu
 /// Uses a more efficient algorithm than Taylor series for better performance
 #[cfg(feature = "jit")]
 fn generate_efficient_exp_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    // For now, return an error indicating this needs proper implementation
-    // In a production system, this would either:
-    // 1. Call external libm functions via Cranelift's call mechanism
-    // 2. Implement a proper range-reduction + polynomial approximation algorithm
-    // 3. Use lookup tables with interpolation for specific ranges
+    // Implementation based on libm's exp function
+    // Uses range reduction: x = k*ln2 + r, where |r| <= 0.5*ln2
+    // Then exp(x) = 2^k * exp(r), where exp(r) is computed with polynomial approximation
     
-    // Temporary fallback: use a simple approximation for demonstration
-    // This is NOT production quality - just to make the code compile
+    // Constants from libm implementation
+    let ln2_hi = builder.ins().f64const(6.93147180369123816490e-01); // 0x3fe62e42, 0xfee00000
+    let ln2_lo = builder.ins().f64const(1.90821492927058770002e-10); // 0x3dea39ef, 0x35793c76
+    let inv_ln2 = builder.ins().f64const(1.44269504088896338700e+00); // 0x3ff71547, 0x652b82fe
+    
+    // Polynomial coefficients for exp(r) approximation (Remez algorithm)
+    let p1 = builder.ins().f64const(1.66666666666666019037e-01); // 0x3FC55555, 0x5555553E
+    let p2 = builder.ins().f64const(-2.77777777770155933842e-03); // 0xBF66C16C, 0x16BEBD93
+    let p3 = builder.ins().f64const(6.61375632143793436117e-05); // 0x3F11566A, 0xAF25DE2C
+    let p4 = builder.ins().f64const(-1.65339022054652515390e-06); // 0xBEBBBD41, 0xC5D26BF1
+    let p5 = builder.ins().f64const(4.13813679705723846039e-08); // 0x3E663769, 0x72BEA4D0
+    
+    let zero = builder.ins().f64const(0.0);
     let one = builder.ins().f64const(1.0);
+    let two = builder.ins().f64const(2.0);
+    let half = builder.ins().f64const(0.5);
     
-    // Very crude approximation: exp(x) ≈ 1 + x for small x
-    // This is only accurate for x very close to 0
-    let result = builder.ins().fadd(one, val);
+    // Check for special cases
+    // if |x| > 708.39, we need to handle overflow/underflow
+    let abs_x = builder.ins().fabs(val);
+    let overflow_threshold = builder.ins().f64const(708.39);
+    let underflow_threshold = builder.ins().f64const(-708.39);
+    
+    // For now, we'll implement the core algorithm without special case handling
+    // In production, you'd add proper overflow/underflow checks here
+    
+    // Range reduction: find k and r such that x = k*ln2 + r, |r| <= 0.5*ln2
+    // k = round(x / ln2)
+    let x_over_ln2 = builder.ins().fmul(val, inv_ln2);
+    
+    // Round to nearest integer (this is a simplified version)
+    // In practice, you'd use proper rounding with bias handling
+    let k_float = builder.ins().nearest(x_over_ln2);
+    
+    // Compute r = x - k*ln2 (with high precision)
+    let k_ln2_hi = builder.ins().fmul(k_float, ln2_hi);
+    let k_ln2_lo = builder.ins().fmul(k_float, ln2_lo);
+    let r_hi = builder.ins().fsub(val, k_ln2_hi);
+    let r = builder.ins().fsub(r_hi, k_ln2_lo);
+    
+    // Compute exp(r) using polynomial approximation
+    // c(r) = r - (P1*r^2 + P2*r^4 + P3*r^6 + P4*r^8 + P5*r^10)
+    let r2 = builder.ins().fmul(r, r);
+    let r4 = builder.ins().fmul(r2, r2);
+    let r6 = builder.ins().fmul(r4, r2);
+    let r8 = builder.ins().fmul(r6, r2);
+    let r10 = builder.ins().fmul(r8, r2);
+    
+    let poly_term1 = builder.ins().fmul(p1, r2);
+    let poly_term2 = builder.ins().fmul(p2, r4);
+    let poly_term3 = builder.ins().fmul(p3, r6);
+    let poly_term4 = builder.ins().fmul(p4, r8);
+    let poly_term5 = builder.ins().fmul(p5, r10);
+    
+    let poly_sum = builder.ins().fadd(poly_term1, poly_term2);
+    let poly_sum = builder.ins().fadd(poly_sum, poly_term3);
+    let poly_sum = builder.ins().fadd(poly_sum, poly_term4);
+    let poly_sum = builder.ins().fadd(poly_sum, poly_term5);
+    
+    let c = builder.ins().fsub(r, poly_sum);
+    
+    // exp(r) = 1 + r + r*c/(2-c)
+    let two_minus_c = builder.ins().fsub(two, c);
+    let r_times_c = builder.ins().fmul(r, c);
+    let correction = builder.ins().fdiv(r_times_c, two_minus_c);
+    let exp_r = builder.ins().fadd(one, r);
+    let exp_r = builder.ins().fadd(exp_r, correction);
+    
+    // Scale by 2^k: exp(x) = 2^k * exp(r)
+    // Convert k to integer for scalbn-like operation
+    let k_int = builder.ins().fcvt_to_sint(types::I32, k_float);
+    
+    // Implement 2^k multiplication using bit manipulation
+    // This is a simplified version - in practice you'd use proper scalbn
+    let k_64 = builder.ins().sextend(types::I64, k_int);
+    let bias = builder.ins().iconst(types::I64, 1023); // IEEE 754 bias
+    let biased_exp = builder.ins().iadd(k_64, bias);
+    
+    // Shift to exponent position (bits 52-62)
+    let exp_bits = builder.ins().ishl_imm(biased_exp, 52);
+    
+    // Convert to double (this represents 2^k)
+    let scale = builder.ins().bitcast(types::F64, cranelift_codegen::ir::MemFlags::new(), exp_bits);
+    
+    // Final result: scale * exp_r
+    let result = builder.ins().fmul(scale, exp_r);
+    
     Ok(result)
 }
 

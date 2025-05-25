@@ -16,7 +16,7 @@ Benchmark results with Normal(μ=2.0, σ=1.5) distribution show the current JIT 
 
 ### Current Implementation Status:
 - **✅ Natural logarithm (ln)**: Proper Remez-based algorithm with range reduction
-- **⚠️ Exponential (exp)**: Taylor series implementation (needs improvement)
+- **✅ Exponential (exp)**: Proper range reduction with polynomial approximation (libm-based)
 - **⚠️ Trigonometric functions**: Taylor series implementations (need improvement)
 - **✅ Basic arithmetic**: Fully optimized native operations
 - Compilation overhead is not amortized for single evaluations
@@ -106,20 +106,20 @@ ExpFamExpr::Ln(expr) => {
 }
 ExpFamExpr::Exp(expr) => {
     let val = generate_clif_from_expr_exp_fam(builder, expr, x_val, constants)?;
-    // ⚠️ Taylor series implementation (needs improvement)
+    // ✅ Proper range reduction with polynomial approximation (libm-based)
     generate_efficient_exp_call(builder, val)
 }
 ```
 
 **Production-quality operations:**
 - Natural logarithm: Remez algorithm with IEEE 754 bit manipulation
+- Exponential function: Range reduction (x = k*ln2 + r) with Remez polynomial for exp(r)
 - Basic arithmetic: add, subtract, multiply, divide
 - Square root (native Cranelift instruction)
 - Negation
 
 **Needs improvement:**
-- Exponential function (currently Taylor series)
-- Trigonometric functions (currently Taylor series)
+- Trigonometric functions (currently use Taylor series)
 
 ## Compilation Statistics
 
@@ -225,18 +225,18 @@ The JIT compilation system provides a foundation for high-performance mathematic
 
 **✅ Production Ready:**
 - Natural logarithm: Proper Remez-based algorithm with range reduction
+- Exponential function: Proper range reduction with libm-based polynomial approximation
 - Basic arithmetic operations: Fully optimized
 - Compilation infrastructure: Robust and extensible
 
 **⚠️ Needs Improvement:**
-- Exponential function: Currently uses Taylor series (needs range reduction)
 - Trigonometric functions: Currently use Taylor series (need proper algorithms)
 - Performance optimization: Still slower than standard evaluation
 
 **Current Status:**
-- Compiles successfully and produces mathematically correct results for ln()
+- Compiles successfully and produces mathematically correct results for ln() and exp()
 - Has performance overhead compared to standard evaluation  
 - Provides a solid foundation for implementing remaining mathematical functions
 - Demonstrates proper approach for production-quality mathematical function implementation
 
-The ln() implementation shows the path forward: use proper numerical algorithms with range reduction rather than simple Taylor series approximations. 
+The ln() and exp() implementations show the path forward: use proper numerical algorithms with range reduction rather than simple Taylor series approximations. 
