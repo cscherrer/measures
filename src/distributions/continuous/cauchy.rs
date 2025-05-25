@@ -12,8 +12,8 @@
 //! let log_density: f64 = cauchy.log_density().at(&0.0);
 //! ```
 
-use crate::core::{HasLogDensity, Measure, MeasureMarker};
 use crate::core::types::False;
+use crate::core::{HasLogDensity, Measure, MeasureMarker};
 use crate::measures::primitive::LebesgueMeasure;
 use num_traits::{Float, NumCast};
 use std::f64::consts::PI;
@@ -45,14 +45,12 @@ impl<T: Float> Cauchy<T> {
     }
 
     /// Create a standard Cauchy distribution (location=0, scale=1).
+    #[must_use]
     pub fn standard() -> Self
     where
         T: NumCast,
     {
-        Self::new(
-            T::from(0.0).unwrap(),
-            T::from(1.0).unwrap(),
-        )
+        Self::new(T::from(0.0).unwrap(), T::from(1.0).unwrap())
     }
 
     /// Get the location parameter.
@@ -74,21 +72,21 @@ impl<T: Float> Cauchy<T> {
     {
         let standardized = (x - self.location) / self.scale;
         let pi = T::from(PI).unwrap();
-        
+
         -pi.ln() - self.scale.ln() - (T::one() + standardized * standardized).ln()
     }
 }
 
 impl<T: Float> MeasureMarker for Cauchy<T> {
     type IsPrimitive = False;
-    type IsExponentialFamily = False;  // Cauchy is NOT an exponential family
+    type IsExponentialFamily = False; // Cauchy is NOT an exponential family
 }
 
 impl<T: Float + Clone> Measure<T> for Cauchy<T> {
     type RootMeasure = LebesgueMeasure<T>;
 
     fn in_support(&self, _x: T) -> bool {
-        true  // Cauchy has support on all real numbers
+        true // Cauchy has support on all real numbers
     }
 
     fn root_measure(&self) -> Self::RootMeasure {
@@ -96,7 +94,7 @@ impl<T: Float + Clone> Measure<T> for Cauchy<T> {
     }
 }
 
-/// Manual implementation of HasLogDensity for Cauchy since it's not an exponential family.
+/// Manual implementation of `HasLogDensity` for Cauchy since it's not an exponential family.
 ///
 /// This demonstrates how non-exponential family distributions implement log-density computation.
 impl<T: Float + Clone + NumCast> HasLogDensity<T, T> for Cauchy<T> {
@@ -127,13 +125,13 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_invalid_scale() {
-        let _cauchy = Cauchy::new(0.0, -1.0);  // Should panic
+        let _cauchy = Cauchy::new(0.0, -1.0); // Should panic
     }
 
     #[test]
     fn test_log_pdf() {
         let cauchy = Cauchy::new(0.0, 1.0);
-        
+
         // At x = 0 (center), log_pdf should be -log(π)
         let expected = -PI.ln();
         let actual = cauchy.log_pdf(0.0);
@@ -143,7 +141,7 @@ mod tests {
     #[test]
     fn test_log_density_builder() {
         let cauchy = Cauchy::new(0.0, 1.0);
-        
+
         // Test that the builder pattern works
         let log_density: f64 = cauchy.log_density().at(&0.0);
         let expected = -PI.ln();
@@ -154,10 +152,10 @@ mod tests {
     fn test_different_numeric_types() {
         let cauchy_f64 = Cauchy::new(0.0f64, 1.0f64);
         let cauchy_f32 = Cauchy::new(0.0f32, 1.0f32);
-        
+
         let f64_result: f64 = cauchy_f64.log_density().at(&0.0f64);
         let f32_result: f32 = cauchy_f32.log_density().at(&0.0f32);
-        
+
         // Results should be approximately equal
         assert!((f64_result - f32_result as f64).abs() < 1e-6);
     }
@@ -166,10 +164,10 @@ mod tests {
     fn test_relative_density() {
         let cauchy1 = Cauchy::new(0.0, 1.0);
         let cauchy2 = Cauchy::new(1.0, 2.0);
-        
+
         // Test relative density computation
         let relative_density: f64 = cauchy1.log_density().wrt(cauchy2.clone()).at(&0.5);
-        
+
         // Should equal individual densities subtracted
         let manual: f64 = cauchy1.log_density().at(&0.5) - cauchy2.log_density().at(&0.5);
         assert!((relative_density - manual).abs() < 1e-10);
@@ -178,7 +176,7 @@ mod tests {
     #[test]
     fn test_support() {
         let cauchy = Cauchy::new(0.0, 1.0);
-        
+
         // Cauchy has support on all real numbers
         assert!(cauchy.in_support(0.0));
         assert!(cauchy.in_support(100.0));
@@ -190,11 +188,11 @@ mod tests {
     #[test]
     fn test_is_not_exponential_family() {
         use crate::core::types::TypeLevelBool;
-        
+
         let _cauchy = Cauchy::new(0.0, 1.0);
-        
+
         // Verify type-level markers
         assert!(!<Cauchy<f64> as MeasureMarker>::IsExponentialFamily::VALUE);
         assert!(!<Cauchy<f64> as MeasureMarker>::IsPrimitive::VALUE);
     }
-} 
+}

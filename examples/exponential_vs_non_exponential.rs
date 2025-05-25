@@ -6,7 +6,7 @@
 //!
 //! Both types work seamlessly with the same API.
 //!
-//! Run with: cargo run --example exponential_vs_non_exponential
+//! Run with: cargo run --example `exponential_vs_non_exponential`
 
 use measures::{Cauchy, LogDensityBuilder, Normal};
 
@@ -14,8 +14,8 @@ fn main() {
     println!("🎯 === Exponential Family vs Non-Exponential Family === 🎯\n");
 
     // Create distributions
-    let normal = Normal::new(0.0, 1.0);    // Exponential family
-    let cauchy = Cauchy::new(0.0, 1.0);    // NOT exponential family
+    let normal = Normal::new(0.0, 1.0); // Exponential family
+    let cauchy = Cauchy::new(0.0, 1.0); // NOT exponential family
     let test_point = 0.5;
 
     println!("Normal distribution: N(μ=0.0, σ=1.0) [Exponential Family]");
@@ -43,7 +43,7 @@ fn demonstrate_basic_log_density(normal: &Normal<f64>, cauchy: &Cauchy<f64>, x: 
 
     println!("Normal log-density at x={x}: {normal_log_density:.6}");
     println!("Cauchy log-density at x={x}: {cauchy_log_density:.6}");
-    
+
     // Show the difference
     let difference = normal_log_density - cauchy_log_density;
     println!("Difference (Normal - Cauchy): {difference:.6}");
@@ -59,7 +59,7 @@ fn demonstrate_relative_densities(normal: &Normal<f64>, cauchy: &Cauchy<f64>, x:
 
     println!("log(Normal/Cauchy) at x={x}: {normal_wrt_cauchy:.6}");
     println!("log(Cauchy/Normal) at x={x}: {cauchy_wrt_normal:.6}");
-    
+
     // Verify they're negatives of each other
     let sum = normal_wrt_cauchy + cauchy_wrt_normal;
     println!("Sum (should be ~0): {sum:.10}");
@@ -68,24 +68,24 @@ fn demonstrate_relative_densities(normal: &Normal<f64>, cauchy: &Cauchy<f64>, x:
 
 fn demonstrate_type_level_dispatch(normal: &Normal<f64>, cauchy: &Cauchy<f64>) {
     use measures::core::{MeasureMarker, types::TypeLevelBool};
-    
+
     println!("=== 3. Type-Level Dispatch Verification ===");
 
     // Check type-level markers
     let normal_is_exp_fam = <Normal<f64> as MeasureMarker>::IsExponentialFamily::VALUE;
     let cauchy_is_exp_fam = <Cauchy<f64> as MeasureMarker>::IsExponentialFamily::VALUE;
-    
+
     let normal_is_primitive = <Normal<f64> as MeasureMarker>::IsPrimitive::VALUE;
     let cauchy_is_primitive = <Cauchy<f64> as MeasureMarker>::IsPrimitive::VALUE;
 
     println!("Normal distribution:");
     println!("  IsExponentialFamily: {normal_is_exp_fam}");
     println!("  IsPrimitive: {normal_is_primitive}");
-    
+
     println!("Cauchy distribution:");
     println!("  IsExponentialFamily: {cauchy_is_exp_fam}");
     println!("  IsPrimitive: {cauchy_is_primitive}");
-    
+
     println!("\nType-level dispatch routes:");
     println!("  Normal → Automatic exponential family implementation");
     println!("  Cauchy → Manual HasLogDensity implementation\n");
@@ -116,12 +116,14 @@ fn demonstrate_shared_api(normal: &Normal<f64>, cauchy: &Cauchy<f64>, x: f64) {
     println!("  Cauchy f32 result: {cauchy_f32_result:.6}");
 
     // Verify consistency between f64 and f32
-    let normal_diff = (normal_result - normal_f32_result as f64).abs();
-    let cauchy_diff = (cauchy_result - cauchy_f32_result as f64).abs();
-    
+    let normal_diff = (normal_result - f64::from(normal_f32_result)).abs();
+    let cauchy_diff = (cauchy_result - f64::from(cauchy_f32_result)).abs();
+
     println!("\nPrecision differences (f64 vs f32):");
     println!("  Normal: {normal_diff:.8}");
     println!("  Cauchy: {cauchy_diff:.8}");
-    
-    println!("\nKey insight: Both distributions use identical API despite different implementations!");
-} 
+
+    println!(
+        "\nKey insight: Both distributions use identical API despite different implementations!"
+    );
+}

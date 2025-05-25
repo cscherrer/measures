@@ -9,8 +9,8 @@ pub mod types;
 
 // Re-export key types for convenient use
 pub use density::{
-    CachedLogDensity, DensityMeasure, EvaluateAt, HasLogDensity, LogDensity, LogDensityTrait,
-    LogDensityCaching, SharedRootMeasure,
+    CachedLogDensity, DensityMeasure, EvaluateAt, HasLogDensity, LogDensity, LogDensityCaching,
+    LogDensityTrait, SharedRootMeasure,
 };
 pub use measure::{LogDensityBuilder, Measure, MeasureMarker, PrimitiveMeasure};
 pub use types::{
