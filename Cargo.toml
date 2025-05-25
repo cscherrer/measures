@@ -22,6 +22,9 @@ cranelift-codegen = { version = "0.120", optional = true }
 cranelift-jit = { version = "0.120", optional = true }
 cranelift-module = { version = "0.120", optional = true }
 cranelift-frontend = { version = "0.120", optional = true }
+libm = "0.2.15"
+# Special mathematical functions (pure Rust implementation)
+special = "0.11.4"
 
 [dev-dependencies]
 criterion = { version = "0.6", features = ["html_reports", "cargo_bench_support"] }

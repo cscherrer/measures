@@ -1,0 +1,292 @@
+//! Categorical distribution implementation.
+//!
+//! This module provides the Categorical distribution, which is a discrete probability
+//! distribution that describes the possible results of a random variable that can take
+//! on one of K possible categories. The density is computed with respect to counting measure.
+//!
+//! # Example
+//!
+//! ```rust
+//! use measures::distributions::Categorical;
+//! use measures::LogDensityBuilder;
+//!
+//! let categorical = Categorical::new(vec![0.2, 0.3, 0.5]); // 3 categories with given probabilities
+//!
+//! // Compute log-density at x = 1 (second category, 0-indexed)
+//! let ld = categorical.log_density();
+//! let log_density_value: f64 = ld.at(&1);
+//! ```
+
+use crate::core::types::{False, True};
+use crate::core::{Measure, MeasureMarker};
+use crate::exponential_family::traits::ExponentialFamily;
+use crate::measures::primitive::counting::CountingMeasure;
+use num_traits::Float;
+
+/// Categorical distribution Cat(p₁, p₂, ..., pₖ).
+///
+/// This is a member of the exponential family with:
+/// - Natural parameters: η = [log(p₁/pₖ), log(p₂/pₖ), ..., log(pₖ₋₁/pₖ)]
+/// - Sufficient statistics: T(x) = [I(x=0), I(x=1), ..., I(x=K-2)]
+/// - Log partition: A(η) = log(1 + Σᵢ exp(ηᵢ))
+/// - Base measure: Counting measure on {0, 1, ..., K-1}
+#[derive(Clone, Debug)]
+pub struct Categorical<T> {
+    pub probs: Vec<T>, // Probabilities for each category
+}
+
+impl<T: Float> MeasureMarker for Categorical<T> {
+    type IsPrimitive = False;
+    type IsExponentialFamily = True;
+}
+
+impl<T: Float + std::iter::Sum> Categorical<T> {
+    /// Create a new categorical distribution with given probabilities.
+    #[must_use]
+    pub fn new(probs: Vec<T>) -> Self {
+        assert!(!probs.is_empty(), "Must have at least one category");
+        assert!(
+            probs.iter().all(|&p| p >= T::zero()),
+            "All probabilities must be non-negative"
+        );
+
+        let sum: T = probs.iter().copied().sum();
+        assert!(
+            (sum - T::one()).abs() < T::from(1e-10).unwrap(),
+            "Probabilities must sum to 1"
+        );
+
+        Self { probs }
+    }
+
+    /// Create a uniform categorical distribution with k categories.
+    #[must_use]
+    pub fn uniform(k: usize) -> Self {
+        assert!(k > 0, "Must have at least one category");
+        let prob = T::one() / T::from(k).unwrap();
+        Self::new(vec![prob; k])
+    }
+
+    /// Get the number of categories.
+    #[must_use]
+    pub fn num_categories(&self) -> usize {
+        self.probs.len()
+    }
+
+    /// Get the mean (expected category index).
+    #[must_use]
+    pub fn mean(&self) -> T {
+        self.probs
+            .iter()
+            .enumerate()
+            .map(|(i, &p)| T::from(i).unwrap() * p)
+            .sum()
+    }
+
+    /// Get the variance.
+    #[must_use]
+    pub fn variance(&self) -> T {
+        let mean = self.mean();
+        self.probs
+            .iter()
+            .enumerate()
+            .map(|(i, &p)| {
+                let diff = T::from(i).unwrap() - mean;
+                p * diff * diff
+            })
+            .sum()
+    }
+
+    /// Get the log-odds relative to the last category.
+    fn log_odds(&self) -> Vec<T> {
+        let last_prob = self.probs[self.probs.len() - 1];
+        self.probs[..self.probs.len() - 1]
+            .iter()
+            .map(|&p| (p / last_prob).ln())
+            .collect()
+    }
+}
+
+impl<T: Float> Measure<usize> for Categorical<T> {
+    type RootMeasure = CountingMeasure<usize>;
+
+    fn in_support(&self, x: usize) -> bool {
+        x < self.probs.len()
+    }
+
+    fn root_measure(&self) -> Self::RootMeasure {
+        CountingMeasure::<usize>::new()
+    }
+}
+
+// Exponential family implementation
+impl<T> ExponentialFamily<usize, T> for Categorical<T>
+where
+    T: Float + std::fmt::Debug + 'static + std::iter::Sum,
+{
+    type NaturalParam = Vec<T>;
+    type SufficientStat = Vec<T>;
+    type BaseMeasure = CountingMeasure<usize>;
+
+    fn from_natural(param: Self::NaturalParam) -> Self {
+        // Convert from log-odds to probabilities using softmax
+        let k = param.len() + 1; // Number of categories
+        let mut probs = Vec::with_capacity(k);
+
+        // Compute exp(η_i) for i = 0, ..., K-2
+        let exp_etas: Vec<T> = param.iter().map(|&eta| eta.exp()).collect();
+
+        // Compute normalization constant: 1 + Σᵢ exp(ηᵢ)
+        let normalizer = T::one() + exp_etas.iter().copied().sum::<T>();
+
+        // Compute probabilities: pᵢ = exp(ηᵢ) / normalizer for i < K-1
+        for &exp_eta in &exp_etas {
+            probs.push(exp_eta / normalizer);
+        }
+
+        // Last probability: pₖ₋₁ = 1 / normalizer
+        probs.push(T::one() / normalizer);
+
+        Self::new(probs)
+    }
+
+    fn sufficient_statistic(&self, x: &usize) -> Self::SufficientStat {
+        let k = self.probs.len();
+        let mut stats = vec![T::zero(); k - 1];
+
+        // One-hot encoding for categories 0 to K-2
+        if *x < k - 1 {
+            stats[*x] = T::one();
+        }
+
+        stats
+    }
+
+    fn base_measure(&self) -> Self::BaseMeasure {
+        CountingMeasure::<usize>::new()
+    }
+
+    fn natural_and_log_partition(&self) -> (Self::NaturalParam, T) {
+        let natural_params = self.log_odds();
+
+        // Log partition: A(η) = log(1 + Σᵢ exp(ηᵢ))
+        let sum_exp_eta: T = natural_params.iter().map(|&eta| eta.exp()).sum();
+        let log_partition = (T::one() + sum_exp_eta).ln();
+
+        (natural_params, log_partition)
+    }
+
+    // Override the exponential family log-density for direct computation
+    fn exp_fam_log_density(&self, x: &usize) -> T
+    where
+        Self::NaturalParam: crate::traits::DotProduct<Self::SufficientStat, Output = T>,
+        Self::BaseMeasure: crate::core::HasLogDensity<usize, T>,
+    {
+        // For categorical, this is simply log(p_x)
+        if *x < self.probs.len() {
+            self.probs[*x].ln()
+        } else {
+            T::neg_infinity()
+        }
+    }
+}
+
+// Symbolic optimization implementation
+#[cfg(feature = "symbolic")]
+impl<T> crate::exponential_family::symbolic::SymbolicOptimizer<usize, T> for Categorical<T>
+where
+    T: Float + std::fmt::Debug + 'static,
+{
+    fn symbolic_log_density(&self) -> crate::exponential_family::symbolic::SymbolicLogDensity {
+        use crate::exponential_family::symbolic::utils::{symbolic_const, symbolic_var};
+        use std::collections::HashMap;
+
+        // Create symbolic variable
+        let x = symbolic_var("x");
+
+        // For categorical distribution, we need a piecewise function
+        // This is a simplified representation - in practice, you'd need
+        // to handle the discrete nature properly
+        let probs_f64: Vec<f64> = self.probs.iter().map(|&p| p.to_f64().unwrap()).collect();
+        let log_probs: Vec<f64> = probs_f64.iter().map(|&p| p.ln()).collect();
+
+        // For symbolic representation, we'll use the first log probability as a placeholder
+        let expr = symbolic_const(log_probs[0]);
+
+        // Store parameters
+        let mut parameters = HashMap::new();
+        for (i, &log_prob) in log_probs.iter().enumerate() {
+            parameters.insert(format!("log_prob_{i}"), log_prob);
+        }
+
+        crate::exponential_family::symbolic::SymbolicLogDensity::new(
+            expr,
+            parameters,
+            vec!["x".to_string()],
+        )
+    }
+
+    fn generate_optimized_function(
+        &self,
+    ) -> crate::exponential_family::symbolic::OptimizedFunction<usize, T> {
+        use std::collections::HashMap;
+
+        // Pre-compute log probabilities
+        let log_probs: Vec<T> = self.probs.iter().map(|&p| p.ln()).collect();
+
+        // Create optimized function
+        let function = Box::new(move |x: &usize| -> T {
+            if *x < log_probs.len() {
+                log_probs[*x]
+            } else {
+                T::neg_infinity()
+            }
+        });
+
+        // Store constants for documentation
+        let mut constants = HashMap::new();
+        for (i, &prob) in self.probs.iter().enumerate() {
+            constants.insert(format!("prob_{i}"), prob.to_f64().unwrap());
+        }
+
+        let source_expression = format!(
+            "Categorical({:?}): log(p_x)",
+            self.probs
+                .iter()
+                .map(|&p| p.to_f64().unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        crate::exponential_family::symbolic::OptimizedFunction::new(
+            function,
+            constants,
+            source_expression,
+        )
+    }
+}
+
+// JIT optimization implementation
+#[cfg(feature = "jit")]
+impl<T> crate::exponential_family::jit::JITOptimizer<usize, T> for Categorical<T>
+where
+    T: Float + std::fmt::Debug + 'static,
+{
+    fn compile_jit(
+        &self,
+    ) -> Result<crate::exponential_family::jit::JITFunction, crate::exponential_family::jit::JITError>
+    {
+        let _log_probs: Vec<f64> = self
+            .probs
+            .iter()
+            .map(|&p| p.to_f64().unwrap().ln())
+            .collect();
+
+        // For now, return an error since compile_function is not available
+        // This can be implemented later when the JIT infrastructure is complete
+        Err(
+            crate::exponential_family::jit::JITError::UnsupportedExpression(
+                "Categorical distribution JIT compilation not yet implemented".to_string(),
+            ),
+        )
+    }
+}

@@ -936,12 +936,14 @@ dependencies = [
  "dhat",
  "iai-callgrind",
  "inferno",
+ "libm",
  "nalgebra",
  "num-traits",
  "profiling",
  "rand 0.9.1",
  "rusymbols",
  "rv",
+ "special",
  "tracy-client",
 ]
 
