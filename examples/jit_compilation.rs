@@ -17,7 +17,7 @@ use measures::{LogDensityBuilder, Normal};
 use measures::exponential_family::jit::ZeroOverheadOptimizer;
 
 #[cfg(feature = "jit")]
-use measures::exponential_family::JITOptimizer;
+use measures::exponential_family::{JITOptimizer, CustomJITOptimizer};
 
 fn main() {
     println!("🚀 === JIT Compilation for Exponential Families === 🚀\n");
@@ -89,7 +89,7 @@ fn demonstrate_zero_overhead_optimization(normal: &Normal<f64>, x: f64) {
 fn demonstrate_jit_compilation(normal: &Normal<f64>, x: f64) {
     println!("=== 3. JIT Compilation to Native Machine Code ===");
 
-    match normal.compile_jit() {
+    match normal.compile_custom_jit() {
         Ok(jit_function) => {
             let result = jit_function.call(x);
             println!("JIT result: {result:.10}");
@@ -119,7 +119,7 @@ fn demonstrate_correctness_verification(normal: &Normal<f64>, x: f64) {
     println!("  Standard:        {standard_result:.10}");
     println!("  Zero-overhead:   {zero_overhead_result:.10}");
 
-    if let Ok(jit_function) = normal.compile_jit() {
+    if let Ok(jit_function) = normal.compile_custom_jit() {
         let jit_result = jit_function.call(x);
         println!("  JIT:             {jit_result:.10}");
 
@@ -175,7 +175,7 @@ fn demonstrate_feature_not_enabled() {
 fn demonstrate_compilation_analysis(normal: &Normal<f64>) {
     println!("\n=== Step 4: Compilation Analysis ===");
 
-    match normal.compile_jit() {
+    match normal.compile_custom_jit() {
         Ok(jit_function) => {
             let stats = jit_function.stats();
 
@@ -213,7 +213,7 @@ fn demonstrate_compilation_analysis(normal: &Normal<f64>) {
 fn demonstrate_native_code_benefits(normal: &Normal<f64>) {
     println!("\n=== Step 5: Native Code Benefits ===");
 
-    match normal.compile_jit() {
+    match normal.compile_custom_jit() {
         Ok(_jit_function) => {
             println!("🎯 Advantages of JIT-compiled native code:");
             println!();

@@ -131,97 +131,6 @@ fn gamma_ln<T: Float>(x: T) -> T {
     }
 }
 
-// Symbolic optimization implementation
-#[cfg(feature = "symbolic")]
-impl<T> crate::exponential_family::symbolic::SymbolicOptimizer<T, T> for Beta<T>
-where
-    T: Float + std::fmt::Debug + 'static,
-{
-    fn symbolic_log_density(&self) -> crate::exponential_family::symbolic::SymbolicLogDensity {
-        use crate::exponential_family::symbolic::utils::{symbolic_const, symbolic_var};
-        use std::collections::HashMap;
-
-        // Create symbolic variable
-        let x = symbolic_var("x");
-
-        // Build symbolic log-density: (α-1)log(x) + (β-1)log(1-x) - log B(α,β)
-        let alpha_f64 = self.alpha.to_f64().unwrap();
-        let beta_f64 = self.beta.to_f64().unwrap();
-        let log_beta_fn_f64 = {
-            let (ln_gamma_alpha, _) = alpha_f64.ln_gamma();
-            let (ln_gamma_beta, _) = beta_f64.ln_gamma();
-            let (ln_gamma_sum, _) = (alpha_f64 + beta_f64).ln_gamma();
-            ln_gamma_alpha + ln_gamma_beta - ln_gamma_sum
-        };
-
-        // Expression: (α-1)log(x) + (β-1)log(1-x) - log B(α,β)
-        let one = symbolic_const(1.0);
-        let log_x = x.clone(); // Note: rusymbols may not have ln method, using placeholder
-        let log_one_minus_x = one - x.clone(); // Note: rusymbols may not have ln method, using placeholder
-        let expr = symbolic_const(alpha_f64 - 1.0) * log_x
-            + symbolic_const(beta_f64 - 1.0) * log_one_minus_x
-            - symbolic_const(log_beta_fn_f64);
-
-        // Store parameters
-        let mut parameters = HashMap::new();
-        parameters.insert("alpha".to_string(), alpha_f64);
-        parameters.insert("beta".to_string(), beta_f64);
-        parameters.insert("log_beta_fn".to_string(), log_beta_fn_f64);
-
-        crate::exponential_family::symbolic::SymbolicLogDensity::new(
-            expr,
-            parameters,
-            vec!["x".to_string()],
-        )
-    }
-
-    fn generate_optimized_function(
-        &self,
-    ) -> crate::exponential_family::symbolic::OptimizedFunction<T, T> {
-        use std::collections::HashMap;
-
-        // Pre-compute constants
-        let alpha_f64 = self.alpha.to_f64().unwrap();
-        let beta_f64 = self.beta.to_f64().unwrap();
-        let log_beta_fn_f64 = {
-            let (ln_gamma_alpha, _) = alpha_f64.ln_gamma();
-            let (ln_gamma_beta, _) = beta_f64.ln_gamma();
-            let (ln_gamma_sum, _) = (alpha_f64 + beta_f64).ln_gamma();
-            ln_gamma_alpha + ln_gamma_beta - ln_gamma_sum
-        };
-        let alpha_minus_1 = alpha_f64 - 1.0;
-        let beta_minus_1 = beta_f64 - 1.0;
-
-        // Convert back to T type
-        let alpha_minus_1_t = T::from(alpha_minus_1).unwrap();
-        let beta_minus_1_t = T::from(beta_minus_1).unwrap();
-        let log_beta_fn_t = T::from(log_beta_fn_f64).unwrap();
-
-        // Create optimized function
-        let function = Box::new(move |x: &T| -> T {
-            alpha_minus_1_t * x.ln() + beta_minus_1_t * (T::one() - *x).ln() - log_beta_fn_t
-        });
-
-        // Store constants for documentation
-        let mut constants = HashMap::new();
-        constants.insert("alpha".to_string(), alpha_f64);
-        constants.insert("beta".to_string(), beta_f64);
-        constants.insert("log_beta_fn".to_string(), log_beta_fn_f64);
-        constants.insert("alpha_minus_1".to_string(), alpha_minus_1);
-        constants.insert("beta_minus_1".to_string(), beta_minus_1);
-
-        let source_expression = format!(
-            "Beta(α={alpha_f64}, β={beta_f64}): {alpha_minus_1} * log(x) + {beta_minus_1} * log(1-x) - {log_beta_fn_f64}"
-        );
-
-        crate::exponential_family::symbolic::OptimizedFunction::new(
-            function,
-            constants,
-            source_expression,
-        )
-    }
-}
-
 // JIT optimization implementation
 #[cfg(feature = "jit")]
 impl<T> crate::exponential_family::jit::JITOptimizer<T, T> for Beta<T>
@@ -240,8 +149,8 @@ where
             let (ln_gamma_sum, _) = (alpha_f64 + beta_f64).ln_gamma();
             ln_gamma_alpha + ln_gamma_beta - ln_gamma_sum
         };
-        let alpha_minus_1 = alpha_f64 - 1.0;
-        let beta_minus_1 = beta_f64 - 1.0;
+        let _alpha_minus_1 = alpha_f64 - 1.0;
+        let _beta_minus_1 = beta_f64 - 1.0;
 
         // For now, return an error since compile_function is not available
         // This can be implemented later when the JIT infrastructure is complete

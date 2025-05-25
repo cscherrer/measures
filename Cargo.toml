@@ -15,8 +15,6 @@ tracy-client = { version = "0.18", optional = true }
 iai-callgrind = { version = "0.14", optional = true }
 # Add rv for comparison testing
 rv = { git = "https://github.com/promised-ai/rv", branch = "release/v0.19.0", optional = true }
-# Symbolic mathematics
-rusymbols = { version = "0.1.2", optional = true }
 # JIT compilation with Cranelift
 cranelift-codegen = { version = "0.120", optional = true }
 cranelift-jit = { version = "0.120", optional = true }
@@ -25,6 +23,7 @@ cranelift-frontend = { version = "0.120", optional = true }
 libm = "0.2.15"
 # Special mathematical functions (pure Rust implementation)
 special = "0.11.4"
+egglog = "0.4"
 
 [dev-dependencies]
 criterion = { version = "0.6", features = ["html_reports", "cargo_bench_support"] }
@@ -48,11 +47,19 @@ panic = "abort"      # Faster than unwinding
 name = "density_computation"
 harness = false
 
+[[bench]]
+name = "auto_jit_benchmarks"
+harness = false
+
+[[bench]]
+name = "simple_jit_benchmarks"
+harness = false
+
 [features]
 default = []
 profiling = []       # Enable profiling instrumentation
 tracy = ["dep:tracy-client"]
 callgrind = ["dep:iai-callgrind"]
 dhat-heap = []    # Simple feature flag for heap profiling as per dhat docs
-symbolic = ["dep:rusymbols"]
+symbolic = []     # Now just enables symbolic optimization with our custom IR
 jit = ["symbolic", "dep:cranelift-codegen", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-frontend"]

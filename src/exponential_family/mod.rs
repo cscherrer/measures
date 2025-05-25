@@ -1,58 +1,51 @@
-//! Exponential family distributions framework.
+//! Exponential family distributions and optimization.
 //!
-//! This module provides a comprehensive framework for working with exponential family
-//! distributions, which have the canonical form:
+//! This module provides the core infrastructure for working with exponential family
+//! distributions, including:
 //!
-//! p(x|θ) = h(x) exp(η(θ)·T(x) - A(η(θ)))
-//!
-//! where:
-//! - η(θ) are the natural parameters  
-//! - T(x) are the sufficient statistics
-//! - A(η) is the log-partition function
-//! - h(x) is the carrier measure
-//!
-//! ## Core Components
-//!
-//! - [`ExponentialFamily`]: The main trait defining exponential family structure
-//! - [`compute_exp_fam_log_density`]: Efficient log-density computation
-//! - [`compute_iid_exp_fam_log_density`]: Efficient IID log-density computation
-//! - [`IID`]: Wrapper for independent and identically distributed samples
-//!
-//! ## Performance Optimization
-//!
-//! For high-performance scenarios, use symbolic optimization:
-//! - [`symbolic`]: Symbolic optimization for runtime code generation
-//! - Generate specialized functions with precomputed constants
-//! - Achieve significant speedups over standard evaluation
-//!
-//! ## Mathematical Foundation
-//!
-//! The framework automatically handles the complete exponential family formula
-//! including chain rule terms for non-trivial base measures. This eliminates
-//! the need for manual overrides in most distributions.
-//!
-//! For IID samples, the framework uses the efficient formula:
-//! log p(x₁,...,xₙ|θ) = η·∑ᵢT(xᵢ) - n·A(η) + ∑ᵢlog h(xᵢ)
+//! - Core traits for exponential families
+//! - JIT compilation for runtime optimization
+//! - Automatic derivation of optimized implementations
+//! - IID (independent and identically distributed) extensions
 
-pub mod iid;
 pub mod traits;
+pub mod iid;
+pub mod implementations;
 
-#[cfg(feature = "symbolic")]
-pub mod symbolic;
+#[cfg(feature = "jit")]
+pub mod symbolic_ir;
 
 #[cfg(feature = "jit")]
 pub mod jit;
 
-// Re-export core traits and functions
-pub use traits::{
-    ExponentialFamily, ExponentialFamilyMeasure, SumSufficientStats, compute_exp_fam_log_density,
-    compute_iid_exp_fam_log_density,
-};
-
-pub use iid::{IID, IIDExtension};
-
-#[cfg(feature = "symbolic")]
-pub use symbolic::{SymbolicExtension, SymbolicOptimizer};
+#[cfg(feature = "jit")]
+pub mod auto_jit;
 
 #[cfg(feature = "jit")]
-pub use jit::{CompilationStats, JITError, JITFunction, JITOptimizer};
+pub mod egglog_optimizer;
+
+// Re-export core traits
+pub use traits::{
+    compute_exp_fam_log_density, compute_iid_exp_fam_log_density, ExponentialFamily,
+    ExponentialFamilyMeasure, SumSufficientStats,
+};
+
+// Re-export IID functionality
+pub use iid::{IIDExtension, IID};
+
+// Re-export implementations
+pub use implementations::ExpFam;
+
+// Re-export JIT compilation (if enabled)
+#[cfg(feature = "jit")]
+pub use symbolic_ir::{EvalError, Expr, SymbolicLogDensity as CustomSymbolicLogDensity};
+
+#[cfg(feature = "jit")]
+pub use jit::{CompilationStats, JITError, JITFunction, JITOptimizer, CustomJITOptimizer};
+
+#[cfg(feature = "jit")]
+pub use auto_jit::{AutoJITExt, AutoJITOptimizer, AutoJITPattern, AutoJITRegistry};
+
+// Re-export the auto_jit_impl macro
+#[cfg(feature = "jit")]
+pub use crate::auto_jit_impl;

@@ -108,70 +108,6 @@ where
     }
 }
 
-// Symbolic optimization implementation
-#[cfg(feature = "symbolic")]
-impl<T> crate::exponential_family::symbolic::SymbolicOptimizer<T, T> for Exponential<T>
-where
-    T: Float + std::fmt::Debug + 'static,
-{
-    fn symbolic_log_density(&self) -> crate::exponential_family::symbolic::SymbolicLogDensity {
-        use crate::exponential_family::symbolic::utils::{symbolic_const, symbolic_var};
-        use std::collections::HashMap;
-
-        // Create symbolic variable
-        let x = symbolic_var("x");
-
-        // Build symbolic log-density: log(λ) - λx
-        let rate_f64: f64 = safe_convert(self.rate);
-
-        // Complete expression: log(λ) - λx
-        let log_rate = symbolic_const(rate_f64.ln());
-        let rate_expr = symbolic_const(-rate_f64);
-        let expr = log_rate + rate_expr * x;
-
-        // Store parameters
-        let mut parameters = HashMap::new();
-        parameters.insert("rate".to_string(), rate_f64);
-        parameters.insert("log_rate".to_string(), rate_f64.ln());
-
-        crate::exponential_family::symbolic::SymbolicLogDensity::new(
-            expr,
-            parameters,
-            vec!["x".to_string()],
-        )
-    }
-
-    fn generate_optimized_function(
-        &self,
-    ) -> crate::exponential_family::symbolic::OptimizedFunction<T, T> {
-        use std::collections::HashMap;
-
-        // Pre-compute constants
-        let rate_f64: f64 = safe_convert(self.rate);
-        let log_rate = rate_f64.ln();
-
-        // Convert back to T type
-        let rate_t = float_constant::<T>(rate_f64);
-        let log_rate_t = float_constant::<T>(log_rate);
-
-        // Create optimized function: log(λ) - λx
-        let function = Box::new(move |x: &T| -> T { log_rate_t - rate_t * *x });
-
-        // Store constants for documentation
-        let mut constants = HashMap::new();
-        constants.insert("rate".to_string(), rate_f64);
-        constants.insert("log_rate".to_string(), log_rate);
-
-        let source_expression = format!("Exponential(λ={rate_f64}): {log_rate} - {rate_f64} * x");
-
-        crate::exponential_family::symbolic::OptimizedFunction::new(
-            function,
-            constants,
-            source_expression,
-        )
-    }
-}
-
 // JIT optimization implementation
 #[cfg(feature = "jit")]
 impl<T> crate::exponential_family::jit::JITOptimizer<T, T> for Exponential<T>
@@ -194,3 +130,7 @@ where
         )
     }
 }
+
+// Automatic JIT compilation using the auto-derivation system
+#[cfg(feature = "jit")]
+crate::auto_jit_impl!(Exponential<f64>);
