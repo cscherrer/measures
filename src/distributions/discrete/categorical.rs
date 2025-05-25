@@ -18,9 +18,10 @@
 //! ```
 
 use crate::core::types::{False, True};
-use crate::core::{Measure, MeasureMarker};
+use crate::core::{HasLogDensity, Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::counting::CountingMeasure;
+use crate::traits::DotProduct;
 use num_traits::Float;
 
 /// Categorical distribution Cat(p₁, p₂, ..., pₖ).
@@ -176,18 +177,29 @@ where
         (natural_params, log_partition)
     }
 
-    // Override the exponential family log-density for direct computation
+    /// Override `exp_fam_log_density` to check support first
     fn exp_fam_log_density(&self, x: &usize) -> T
     where
         Self::NaturalParam: crate::traits::DotProduct<Self::SufficientStat, Output = T>,
         Self::BaseMeasure: crate::core::HasLogDensity<usize, T>,
     {
-        // For categorical, this is simply log(p_x)
-        if *x < self.probs.len() {
-            self.probs[*x].ln()
-        } else {
-            T::neg_infinity()
+        // Check if in support first
+        if !self.in_support(*x) {
+            return T::neg_infinity();
         }
+
+        // Use the default exponential family computation
+        let (natural_params, log_partition) = self.natural_and_log_partition();
+        let sufficient_stats = self.sufficient_statistic(x);
+
+        // Standard exponential family part: η·T(x) - A(η)
+        let exp_fam_part = natural_params.dot(&sufficient_stats) - log_partition;
+
+        // Chain rule part: log-density of base measure with respect to root measure
+        let chain_rule_part = self.base_measure().log_density_wrt_root(x);
+
+        // Complete log-density: exponential family + chain rule
+        exp_fam_part + chain_rule_part
     }
 }
 

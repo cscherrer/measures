@@ -99,7 +99,7 @@ pub mod macros {
     /// // Simple arithmetic operations
     /// let sum = expr!(x + y);
     /// let product = expr!(2.0 * x);
-    /// 
+    ///
     /// // Functions
     /// let log_expr = expr!(ln(x));
     /// let exp_expr = expr!(exp(x));

@@ -17,7 +17,9 @@ use crate::core::types::{False, True};
 use crate::core::utils::float_constant;
 use crate::core::{HasLogDensity, Measure, MeasureMarker};
 use crate::exponential_family::traits::{ExponentialFamily, SumSufficientStats};
+use crate::measures::derived::binomial_coefficient::BinomialCoefficientMeasure;
 use crate::measures::derived::factorial::FactorialMeasure;
+use crate::measures::derived::negative_binomial_coefficient::NegativeBinomialCoefficientMeasure;
 use crate::measures::primitive::counting::CountingMeasure;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use crate::traits::DotProduct;
@@ -71,6 +73,24 @@ impl<X: Clone> IIDRootMeasure<X> for CountingMeasure<X> {
 
 /// Implementation for `FactorialMeasure`
 impl<X: Clone, F: Float> IIDRootMeasure<X> for FactorialMeasure<F> {
+    type IIDRoot = CountingMeasure<Vec<X>>;
+
+    fn iid_root_measure() -> Self::IIDRoot {
+        CountingMeasure::new()
+    }
+}
+
+/// Implementation for `BinomialCoefficientMeasure`
+impl<X: Clone, F: Float> IIDRootMeasure<X> for BinomialCoefficientMeasure<F> {
+    type IIDRoot = CountingMeasure<Vec<X>>;
+
+    fn iid_root_measure() -> Self::IIDRoot {
+        CountingMeasure::new()
+    }
+}
+
+/// Implementation for `NegativeBinomialCoefficientMeasure`
+impl<X: Clone, F: Float> IIDRootMeasure<X> for NegativeBinomialCoefficientMeasure<F> {
     type IIDRoot = CountingMeasure<Vec<X>>;
 
     fn iid_root_measure() -> Self::IIDRoot {

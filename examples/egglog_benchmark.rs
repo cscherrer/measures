@@ -8,8 +8,8 @@
 //!
 //! Run with: cargo run --example `egglog_benchmark` --features jit --release
 
-use measures::exponential_family::symbolic_ir::Expr;
 use measures::exponential_family::egglog_optimizer::EgglogOptimize;
+use measures::exponential_family::symbolic_ir::Expr;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -50,22 +50,25 @@ fn benchmark_basic_optimizations() -> Result<(), Box<dyn std::error::Error>> {
 
     for (name, expr) in test_cases {
         let original_complexity = expr.complexity();
-        
+
         let start = Instant::now();
         let optimized = expr.optimize_with_egglog()?;
         let duration = start.elapsed();
-        
+
         let optimized_complexity = optimized.complexity();
         let complexity_reduction = original_complexity.saturating_sub(optimized_complexity);
-        
-        println!("  {:<15} | {:>3} → {:>3} | {:>8.2}μs | {}% reduction", 
+
+        println!(
+            "  {:<15} | {:>3} → {:>3} | {:>8.2}μs | {}% reduction",
             name,
             original_complexity,
             optimized_complexity,
             duration.as_micros() as f64,
-            if original_complexity > 0 { 
-                (complexity_reduction * 100) / original_complexity 
-            } else { 0 }
+            if original_complexity > 0 {
+                (complexity_reduction * 100) / original_complexity
+            } else {
+                0
+            }
         );
 
         total_time += duration;
@@ -73,7 +76,10 @@ fn benchmark_basic_optimizations() -> Result<(), Box<dyn std::error::Error>> {
         total_complexity_reduction += complexity_reduction;
     }
 
-    println!("  Average time: {:.2}μs", total_time.as_micros() as f64 / f64::from(total_optimizations));
+    println!(
+        "  Average time: {:.2}μs",
+        total_time.as_micros() as f64 / f64::from(total_optimizations)
+    );
     println!("  Total complexity reduction: {total_complexity_reduction}");
     println!();
 
@@ -99,29 +105,35 @@ fn benchmark_advanced_optimizations() -> Result<(), Box<dyn std::error::Error>> 
 
     for (name, expr) in test_cases {
         let original_complexity = expr.complexity();
-        
+
         let start = Instant::now();
         let optimized = expr.optimize_with_egglog()?;
         let duration = start.elapsed();
-        
+
         let optimized_complexity = optimized.complexity();
         let complexity_reduction = original_complexity.saturating_sub(optimized_complexity);
-        
-        println!("  {:<15} | {:>3} → {:>3} | {:>8.2}μs | {}% reduction", 
+
+        println!(
+            "  {:<15} | {:>3} → {:>3} | {:>8.2}μs | {}% reduction",
             name,
             original_complexity,
             optimized_complexity,
             duration.as_micros() as f64,
-            if original_complexity > 0 { 
-                (complexity_reduction * 100) / original_complexity 
-            } else { 0 }
+            if original_complexity > 0 {
+                (complexity_reduction * 100) / original_complexity
+            } else {
+                0
+            }
         );
 
         total_time += duration;
         total_optimizations += 1;
     }
 
-    println!("  Average time: {:.2}μs", total_time.as_micros() as f64 / f64::from(total_optimizations));
+    println!(
+        "  Average time: {:.2}μs",
+        total_time.as_micros() as f64 / f64::from(total_optimizations)
+    );
     println!();
 
     Ok(())
@@ -141,22 +153,25 @@ fn benchmark_complex_expressions() -> Result<(), Box<dyn std::error::Error>> {
 
     for (name, expr) in test_cases {
         let original_complexity = expr.complexity();
-        
+
         let start = Instant::now();
         let optimized = expr.optimize_with_egglog()?;
         let duration = start.elapsed();
-        
+
         let optimized_complexity = optimized.complexity();
         let complexity_reduction = original_complexity.saturating_sub(optimized_complexity);
-        
-        println!("  {:<15} | {:>3} → {:>3} | {:>8.2}μs | {}% reduction", 
+
+        println!(
+            "  {:<15} | {:>3} → {:>3} | {:>8.2}μs | {}% reduction",
             name,
             original_complexity,
             optimized_complexity,
             duration.as_micros() as f64,
-            if original_complexity > 0 { 
-                (complexity_reduction * 100) / original_complexity 
-            } else { 0 }
+            if original_complexity > 0 {
+                (complexity_reduction * 100) / original_complexity
+            } else {
+                0
+            }
         );
     }
     println!();
@@ -170,18 +185,19 @@ fn benchmark_scalability() -> Result<(), Box<dyn std::error::Error>> {
     println!("-------------------------");
 
     let sizes = vec![5, 10, 20, 50];
-    
+
     for size in sizes {
         let expr = create_scalable_expression(size);
         let original_complexity = expr.complexity();
-        
+
         let start = Instant::now();
         let optimized = expr.optimize_with_egglog()?;
         let duration = start.elapsed();
-        
+
         let optimized_complexity = optimized.complexity();
-        
-        println!("  Size {:>2} terms   | {:>3} → {:>3} | {:>8.2}μs", 
+
+        println!(
+            "  Size {:>2} terms   | {:>3} → {:>3} | {:>8.2}μs",
             size,
             original_complexity,
             optimized_complexity,
@@ -207,22 +223,25 @@ fn benchmark_real_world_cases() -> Result<(), Box<dyn std::error::Error>> {
 
     for (name, expr) in test_cases {
         let original_complexity = expr.complexity();
-        
+
         let start = Instant::now();
         let optimized = expr.optimize_with_egglog()?;
         let duration = start.elapsed();
-        
+
         let optimized_complexity = optimized.complexity();
         let complexity_reduction = original_complexity.saturating_sub(optimized_complexity);
-        
-        println!("  {:<15} | {:>3} → {:>3} | {:>8.2}μs | {}% reduction", 
+
+        println!(
+            "  {:<15} | {:>3} → {:>3} | {:>8.2}μs | {}% reduction",
             name,
             original_complexity,
             optimized_complexity,
             duration.as_micros() as f64,
-            if original_complexity > 0 { 
-                (complexity_reduction * 100) / original_complexity 
-            } else { 0 }
+            if original_complexity > 0 {
+                (complexity_reduction * 100) / original_complexity
+            } else {
+                0
+            }
         );
 
         // Verify functional equivalence
@@ -251,23 +270,38 @@ fn benchmark_real_world_cases() -> Result<(), Box<dyn std::error::Error>> {
 
 // Expression creation functions
 fn create_expr_x_plus_0() -> Expr {
-    Expr::Add(Box::new(Expr::Var("x".to_string())), Box::new(Expr::Const(0.0)))
+    Expr::Add(
+        Box::new(Expr::Var("x".to_string())),
+        Box::new(Expr::Const(0.0)),
+    )
 }
 
 fn create_expr_x_times_0() -> Expr {
-    Expr::Mul(Box::new(Expr::Var("x".to_string())), Box::new(Expr::Const(0.0)))
+    Expr::Mul(
+        Box::new(Expr::Var("x".to_string())),
+        Box::new(Expr::Const(0.0)),
+    )
 }
 
 fn create_expr_x_times_1() -> Expr {
-    Expr::Mul(Box::new(Expr::Var("x".to_string())), Box::new(Expr::Const(1.0)))
+    Expr::Mul(
+        Box::new(Expr::Var("x".to_string())),
+        Box::new(Expr::Const(1.0)),
+    )
 }
 
 fn create_expr_x_power_1() -> Expr {
-    Expr::Pow(Box::new(Expr::Var("x".to_string())), Box::new(Expr::Const(1.0)))
+    Expr::Pow(
+        Box::new(Expr::Var("x".to_string())),
+        Box::new(Expr::Const(1.0)),
+    )
 }
 
 fn create_expr_x_power_0() -> Expr {
-    Expr::Pow(Box::new(Expr::Var("x".to_string())), Box::new(Expr::Const(0.0)))
+    Expr::Pow(
+        Box::new(Expr::Var("x".to_string())),
+        Box::new(Expr::Const(0.0)),
+    )
 }
 
 fn create_expr_ln_exp_x() -> Expr {
@@ -287,12 +321,12 @@ fn create_distributive_expr() -> Expr {
     Expr::Add(
         Box::new(Expr::Mul(
             Box::new(Expr::Var("a".to_string())),
-            Box::new(Expr::Var("x".to_string()))
+            Box::new(Expr::Var("x".to_string())),
         )),
         Box::new(Expr::Mul(
             Box::new(Expr::Var("b".to_string())),
-            Box::new(Expr::Var("x".to_string()))
-        ))
+            Box::new(Expr::Var("x".to_string())),
+        )),
     )
 }
 
@@ -300,7 +334,7 @@ fn create_log_properties_expr() -> Expr {
     // ln(a) + ln(b) -> ln(a * b)
     Expr::Add(
         Box::new(Expr::Ln(Box::new(Expr::Var("a".to_string())))),
-        Box::new(Expr::Ln(Box::new(Expr::Var("b".to_string()))))
+        Box::new(Expr::Ln(Box::new(Expr::Var("b".to_string())))),
     )
 }
 
@@ -308,7 +342,7 @@ fn create_exp_properties_expr() -> Expr {
     // exp(a) * exp(b) -> exp(a + b)
     Expr::Mul(
         Box::new(Expr::Exp(Box::new(Expr::Var("a".to_string())))),
-        Box::new(Expr::Exp(Box::new(Expr::Var("b".to_string()))))
+        Box::new(Expr::Exp(Box::new(Expr::Var("b".to_string())))),
     )
 }
 
@@ -317,12 +351,12 @@ fn create_trig_identity_expr() -> Expr {
     Expr::Add(
         Box::new(Expr::Pow(
             Box::new(Expr::Sin(Box::new(Expr::Var("x".to_string())))),
-            Box::new(Expr::Const(2.0))
+            Box::new(Expr::Const(2.0)),
         )),
         Box::new(Expr::Pow(
             Box::new(Expr::Cos(Box::new(Expr::Var("x".to_string())))),
-            Box::new(Expr::Const(2.0))
-        ))
+            Box::new(Expr::Const(2.0)),
+        )),
     )
 }
 
@@ -331,12 +365,12 @@ fn create_power_laws_expr() -> Expr {
     Expr::Mul(
         Box::new(Expr::Pow(
             Box::new(Expr::Var("x".to_string())),
-            Box::new(Expr::Var("a".to_string()))
+            Box::new(Expr::Var("a".to_string())),
         )),
         Box::new(Expr::Pow(
             Box::new(Expr::Var("x".to_string())),
-            Box::new(Expr::Var("b".to_string()))
-        ))
+            Box::new(Expr::Var("b".to_string())),
+        )),
     )
 }
 
@@ -348,15 +382,15 @@ fn create_polynomial_expr() -> Expr {
                 Box::new(Expr::Const(2.0)),
                 Box::new(Expr::Pow(
                     Box::new(Expr::Var("x".to_string())),
-                    Box::new(Expr::Const(2.0))
-                ))
+                    Box::new(Expr::Const(2.0)),
+                )),
             )),
             Box::new(Expr::Mul(
                 Box::new(Expr::Const(3.0)),
-                Box::new(Expr::Var("x".to_string()))
-            ))
+                Box::new(Expr::Var("x".to_string())),
+            )),
         )),
-        Box::new(Expr::Const(1.0))
+        Box::new(Expr::Const(1.0)),
     )
 }
 
@@ -364,15 +398,18 @@ fn create_nested_polynomial() -> Expr {
     // ((x + 1)² + 2(x + 1) + 3)
     let x_plus_1 = Expr::Add(
         Box::new(Expr::Var("x".to_string())),
-        Box::new(Expr::Const(1.0))
+        Box::new(Expr::Const(1.0)),
     );
-    
+
     Expr::Add(
         Box::new(Expr::Add(
-            Box::new(Expr::Pow(Box::new(x_plus_1.clone()), Box::new(Expr::Const(2.0)))),
-            Box::new(Expr::Mul(Box::new(Expr::Const(2.0)), Box::new(x_plus_1)))
+            Box::new(Expr::Pow(
+                Box::new(x_plus_1.clone()),
+                Box::new(Expr::Const(2.0)),
+            )),
+            Box::new(Expr::Mul(Box::new(Expr::Const(2.0)), Box::new(x_plus_1))),
         )),
-        Box::new(Expr::Const(3.0))
+        Box::new(Expr::Const(3.0)),
     )
 }
 
@@ -381,18 +418,18 @@ fn create_mixed_operations() -> Expr {
     Expr::Add(
         Box::new(Expr::Ln(Box::new(Expr::Mul(
             Box::new(Expr::Exp(Box::new(Expr::Var("x".to_string())))),
-            Box::new(Expr::Exp(Box::new(Expr::Var("y".to_string()))))
+            Box::new(Expr::Exp(Box::new(Expr::Var("y".to_string())))),
         )))),
         Box::new(Expr::Add(
             Box::new(Expr::Pow(
                 Box::new(Expr::Sin(Box::new(Expr::Var("z".to_string())))),
-                Box::new(Expr::Const(2.0))
+                Box::new(Expr::Const(2.0)),
             )),
             Box::new(Expr::Pow(
                 Box::new(Expr::Cos(Box::new(Expr::Var("z".to_string())))),
-                Box::new(Expr::Const(2.0))
-            ))
-        ))
+                Box::new(Expr::Const(2.0)),
+            )),
+        )),
     )
 }
 
@@ -433,20 +470,17 @@ fn create_normal_pdf() -> Expr {
     let x = Expr::Var("x".to_string());
     let mu = Expr::Var("mu".to_string());
     let sigma = Expr::Var("sigma".to_string());
-    
+
     let diff = Expr::Sub(Box::new(x), Box::new(mu));
     let standardized = Expr::Div(Box::new(diff), Box::new(sigma.clone()));
     let quadratic = Expr::Pow(Box::new(standardized), Box::new(Expr::Const(2.0)));
-    
+
     Expr::Sub(
         Box::new(Expr::Sub(
-            Box::new(Expr::Mul(
-                Box::new(Expr::Const(-0.5)),
-                Box::new(quadratic)
-            )),
-            Box::new(Expr::Ln(Box::new(sigma)))
+            Box::new(Expr::Mul(Box::new(Expr::Const(-0.5)), Box::new(quadratic))),
+            Box::new(Expr::Ln(Box::new(sigma))),
         )),
-        Box::new(Expr::Const(0.5 * (2.0 * std::f64::consts::PI).ln()))
+        Box::new(Expr::Const(0.5 * (2.0 * std::f64::consts::PI).ln())),
     )
 }
 
@@ -455,19 +489,22 @@ fn create_gamma_pdf() -> Expr {
     let x = Expr::Var("x".to_string());
     let alpha = Expr::Var("alpha".to_string());
     let beta = Expr::Var("beta".to_string());
-    
+
     Expr::Sub(
         Box::new(Expr::Sub(
             Box::new(Expr::Mul(
-                Box::new(Expr::Sub(Box::new(alpha.clone()), Box::new(Expr::Const(1.0)))),
-                Box::new(Expr::Ln(Box::new(x.clone())))
+                Box::new(Expr::Sub(
+                    Box::new(alpha.clone()),
+                    Box::new(Expr::Const(1.0)),
+                )),
+                Box::new(Expr::Ln(Box::new(x.clone()))),
             )),
-            Box::new(Expr::Div(Box::new(x), Box::new(beta.clone())))
+            Box::new(Expr::Div(Box::new(x), Box::new(beta.clone()))),
         )),
         Box::new(Expr::Mul(
             Box::new(alpha),
-            Box::new(Expr::Ln(Box::new(beta)))
-        ))
+            Box::new(Expr::Ln(Box::new(beta))),
+        )),
     )
 }
 
@@ -476,19 +513,19 @@ fn create_beta_pdf() -> Expr {
     let x = Expr::Var("x".to_string());
     let alpha = Expr::Var("alpha".to_string());
     let beta = Expr::Var("beta".to_string());
-    
+
     Expr::Add(
         Box::new(Expr::Mul(
             Box::new(Expr::Sub(Box::new(alpha), Box::new(Expr::Const(1.0)))),
-            Box::new(Expr::Ln(Box::new(x.clone())))
+            Box::new(Expr::Ln(Box::new(x.clone()))),
         )),
         Box::new(Expr::Mul(
             Box::new(Expr::Sub(Box::new(beta), Box::new(Expr::Const(1.0)))),
             Box::new(Expr::Ln(Box::new(Expr::Sub(
                 Box::new(Expr::Const(1.0)),
-                Box::new(x)
-            ))))
-        ))
+                Box::new(x),
+            )))),
+        )),
     )
 }
 
@@ -496,15 +533,15 @@ fn create_mixture_model() -> Expr {
     // ln(0.5 * exp(normal1) + 0.5 * exp(normal2))
     let normal1 = create_normal_pdf();
     let normal2 = create_normal_pdf(); // In practice, would have different parameters
-    
+
     Expr::Ln(Box::new(Expr::Add(
         Box::new(Expr::Mul(
             Box::new(Expr::Const(0.5)),
-            Box::new(Expr::Exp(Box::new(normal1)))
+            Box::new(Expr::Exp(Box::new(normal1))),
         )),
         Box::new(Expr::Mul(
             Box::new(Expr::Const(0.5)),
-            Box::new(Expr::Exp(Box::new(normal2)))
-        ))
+            Box::new(Expr::Exp(Box::new(normal2))),
+        )),
     )))
-} 
+}

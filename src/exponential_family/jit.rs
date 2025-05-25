@@ -649,125 +649,141 @@ fn generate_clif_from_expr_exp_fam(
 /// Generate efficient CLIF IR for natural logarithm
 /// Uses a more efficient algorithm than Taylor series for better performance
 #[cfg(feature = "jit")]
-fn generate_efficient_ln_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+fn generate_efficient_ln_call(
+    builder: &mut FunctionBuilder,
+    val: Value,
+) -> Result<Value, JITError> {
     // Use a high-quality rational approximation for ln(x)
     // This is based on the Remez algorithm and provides good accuracy
     // across the range [0.5, 2.0], which we can extend using ln(x) = ln(2^k * m) = k*ln(2) + ln(m)
-    
+
     // First, handle the range reduction: x = 2^k * m where 0.5 <= m < 1.0
     // We'll use bit manipulation to extract the exponent
-    
+
     // Convert to integer bits for manipulation
-    let x_bits = builder.ins().bitcast(types::I64, cranelift_codegen::ir::MemFlags::new(), val);
-    
+    let x_bits = builder
+        .ins()
+        .bitcast(types::I64, cranelift_codegen::ir::MemFlags::new(), val);
+
     // Extract exponent (IEEE 754 format)
-    let exponent_mask = builder.ins().iconst(types::I64, 0x7FF0000000000000u64 as i64);
+    let exponent_mask = builder
+        .ins()
+        .iconst(types::I64, 0x7FF0000000000000u64 as i64);
     let exponent_bits = builder.ins().band(x_bits, exponent_mask);
     let exponent_shifted = builder.ins().ushr_imm(exponent_bits, 52);
-    
+
     // Convert exponent to float and subtract bias (1023)
     let exponent_float = builder.ins().fcvt_from_uint(types::F64, exponent_shifted);
     let bias = builder.ins().f64const(1023.0);
     let k = builder.ins().fsub(exponent_float, bias);
-    
+
     // Extract mantissa and normalize to [1.0, 2.0)
-    let mantissa_mask = builder.ins().iconst(types::I64, 0x000FFFFFFFFFFFFFu64 as i64);
+    let mantissa_mask = builder
+        .ins()
+        .iconst(types::I64, 0x000FFFFFFFFFFFFFu64 as i64);
     let mantissa_bits = builder.ins().band(x_bits, mantissa_mask);
-    let normalized_exp = builder.ins().iconst(types::I64, 0x3FF0000000000000u64 as i64); // Exponent for 1.0
+    let normalized_exp = builder
+        .ins()
+        .iconst(types::I64, 0x3FF0000000000000u64 as i64); // Exponent for 1.0
     let m_bits = builder.ins().bor(mantissa_bits, normalized_exp);
-    let m = builder.ins().bitcast(types::F64, cranelift_codegen::ir::MemFlags::new(), m_bits);
-    
+    let m = builder
+        .ins()
+        .bitcast(types::F64, cranelift_codegen::ir::MemFlags::new(), m_bits);
+
     // Now compute ln(m) where m is in [1.0, 2.0)
     // Use the identity ln(m) = 2 * artanh((m-1)/(m+1))
     // And approximate artanh(x) with a polynomial
-    
+
     let one = builder.ins().f64const(1.0);
     let two = builder.ins().f64const(2.0);
-    
+
     let m_minus_1 = builder.ins().fsub(m, one);
     let m_plus_1 = builder.ins().fadd(m, one);
     let x = builder.ins().fdiv(m_minus_1, m_plus_1);
-    
+
     // artanh(x) ≈ x + x³/3 + x⁵/5 + x⁷/7 + x⁹/9
     let x2 = builder.ins().fmul(x, x);
     let x3 = builder.ins().fmul(x2, x);
     let x5 = builder.ins().fmul(x3, x2);
     let x7 = builder.ins().fmul(x5, x2);
     let x9 = builder.ins().fmul(x7, x2);
-    
-    let c3 = builder.ins().f64const(1.0/3.0);
-    let c5 = builder.ins().f64const(1.0/5.0);
-    let c7 = builder.ins().f64const(1.0/7.0);
-    let c9 = builder.ins().f64const(1.0/9.0);
-    
+
+    let c3 = builder.ins().f64const(1.0 / 3.0);
+    let c5 = builder.ins().f64const(1.0 / 5.0);
+    let c7 = builder.ins().f64const(1.0 / 7.0);
+    let c9 = builder.ins().f64const(1.0 / 9.0);
+
     let term3 = builder.ins().fmul(x3, c3);
     let term5 = builder.ins().fmul(x5, c5);
     let term7 = builder.ins().fmul(x7, c7);
     let term9 = builder.ins().fmul(x9, c9);
-    
+
     let artanh_x = builder.ins().fadd(x, term3);
     let artanh_x = builder.ins().fadd(artanh_x, term5);
     let artanh_x = builder.ins().fadd(artanh_x, term7);
     let artanh_x = builder.ins().fadd(artanh_x, term9);
-    
+
     let ln_m = builder.ins().fmul(two, artanh_x);
-    
+
     // ln(x) = k*ln(2) + ln(m)
     let ln2 = builder.ins().f64const(std::f64::consts::LN_2); // ln(2)
     let k_ln2 = builder.ins().fmul(k, ln2);
     let result = builder.ins().fadd(k_ln2, ln_m);
-    
+
     Ok(result)
 }
 
 /// Generate efficient CLIF IR for exponential function
 /// Uses a more efficient algorithm than Taylor series for better performance
 #[cfg(feature = "jit")]
-fn generate_efficient_exp_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+fn generate_efficient_exp_call(
+    builder: &mut FunctionBuilder,
+    val: Value,
+) -> Result<Value, JITError> {
     // Implementation based on libm's exp function
     // Uses range reduction: x = k*ln2 + r, where |r| <= 0.5*ln2
     // Then exp(x) = 2^k * exp(r), where exp(r) is computed with polynomial approximation
-    
+
     // Constants from libm implementation
     let ln2_hi = builder.ins().f64const(6.931_471_803_691_238e-1); // 0x3fe62e42, 0xfee00000
     let ln2_lo = builder.ins().f64const(1.908_214_929_270_587_7e-10); // 0x3dea39ef, 0x35793c76
     let inv_ln2 = builder.ins().f64const(1.442_695_040_888_963_4); // 0x3ff71547, 0x652b82fe
-    
+
     // Polynomial coefficients for exp(r) approximation (Remez algorithm)
     let p1 = builder.ins().f64const(1.666_666_666_666_660_2e-1); // 0x3FC55555, 0x5555553E
     let p2 = builder.ins().f64const(-2.777_777_777_701_559_3e-3); // 0xBF66C16C, 0x16BEBD93
     let p3 = builder.ins().f64const(6.613_756_321_437_934e-5); // 0x3F11566A, 0xAF25DE2C
     let p4 = builder.ins().f64const(-1.653_390_220_546_525_2e-6); // 0xBEBBBD41, 0xC5D26BF1
     let p5 = builder.ins().f64const(4.138_136_797_057_238_5e-8); // 0x3E663769, 0x72BEA4D0
-    
+
     let zero = builder.ins().f64const(0.0);
     let one = builder.ins().f64const(1.0);
     let two = builder.ins().f64const(2.0);
     let half = builder.ins().f64const(0.5);
-    
+
     // Check for special cases
     // if |x| > 708.39, we need to handle overflow/underflow
     let abs_x = builder.ins().fabs(val);
     let overflow_threshold = builder.ins().f64const(708.39);
     let underflow_threshold = builder.ins().f64const(-708.39);
-    
+
     // For now, we'll implement the core algorithm without special case handling
     // In production, you'd add proper overflow/underflow checks here
-    
+
     // Range reduction: find k and r such that x = k*ln2 + r, |r| <= 0.5*ln2
     // k = round(x / ln2)
     let x_over_ln2 = builder.ins().fmul(val, inv_ln2);
-    
+
     // Round to nearest integer (this is a simplified version)
     // In practice, you'd use proper rounding with bias handling
     let k_float = builder.ins().nearest(x_over_ln2);
-    
+
     // Compute r = x - k*ln2 (with high precision)
     let k_ln2_hi = builder.ins().fmul(k_float, ln2_hi);
     let k_ln2_lo = builder.ins().fmul(k_float, ln2_lo);
     let r_hi = builder.ins().fsub(val, k_ln2_hi);
     let r = builder.ins().fsub(r_hi, k_ln2_lo);
-    
+
     // Compute exp(r) using polynomial approximation
     // c(r) = r - (P1*r^2 + P2*r^4 + P3*r^6 + P4*r^8 + P5*r^10)
     let r2 = builder.ins().fmul(r, r);
@@ -775,62 +791,67 @@ fn generate_efficient_exp_call(builder: &mut FunctionBuilder, val: Value) -> Res
     let r6 = builder.ins().fmul(r4, r2);
     let r8 = builder.ins().fmul(r6, r2);
     let r10 = builder.ins().fmul(r8, r2);
-    
+
     let poly_term1 = builder.ins().fmul(p1, r2);
     let poly_term2 = builder.ins().fmul(p2, r4);
     let poly_term3 = builder.ins().fmul(p3, r6);
     let poly_term4 = builder.ins().fmul(p4, r8);
     let poly_term5 = builder.ins().fmul(p5, r10);
-    
+
     let poly_sum = builder.ins().fadd(poly_term1, poly_term2);
     let poly_sum = builder.ins().fadd(poly_sum, poly_term3);
     let poly_sum = builder.ins().fadd(poly_sum, poly_term4);
     let poly_sum = builder.ins().fadd(poly_sum, poly_term5);
-    
+
     let c = builder.ins().fsub(r, poly_sum);
-    
+
     // exp(r) = 1 + r + r*c/(2-c)
     let two_minus_c = builder.ins().fsub(two, c);
     let r_times_c = builder.ins().fmul(r, c);
     let correction = builder.ins().fdiv(r_times_c, two_minus_c);
     let exp_r = builder.ins().fadd(one, r);
     let exp_r = builder.ins().fadd(exp_r, correction);
-    
+
     // Scale by 2^k: exp(x) = 2^k * exp(r)
     // Convert k to integer for scalbn-like operation
     let k_int = builder.ins().fcvt_to_sint(types::I32, k_float);
-    
+
     // Implement 2^k multiplication using bit manipulation
     // This is a simplified version - in practice you'd use proper scalbn
     let k_64 = builder.ins().sextend(types::I64, k_int);
     let bias = builder.ins().iconst(types::I64, 1023); // IEEE 754 bias
     let biased_exp = builder.ins().iadd(k_64, bias);
-    
+
     // Shift to exponent position (bits 52-62)
     let exp_bits = builder.ins().ishl_imm(biased_exp, 52);
-    
+
     // Convert to double (this represents 2^k)
-    let scale = builder.ins().bitcast(types::F64, cranelift_codegen::ir::MemFlags::new(), exp_bits);
-    
+    let scale = builder
+        .ins()
+        .bitcast(types::F64, cranelift_codegen::ir::MemFlags::new(), exp_bits);
+
     // Final result: scale * exp_r
     let result = builder.ins().fmul(scale, exp_r);
-    
+
     Ok(result)
 }
 
 /// Generate efficient CLIF IR for sine function
 /// Uses a more efficient algorithm than Taylor series for better performance
 #[cfg(feature = "jit")]
-fn generate_efficient_sin_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+fn generate_efficient_sin_call(
+    builder: &mut FunctionBuilder,
+    val: Value,
+) -> Result<Value, JITError> {
     // For now, return an error indicating this needs proper implementation
     // In a production system, this would either:
     // 1. Call external libm functions via Cranelift's call mechanism
     // 2. Implement a proper range-reduction + polynomial approximation algorithm
     // 3. Use lookup tables with interpolation for specific ranges
-    
+
     // Temporary fallback: use a simple approximation for demonstration
     // This is NOT production quality - just to make the code compile
-    
+
     // Very crude approximation: sin(x) ≈ x for small x
     // This is only accurate for x very close to 0
     Ok(val)
@@ -839,17 +860,20 @@ fn generate_efficient_sin_call(builder: &mut FunctionBuilder, val: Value) -> Res
 /// Generate efficient CLIF IR for cosine function
 /// Uses a more efficient algorithm than Taylor series for better performance
 #[cfg(feature = "jit")]
-fn generate_efficient_cos_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+fn generate_efficient_cos_call(
+    builder: &mut FunctionBuilder,
+    val: Value,
+) -> Result<Value, JITError> {
     // For now, return an error indicating this needs proper implementation
     // In a production system, this would either:
     // 1. Call external libm functions via Cranelift's call mechanism
     // 2. Implement a proper range-reduction + polynomial approximation algorithm
     // 3. Use lookup tables with interpolation for specific ranges
-    
+
     // Temporary fallback: use a simple approximation for demonstration
     // This is NOT production quality - just to make the code compile
     let one = builder.ins().f64const(1.0);
-    
+
     // Very crude approximation: cos(x) ≈ 1 for small x
     // This is only accurate for x very close to 0
     Ok(one)
@@ -857,8 +881,8 @@ fn generate_efficient_cos_call(builder: &mut FunctionBuilder, val: Value) -> Res
 
 /// A truly zero-overhead JIT function using static dispatch
 /// This eliminates ALL function call overhead by using compile-time known function types
-pub struct StaticInlineJITFunction<F> 
-where 
+pub struct StaticInlineJITFunction<F>
+where
     F: Fn(f64) -> f64 + Send + Sync,
 {
     /// The actual computation with embedded constants (no heap allocation!)
@@ -870,13 +894,13 @@ where
 }
 
 impl<F> StaticInlineJITFunction<F>
-where 
+where
     F: Fn(f64) -> f64 + Send + Sync,
 {
     /// Call the optimized function with true zero overhead
     #[inline(always)]
     pub fn call(&self, x: f64) -> f64 {
-        (self.computation)(x)  // ← Zero overhead static dispatch!
+        (self.computation)(x) // ← Zero overhead static dispatch!
     }
 
     /// Get compilation statistics
@@ -890,44 +914,51 @@ pub struct StaticInlineJITCompiler;
 
 impl StaticInlineJITCompiler {
     /// Compile a Normal distribution to a truly zero-overhead function
-    #[must_use] pub fn compile_normal(mu: f64, sigma: f64) -> StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync> {
+    #[must_use]
+    pub fn compile_normal(
+        mu: f64,
+        sigma: f64,
+    ) -> StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync> {
         let start_time = std::time::Instant::now();
-        
+
         // Pre-compute all constants at compile time
         let sigma_sq = sigma * sigma;
         let log_norm_constant = -0.5 * (2.0 * std::f64::consts::PI * sigma_sq).ln();
         let inv_two_sigma_sq = -0.5 / sigma_sq;
-        
+
         // Create closure with embedded constants (no heap allocation, no indirection!)
         let computation = move |x: f64| -> f64 {
             let diff = x - mu;
             log_norm_constant + inv_two_sigma_sq * diff * diff
         };
-        
+
         let compilation_time = start_time.elapsed();
-        
+
         let stats = CompilationStats {
-            code_size_bytes: 16, // Much smaller - just a few instructions
+            code_size_bytes: 16,  // Much smaller - just a few instructions
             clif_instructions: 3, // diff, square, multiply-add
             compilation_time_us: compilation_time.as_micros() as u64,
             embedded_constants: 3,
             estimated_speedup: 2.0, // Should beat even zero-overhead due to better constant embedding
         };
-        
+
         StaticInlineJITFunction {
             computation,
             source_expression: format!("Static Inline Normal(μ={mu}, σ={sigma})"),
             compilation_stats: stats,
         }
     }
-    
+
     /// Compile an Exponential distribution to a truly zero-overhead function
-    #[must_use] pub fn compile_exponential(lambda: f64) -> StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync> {
+    #[must_use]
+    pub fn compile_exponential(
+        lambda: f64,
+    ) -> StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync> {
         let start_time = std::time::Instant::now();
-        
+
         // Pre-compute constants
         let log_lambda = lambda.ln();
-        
+
         // Create closure with embedded constants
         let computation = move |x: f64| -> f64 {
             if x >= 0.0 {
@@ -936,9 +967,9 @@ impl StaticInlineJITCompiler {
                 f64::NEG_INFINITY
             }
         };
-        
+
         let compilation_time = start_time.elapsed();
-        
+
         let stats = CompilationStats {
             code_size_bytes: 12,
             clif_instructions: 2,
@@ -946,7 +977,7 @@ impl StaticInlineJITCompiler {
             embedded_constants: 2,
             estimated_speedup: 1.8,
         };
-        
+
         StaticInlineJITFunction {
             computation,
             source_expression: format!("Static Inline Exponential(λ={lambda})"),
@@ -959,19 +990,28 @@ impl StaticInlineJITCompiler {
 pub trait StaticInlineJITOptimizer<X, F> {
     /// Compile the distribution to a zero-overhead static function
     /// Each distribution returns its own specific function type for maximum performance
-    fn compile_static_inline_jit(&self) -> Result<StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync>, JITError>;
+    fn compile_static_inline_jit(
+        &self,
+    ) -> Result<StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync>, JITError>;
 }
 
 // Implementation for Normal distribution
 impl StaticInlineJITOptimizer<f64, f64> for crate::distributions::continuous::Normal<f64> {
-    fn compile_static_inline_jit(&self) -> Result<StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync>, JITError> {
-        Ok(StaticInlineJITCompiler::compile_normal(self.mean, self.std_dev))
+    fn compile_static_inline_jit(
+        &self,
+    ) -> Result<StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync>, JITError> {
+        Ok(StaticInlineJITCompiler::compile_normal(
+            self.mean,
+            self.std_dev,
+        ))
     }
 }
 
-// Implementation for Exponential distribution  
+// Implementation for Exponential distribution
 impl StaticInlineJITOptimizer<f64, f64> for crate::distributions::continuous::Exponential<f64> {
-    fn compile_static_inline_jit(&self) -> Result<StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync>, JITError> {
+    fn compile_static_inline_jit(
+        &self,
+    ) -> Result<StaticInlineJITFunction<impl Fn(f64) -> f64 + Send + Sync>, JITError> {
         Ok(StaticInlineJITCompiler::compile_exponential(self.rate))
     }
 }

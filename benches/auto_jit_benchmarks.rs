@@ -8,8 +8,8 @@
 //! Run with: cargo bench --features jit
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use std::hint::black_box;
 use measures::{Exponential, LogDensityBuilder, Normal};
+use std::hint::black_box;
 
 #[cfg(feature = "jit")]
 use measures::exponential_family::{AutoJITExt, CustomJITOptimizer};

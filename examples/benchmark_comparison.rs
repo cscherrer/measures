@@ -5,8 +5,8 @@
 //!
 //! Run with: cargo run --example `benchmark_comparison` --features jit --release
 
-use measures::exponential_family::symbolic_ir::Expr;
 use measures::exponential_family::egglog_optimizer::EgglogOptimize;
+use measures::exponential_family::symbolic_ir::Expr;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -37,21 +37,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (name, expr) in test_cases {
         let original_complexity = expr.complexity();
-        
+
         let start = Instant::now();
         let optimized = expr.optimize_with_egglog()?;
         let duration = start.elapsed();
-        
+
         let optimized_complexity = optimized.complexity();
         let complexity_reduction = original_complexity.saturating_sub(optimized_complexity);
-        let reduction_percent = if original_complexity > 0 { 
-            (complexity_reduction * 100) / original_complexity 
-        } else { 0 };
+        let reduction_percent = if original_complexity > 0 {
+            (complexity_reduction * 100) / original_complexity
+        } else {
+            0
+        };
 
         // Evaluate quality (functional equivalence)
         let quality = evaluate_optimization_quality(&expr, &optimized);
-        
-        println!("| {:<22} | {:>4} | {:>3} | {:>9.0} | {:>8}% | {:>7} |", 
+
+        println!(
+            "| {:<22} | {:>4} | {:>3} | {:>9.0} | {:>8}% | {:>7} |",
             name,
             original_complexity,
             optimized_complexity,
@@ -68,17 +71,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("|------------------------|------|-----|-----------|-----------|---------|");
-    println!("| **TOTALS**             |      |     | {:>9.0} | {:>8} | {:>7} |", 
+    println!(
+        "| **TOTALS**             |      |     | {:>9.0} | {:>8} | {:>7} |",
         total_time.as_micros() as f64,
         total_reductions,
         successful_optimizations
     );
 
     println!("\n## 📈 Performance Analysis");
-    println!("- **Average optimization time**: {:.0}μs", total_time.as_micros() as f64 / 10.0);
+    println!(
+        "- **Average optimization time**: {:.0}μs",
+        total_time.as_micros() as f64 / 10.0
+    );
     println!("- **Total complexity reduction**: {total_reductions}");
     println!("- **Successful optimizations**: {successful_optimizations}/10");
-    println!("- **Success rate**: {}%", (successful_optimizations * 100) / 10);
+    println!(
+        "- **Success rate**: {}%",
+        (successful_optimizations * 100) / 10
+    );
 
     // Detailed analysis of key improvements
     println!("\n## 🔍 Key Improvements from Enhanced Rules");
@@ -127,10 +137,22 @@ fn analyze_key_improvements() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n### 2. Wide Expression Optimization");
     let wide = create_wide_expression();
-    println!("   - **Before**: {} (complexity: {})", format_expr(&wide), wide.complexity());
+    println!(
+        "   - **Before**: {} (complexity: {})",
+        format_expr(&wide),
+        wide.complexity()
+    );
     let optimized = wide.optimize_with_egglog()?;
-    println!("   - **After**: {} (complexity: {})", format_expr(&optimized), optimized.complexity());
-    println!("   - **Impact**: Massive reduction from {} to {} nodes", wide.complexity(), optimized.complexity());
+    println!(
+        "   - **After**: {} (complexity: {})",
+        format_expr(&optimized),
+        optimized.complexity()
+    );
+    println!(
+        "   - **Impact**: Massive reduction from {} to {} nodes",
+        wide.complexity(),
+        optimized.complexity()
+    );
 
     println!("\n### 3. Trigonometric Identity Recognition");
     let trig = create_trig_identity_expr();
@@ -147,23 +169,33 @@ fn analyze_performance_regressions() -> Result<(), Box<dyn std::error::Error>> {
     println!("- **Memory usage**: Higher e-graph size with advanced rules");
     println!("- **Accuracy**: Some floating-point precision issues in complex expressions");
     println!("- **Scalability**: Performance degrades with very large expressions (>50 terms)");
-    
+
     println!("\n### Recommendations:");
     println!("1. **Use selectively**: Apply egglog optimization only to complex expressions");
     println!("2. **Limit iterations**: Keep equality saturation runs to 3-5 iterations");
-    println!("3. **Profile first**: Measure if optimization time is worth the complexity reduction");
-    println!("4. **Validate results**: Always check functional equivalence for critical computations");
+    println!(
+        "3. **Profile first**: Measure if optimization time is worth the complexity reduction"
+    );
+    println!(
+        "4. **Validate results**: Always check functional equivalence for critical computations"
+    );
 
     Ok(())
 }
 
 // Expression creation functions
 fn create_expr_x_plus_0() -> Expr {
-    Expr::Add(Box::new(Expr::Var("x".to_string())), Box::new(Expr::Const(0.0)))
+    Expr::Add(
+        Box::new(Expr::Var("x".to_string())),
+        Box::new(Expr::Const(0.0)),
+    )
 }
 
 fn create_expr_x_times_0() -> Expr {
-    Expr::Mul(Box::new(Expr::Var("x".to_string())), Box::new(Expr::Const(0.0)))
+    Expr::Mul(
+        Box::new(Expr::Var("x".to_string())),
+        Box::new(Expr::Const(0.0)),
+    )
 }
 
 fn create_expr_ln_exp_x() -> Expr {
@@ -175,12 +207,12 @@ fn create_distributive_expr() -> Expr {
     Expr::Add(
         Box::new(Expr::Mul(
             Box::new(Expr::Var("a".to_string())),
-            Box::new(Expr::Var("x".to_string()))
+            Box::new(Expr::Var("x".to_string())),
         )),
         Box::new(Expr::Mul(
             Box::new(Expr::Var("b".to_string())),
-            Box::new(Expr::Var("x".to_string()))
-        ))
+            Box::new(Expr::Var("x".to_string())),
+        )),
     )
 }
 
@@ -188,7 +220,7 @@ fn create_log_properties_expr() -> Expr {
     // ln(a) + ln(b) -> ln(a * b)
     Expr::Add(
         Box::new(Expr::Ln(Box::new(Expr::Var("a".to_string())))),
-        Box::new(Expr::Ln(Box::new(Expr::Var("b".to_string()))))
+        Box::new(Expr::Ln(Box::new(Expr::Var("b".to_string())))),
     )
 }
 
@@ -197,12 +229,12 @@ fn create_trig_identity_expr() -> Expr {
     Expr::Add(
         Box::new(Expr::Pow(
             Box::new(Expr::Sin(Box::new(Expr::Var("x".to_string())))),
-            Box::new(Expr::Const(2.0))
+            Box::new(Expr::Const(2.0)),
         )),
         Box::new(Expr::Pow(
             Box::new(Expr::Cos(Box::new(Expr::Var("x".to_string())))),
-            Box::new(Expr::Const(2.0))
-        ))
+            Box::new(Expr::Const(2.0)),
+        )),
     )
 }
 
@@ -234,14 +266,14 @@ fn create_like_terms_expr() -> Expr {
         Box::new(Expr::Add(
             Box::new(Expr::Mul(
                 Box::new(Expr::Const(2.0)),
-                Box::new(Expr::Var("x".to_string()))
+                Box::new(Expr::Var("x".to_string())),
             )),
             Box::new(Expr::Mul(
                 Box::new(Expr::Const(3.0)),
-                Box::new(Expr::Var("x".to_string()))
-            ))
+                Box::new(Expr::Var("x".to_string())),
+            )),
         )),
-        Box::new(Expr::Var("x".to_string()))
+        Box::new(Expr::Var("x".to_string())),
     )
 }
 
@@ -250,18 +282,18 @@ fn create_mixed_operations() -> Expr {
     Expr::Add(
         Box::new(Expr::Ln(Box::new(Expr::Mul(
             Box::new(Expr::Exp(Box::new(Expr::Var("x".to_string())))),
-            Box::new(Expr::Exp(Box::new(Expr::Var("y".to_string()))))
+            Box::new(Expr::Exp(Box::new(Expr::Var("y".to_string())))),
         )))),
         Box::new(Expr::Add(
             Box::new(Expr::Pow(
                 Box::new(Expr::Sin(Box::new(Expr::Var("z".to_string())))),
-                Box::new(Expr::Const(2.0))
+                Box::new(Expr::Const(2.0)),
             )),
             Box::new(Expr::Pow(
                 Box::new(Expr::Cos(Box::new(Expr::Var("z".to_string())))),
-                Box::new(Expr::Const(2.0))
-            ))
-        ))
+                Box::new(Expr::Const(2.0)),
+            )),
+        )),
     )
 }
 
@@ -281,4 +313,4 @@ fn format_expr(expr: &Expr) -> String {
         Expr::Cos(inner) => format!("cos({})", format_expr(inner)),
         Expr::Neg(inner) => format!("-({})", format_expr(inner)),
     }
-} 
+}

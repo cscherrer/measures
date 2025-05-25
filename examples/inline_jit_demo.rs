@@ -10,7 +10,9 @@
 
 use measures::core::LogDensityBuilder;
 use measures::distributions::continuous::Normal;
-use measures::exponential_family::jit::{CustomJITOptimizer, StaticInlineJITOptimizer, ZeroOverheadOptimizer};
+use measures::exponential_family::jit::{
+    CustomJITOptimizer, StaticInlineJITOptimizer, ZeroOverheadOptimizer,
+};
 use std::hint::black_box;
 use std::time::Instant;
 
@@ -74,7 +76,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match normal.compile_static_inline_jit() {
         Ok(static_inline_jit_function) => {
             println!("   ✅ Static Inline JIT compilation successful!");
-            println!("   📝 Source: {}", static_inline_jit_function.source_expression);
+            println!(
+                "   📝 Source: {}",
+                static_inline_jit_function.source_expression
+            );
 
             let stats = static_inline_jit_function.stats();
             println!("   📊 Compilation Stats:");
@@ -88,10 +93,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let start = Instant::now();
             let mut result_static_inline_jit = 0.0;
             for &x in &test_inputs {
-                result_static_inline_jit += black_box(static_inline_jit_function.call(black_box(x)));
+                result_static_inline_jit +=
+                    black_box(static_inline_jit_function.call(black_box(x)));
             }
             let time_static_inline_jit = start.elapsed();
-            let speedup_static_inline_jit = time_standard.as_nanos() as f64 / time_static_inline_jit.as_nanos() as f64;
+            let speedup_static_inline_jit =
+                time_standard.as_nanos() as f64 / time_static_inline_jit.as_nanos() as f64;
 
             println!("   🏃 Performance:");
             println!("      • Result sum: {result_static_inline_jit:.10}");
@@ -186,4 +193,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("This demonstrates true zero-overhead abstractions in Rust!");
 
     Ok(())
-} 
+}

@@ -42,11 +42,13 @@ pub trait ExponentialFamily<X: Clone, F: Float>: Clone {
     fn from_natural(param: Self::NaturalParam) -> Self;
 
     /// Convert from standard parameters to natural parameters
+    #[inline]
     fn to_natural(&self) -> Self::NaturalParam {
         self.natural_and_log_partition().0
     }
 
     /// Compute the log partition function A(η)
+    #[inline]
     fn log_partition(&self) -> F {
         self.natural_and_log_partition().1
     }
@@ -58,6 +60,7 @@ pub trait ExponentialFamily<X: Clone, F: Float>: Clone {
     ///
     /// Default implementation calls the separate methods, but distributions should
     /// override this for better performance when there are shared computations.
+    #[inline]
     fn natural_and_log_partition(&self) -> (Self::NaturalParam, F) {
         (self.to_natural(), self.log_partition())
     }
@@ -78,6 +81,7 @@ pub trait ExponentialFamily<X: Clone, F: Float>: Clone {
     ///
     /// This is the standard evaluation method. For high-performance scenarios,
     /// use symbolic optimization instead.
+    #[inline]
     fn exp_fam_log_density(&self, x: &X) -> F
     where
         Self::NaturalParam: DotProduct<Self::SufficientStat, Output = F>,
@@ -122,6 +126,7 @@ pub trait SumSufficientStats<S> {
 
 /// Implementation for arrays of sufficient statistics.
 impl<F: Float, const N: usize> SumSufficientStats<[F; N]> for [F; N] {
+    #[inline]
     fn sum_sufficient_stats<I>(stats: I) -> [F; N]
     where
         I: Iterator<Item = [F; N]>,
@@ -141,6 +146,7 @@ impl<F: Float, const N: usize> SumSufficientStats<[F; N]> for [F; N] {
 /// This function implements the complete exponential family formula with automatic
 /// chain rule handling. It's used by the blanket implementation of `HasLogDensity`
 /// for exponential families.
+#[inline]
 pub fn compute_exp_fam_log_density<X, F, D>(distribution: &D, x: &X) -> F
 where
     X: Clone,
