@@ -9,7 +9,7 @@
 //!
 //! For actual performance benchmarking, run: cargo bench
 //!
-//! Run with: cargo run --example jit_compilation --features jit --release
+//! Run with: cargo run --example `jit_compilation` --features jit --release
 
 use measures::{LogDensityBuilder, Normal};
 
@@ -30,7 +30,7 @@ fn main() {
 
     // Step-by-step demonstration
     demonstrate_standard_evaluation(&normal, test_value);
-    
+
     #[cfg(feature = "jit")]
     {
         demonstrate_zero_overhead_optimization(&normal, test_value);
@@ -39,7 +39,7 @@ fn main() {
         demonstrate_compilation_analysis(&normal);
         demonstrate_native_code_benefits(&normal);
     }
-    
+
     #[cfg(not(feature = "jit"))]
     {
         demonstrate_feature_not_enabled();
@@ -119,34 +119,31 @@ fn demonstrate_correctness_verification(normal: &Normal<f64>, x: f64) {
     println!("  Standard:        {standard_result:.10}");
     println!("  Zero-overhead:   {zero_overhead_result:.10}");
 
-    match normal.compile_jit() {
-        Ok(jit_function) => {
-            let jit_result = jit_function.call(x);
-            println!("  JIT:             {jit_result:.10}");
+    if let Ok(jit_function) = normal.compile_jit() {
+        let jit_result = jit_function.call(x);
+        println!("  JIT:             {jit_result:.10}");
 
-            let zero_diff = (standard_result - zero_overhead_result).abs();
-            let jit_diff = (standard_result - jit_result).abs();
+        let zero_diff = (standard_result - zero_overhead_result).abs();
+        let jit_diff = (standard_result - jit_result).abs();
 
-            println!("\nDifferences from standard:");
-            println!("  Zero-overhead:   {zero_diff:.2e}");
-            println!("  JIT:             {jit_diff:.2e}");
+        println!("\nDifferences from standard:");
+        println!("  Zero-overhead:   {zero_diff:.2e}");
+        println!("  JIT:             {jit_diff:.2e}");
 
-            if zero_diff < 1e-15 && jit_diff < 1e-15 {
-                println!("✅ All methods agree to machine precision!");
-            } else {
-                println!("⚠️  Some methods show numerical differences");
-            }
+        if zero_diff < 1e-15 && jit_diff < 1e-15 {
+            println!("✅ All methods agree to machine precision!");
+        } else {
+            println!("⚠️  Some methods show numerical differences");
         }
-        Err(_) => {
-            let zero_diff = (standard_result - zero_overhead_result).abs();
-            println!("\nDifferences from standard:");
-            println!("  Zero-overhead:   {zero_diff:.2e}");
+    } else {
+        let zero_diff = (standard_result - zero_overhead_result).abs();
+        println!("\nDifferences from standard:");
+        println!("  Zero-overhead:   {zero_diff:.2e}");
 
-            if zero_diff < 1e-15 {
-                println!("✅ Zero-overhead method agrees to machine precision!");
-            } else {
-                println!("⚠️  Zero-overhead method shows numerical differences");
-            }
+        if zero_diff < 1e-15 {
+            println!("✅ Zero-overhead method agrees to machine precision!");
+        } else {
+            println!("⚠️  Zero-overhead method shows numerical differences");
         }
     }
 
@@ -158,16 +155,16 @@ fn demonstrate_feature_not_enabled() {
     println!("=== JIT Features Not Enabled ===");
     println!("This example demonstrates JIT compilation techniques, but the");
     println!("'jit' feature is not currently enabled.\n");
-    
+
     println!("To enable JIT compilation:");
     println!("  cargo run --example jit_compilation --features jit --release\n");
-    
+
     println!("JIT features include:");
     println!("  • Zero-overhead runtime optimization");
     println!("  • Native machine code generation with Cranelift");
     println!("  • Performance analysis and verification");
     println!("  • Compilation statistics and overhead analysis\n");
-    
+
     println!("Without JIT, you can still use:");
     println!("  • Standard exponential family evaluation (already fast!)");
     println!("  • Normal-specific optimizations (see normal_optimization_techniques example)");

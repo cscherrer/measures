@@ -1,14 +1,13 @@
 use criterion::{
-    AxisScale, BenchmarkId, Criterion, PlotConfiguration, black_box, criterion_group,
-    criterion_main,
+    AxisScale, BenchmarkId, Criterion, PlotConfiguration, criterion_group, criterion_main,
 };
 use measures::core::{HasLogDensity, LogDensityBuilder};
 use measures::exponential_family::ExponentialFamily;
 use measures::{Normal, distributions::discrete::poisson::Poisson};
-use pprof::criterion::{Output, PProfProfiler};
+use rand::{Rng, rng};
 use rv::dist::{Gaussian, Poisson as RvPoisson};
 use rv::prelude::*;
-use rand::{thread_rng, Rng};
+use std::hint::black_box;
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -392,9 +391,9 @@ fn bench_normal_optimization_techniques(c: &mut Criterion) {
     group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Logarithmic));
 
     // Generate random test values to prevent compiler optimization
-    let mut rng = thread_rng();
-    let test_values: Vec<f64> = (0..1000).map(|_| rng.gen_range(-3.0..3.0)).collect();
-    
+    let mut rng = rng();
+    let test_values: Vec<f64> = (0..1000).map(|_| rng.random_range(-3.0..3.0)).collect();
+
     let normal = Normal::new(0.0_f64, 1.0_f64);
     let rv_normal = Gaussian::new(0.0, 1.0).unwrap();
 
@@ -473,7 +472,7 @@ fn bench_normal_optimization_techniques(c: &mut Criterion) {
 
 criterion_group! {
     name = benches;
-    config = Criterion::default().with_profiler(PProfProfiler::new(100, Output::Flamegraph(None)));
+    config = Criterion::default();
     targets = bench_single_evaluations, bench_batch_evaluations, bench_factorial_optimization,
               bench_exponential_family_components, bench_allocation_patterns, bench_measure_creation,
               bench_normal_optimization_techniques

@@ -16,10 +16,10 @@ The profiling setup addresses the user's concern about "all the clones" by provi
 
 ### Core Profiling Stack
 - **criterion** - CPU benchmarking with statistical analysis
-- **pprof** - Flamegraph generation for CPU hotspot identification  
 - **dhat** - Memory allocation profiling and heap analysis
 - **inferno** - Enhanced flamegraph visualization
 - **profiling** - Lightweight instrumentation framework
+- **cargo-flamegraph** - Alternative flamegraph generation (install separately)
 
 ### Optional Advanced Tools
 - **tracy-client** - Real-time profiling (feature: `tracy`)

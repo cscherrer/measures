@@ -6,9 +6,9 @@
 //! These techniques showcase how to achieve maximum performance for specific distributions
 //! when you know the distribution type at compile time or can specialize for it.
 //!
-//! For actual performance benchmarking, run: cargo bench normal_optimization_techniques
+//! For actual performance benchmarking, run: cargo bench `normal_optimization_techniques`
 //!
-//! Run with: cargo run --example normal_optimization_techniques --release
+//! Run with: cargo run --example `normal_optimization_techniques` --release
 
 use measures::{LogDensityBuilder, Normal};
 
@@ -157,31 +157,31 @@ fn demonstrate_const_generic_specialization(x: f64) {
 
 fn demonstrate_numerical_accuracy(normal: &Normal<f64>, x: f64) {
     println!("=== 5. Numerical Accuracy Verification ===");
-    
+
     let standard_result = normal.log_density().at(&x);
     let zero_overhead_fn = generate_zero_overhead_normal(2.0, 1.5);
     let macro_fn = optimized_normal!(2.0, 1.5);
     let specialized: SpecializedNormal<2000, 1500> = SpecializedNormal::new();
-    
+
     let zero_overhead_result = zero_overhead_fn(x);
     let macro_result = macro_fn(x);
     let const_generic_result = specialized.log_density(x);
-    
+
     println!("Numerical accuracy check:");
     println!("  Standard:        {standard_result:.10}");
     println!("  Zero-overhead:   {zero_overhead_result:.10}");
     println!("  Macro:           {macro_result:.10}");
     println!("  Const generic:   {const_generic_result:.10}");
-    
+
     let zero_diff = (standard_result - zero_overhead_result).abs();
     let macro_diff = (standard_result - macro_result).abs();
     let const_diff = (standard_result - const_generic_result).abs();
-    
+
     println!("\nDifferences from standard:");
     println!("  Zero-overhead:   {zero_diff:.2e}");
     println!("  Macro:           {macro_diff:.2e}");
     println!("  Const generic:   {const_diff:.2e}");
-    
+
     if zero_diff < 1e-15 && macro_diff < 1e-15 && const_diff < 1e-15 {
         println!("✅ All methods agree to machine precision!");
     } else {

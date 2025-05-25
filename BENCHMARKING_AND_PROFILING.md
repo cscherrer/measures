@@ -17,8 +17,10 @@ criterion = { version = "0.5", features = ["html_reports"] }
 ```
 
 **pprof** - Flamegraph generation for hotspot identification
+
 ```toml
-pprof = { version = "0.13", features = ["flamegraph", "criterion"] }
+# Note: pprof integration removed due to criterion 0.6 compatibility issues
+# Use cargo-flamegraph instead: cargo install flamegraph
 ```
 
 **Inferno** - Enhanced flamegraph visualization
