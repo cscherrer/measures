@@ -1,12 +1,7 @@
 //! Memory profiling example for the measures crate.
 //!
-//! This example demonstrates DHAT heap profiling integration.
+//! Demonstrates DHAT heap profiling integration.
 //! Run with: `cargo run --example memory_profiling --features dhat-heap`
-//!
-//! The profile data will be saved to `dhat-heap.json` and can be viewed with:
-//! - Online DHAT viewer (search for "dhat viewer" to find the current URL)
-//! - Local viewer: Clone Valgrind repo and open `dhat/dh_view.html`
-//! - The viewer shows allocation patterns, lifetimes, and memory usage
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -20,8 +15,7 @@ fn main() {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
 
-    println!("🧠 Memory Profiling Analysis");
-    println!("============================");
+    println!("Memory Profiling Analysis");
 
     // Test clone-heavy patterns
     test_cloning_patterns();
@@ -36,23 +30,20 @@ fn main() {
     test_usage_patterns();
 
     #[cfg(feature = "dhat-heap")]
-    println!("📊 Memory profile saved to dhat-heap.json");
-    #[cfg(feature = "dhat-heap")]
-    println!("🌐 View with DHAT viewer (search 'dhat viewer' or use Valgrind's dh_view.html)");
+    println!("Memory profile saved to dhat-heap.json");
 
     #[cfg(not(feature = "dhat-heap"))]
-    println!("⚠️  Run with --features dhat-heap for memory profiling");
+    println!("Run with --features dhat-heap for memory profiling");
 }
 
 /// Test different cloning patterns to identify hotspots
 fn test_cloning_patterns() {
-    println!("\n🔄 Testing cloning patterns...");
+    println!("Testing cloning patterns...");
 
     let normal = Normal::new(0.0_f64, 1.0_f64);
     let points: Vec<f64> = (0..1000).map(|i| f64::from(i) * 0.001).collect();
 
     // Pattern 1: Clone LogDensity on every evaluation (worst case)
-    println!("  📉 Pattern 1: Clone per evaluation (worst case)");
     let mut sum1 = 0.0;
     for &x in &points {
         let ld = normal.log_density(); // Clone here!
@@ -60,7 +51,6 @@ fn test_cloning_patterns() {
     }
 
     // Pattern 2: Clone LogDensity once, reuse (better)
-    println!("  📊 Pattern 2: Clone once, reuse (better)");
     let mut sum2 = 0.0;
     let ld = normal.log_density(); // Clone once
     for &x in &points {
@@ -68,34 +58,30 @@ fn test_cloning_patterns() {
     }
 
     // Pattern 3: No LogDensity wrapper (best for performance)
-    println!("  📈 Pattern 3: Direct computation (best)");
     let mut sum3 = 0.0;
     for &x in &points {
         sum3 += normal.log_density_wrt_root(&x);
     }
 
-    println!("  Results: {sum1:.3}, {sum2:.3}, {sum3:.3}");
+    println!("Results: {:.3}, {:.3}, {:.3}", sum1, sum2, sum3);
 }
 
 /// Test allocation-efficient patterns
 fn test_efficient_patterns() {
-    println!("\n⚡ Testing efficient patterns...");
+    println!("Testing efficient patterns...");
 
     let normal = Normal::new(1.0_f64, 2.0_f64);
     let x = 0.5_f64;
 
     // Test different computation paths
-    println!("  🎯 Direct log_density_wrt_root");
     for _ in 0..1000 {
         let _ = normal.log_density_wrt_root(&x);
     }
 
-    println!("  🔧 Exponential family method");
     for _ in 0..1000 {
         let _ = normal.exp_fam_log_density(&x);
     }
 
-    println!("  🏗️  Component-wise construction");
     for _ in 0..1000 {
         let nat_params = normal.to_natural();
         let suff_stats = normal.sufficient_statistic(&x);
@@ -109,20 +95,18 @@ fn test_efficient_patterns() {
 
 /// Test factorial computation memory patterns
 fn test_factorial_allocations() {
-    println!("\n🧮 Testing factorial computations...");
+    println!("Testing factorial computations...");
 
     let poisson = Poisson::new(2.5_f64);
 
     // Test different k values to see allocation scaling
     for k in [1, 5, 10, 20, 50] {
-        println!("  📊 Computing Poisson log-density for k={k}");
         for _ in 0..100 {
             let _ = poisson.exp_fam_log_density(&k);
         }
     }
 
     // Test base measure creation
-    println!("  🏭 Testing FactorialMeasure creation");
     for _ in 0..500 {
         let factorial_measure = poisson.base_measure();
         let _: f64 = factorial_measure.log_density_wrt_root(&10u64);
@@ -131,10 +115,9 @@ fn test_factorial_allocations() {
 
 /// Test realistic usage patterns
 fn test_usage_patterns() {
-    println!("\n🎲 Testing realistic usage patterns...");
+    println!("Testing realistic usage patterns...");
 
     // Monte Carlo sampling pattern
-    println!("  🎰 Monte Carlo sampling");
     let normal = Normal::new(0.0_f64, 1.0_f64);
     let ld = normal.log_density();
     for i in 0..10_000 {
@@ -143,7 +126,6 @@ fn test_usage_patterns() {
     }
 
     // ML optimization pattern
-    println!("  🎯 ML optimization");
     let distributions = vec![
         Normal::new(0.0, 1.0),
         Normal::new(1.0, 0.5),
@@ -158,7 +140,6 @@ fn test_usage_patterns() {
     }
 
     // Statistical inference pattern
-    println!("  📈 Statistical inference");
     let normal1 = Normal::new(0.0_f64, 1.0_f64);
     let normal2 = Normal::new(0.1_f64, 1.1_f64);
     let ld_relative = normal1.log_density().wrt(normal2);
@@ -168,5 +149,5 @@ fn test_usage_patterns() {
         let _ = ld_relative.at(&x);
     }
 
-    println!("  ✅ Usage pattern testing complete");
+    println!("Usage pattern testing complete");
 }
