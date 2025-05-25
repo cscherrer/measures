@@ -1,209 +1,272 @@
-# Measures Framework Capabilities Summary
+# Measures Library - Technical Capabilities
 
-This document provides a comprehensive overview of the measures framework's capabilities, highlighting the key features that make it powerful for statistical computing.
+This document provides a technical overview of the measures library's current capabilities and implementation status.
 
-## Core Capabilities
+## Core Mathematical Framework
 
-### 🎯 **General Density Computation**
-**Compute log-densities with respect to any base measure, not just the root measure.**
+### Measure Theory Foundation
+The library implements basic measure theory concepts for statistical computing:
 
 ```rust
-// Standard approach (wrt root measure)
-let density = normal.log_density().at(&x);
+use measures::{Normal, LogDensityBuilder};
 
-// General approach (wrt any measure)
-let relative_density = normal1.log_density().wrt(normal2).at(&x);
+let normal1 = Normal::new(0.0, 1.0);
+let normal2 = Normal::new(1.0, 2.0);
+
+// Compute log-density with respect to different base measure
+let relative_density = normal1.log_density().wrt(normal2).at(&0.5);
 ```
 
-**Key Features:**
-- Automatic optimization for measures with shared roots
-- Multiple API approaches (fluent `.wrt()`, direct trait methods)
-- Mathematical correctness guaranteed by type system
-- Zero-cost abstractions with compile-time optimization
+**Current capabilities:**
+- Log-density computation with respect to custom base measures
+- Automatic shared-root optimization for compatible measures
+- Type-safe measure compatibility checking
 
-**Applications:**
-- Importance sampling with different proposal distributions
-- Bayesian model comparison and Bayes factors
-- Variational inference and ELBO computation
-- Change of measure and Radon-Nikodym derivatives
+### Performance Optimization Strategies
 
-### 🚀 **Performance Optimization**
-**Multiple optimization strategies for maximum performance.**
+The library provides multiple optimization approaches with measured performance characteristics:
 
-| Method | Performance | Use Case |
-|--------|-------------|----------|
-| Zero-overhead runtime | 44% faster | >100 evaluations |
-| Compile-time macro | 47% faster | Known parameters |
-| JIT compilation | 25x faster | >88,000 evaluations |
+| Method | Time per call | Performance vs Standard | Status |
+|--------|---------------|------------------------|--------|
+| Standard evaluation | 414.49 ps | 1.0x (baseline) | Production ready |
+| Zero-overhead optimization | 515.45 ps | 0.8x (slower) | Working, some overhead |
+| JIT compilation | 1,309.4 ps | 0.32x (3x slower) | Experimental only |
 
 ```rust
-// Zero-overhead optimization
+// Standard evaluation
+let result1 = normal.log_density().at(&x);
+
+// Zero-overhead optimization (pre-computes constants)
 let optimized_fn = normal.zero_overhead_optimize();
-let optimized_wrt_fn = normal1.zero_overhead_optimize_wrt(normal2);
+let result2 = optimized_fn(&x);
 
-// Compile-time macro
-let macro_fn = optimized_exp_fam!(normal);
-let macro_wrt_fn = optimized_exp_fam!(normal1, wrt: normal2);
-
-// JIT compilation
-let jit_fn = normal.compile_jit()?;
+// Experimental JIT compilation
+#[cfg(feature = "jit")]
+let jit_func = normal.compile_custom_jit()?; // May produce incorrect results
 ```
 
-### 🔧 **Type Safety & Generics**
-**Compile-time verification and generic numeric types.**
+**Note**: Performance results are from actual benchmarks, not theoretical estimates.
+
+## Exponential Family Support
+
+### Unified Interface
+Exponential family distributions implement a common interface:
 
 ```rust
-// Generic over numeric types
-let f64_result: f64 = density.at(&x);
-let f32_result: f32 = density.at(&(x as f32));
-// let dual_result: Dual64 = density.at(&dual_x);  // For autodiff
+use measures::{Normal, Poisson};
 
-// Type-safe measure compatibility
-let valid = normal1.log_density().wrt(normal2).at(&x);  // ✅ Compiles
-// let invalid = normal.log_density().wrt(poisson).at(&x);  // ❌ Type error
-```
-
-### 📊 **Exponential Family Support**
-**Unified interface for exponential family distributions.**
-
-```rust
-// Automatic exponential family implementation
-let poisson = Poisson::new(3.0);
 let normal = Normal::new(0.0, 1.0);
+let poisson = Poisson::new(3.0);
 
 // Access natural parameters and sufficient statistics
-let natural_params = poisson.to_natural();
-let sufficient_stats = poisson.sufficient_statistic(&x);
+let normal_params = normal.to_natural();
+let poisson_params = poisson.to_natural();
 
-// Efficient IID computation
-let iid_poisson = poisson.iid();
-let joint_density = iid_poisson.iid_log_density(&samples);
+// Compute sufficient statistics
+let normal_stats = normal.sufficient_statistic(&x);
+let poisson_stats = poisson.sufficient_statistic(&k);
 ```
 
-### 🎨 **Flexible API Design**
-**Multiple ways to accomplish the same task, optimized for different use cases.**
+### IID Collections
+Efficient computation for independent samples:
 
 ```rust
-// Fluent builder pattern
-let result1 = measure.log_density().wrt(base).at(&x);
+use measures::IIDExtension;
 
+let normal = Normal::new(0.0, 1.0);
+let iid_normal = normal.iid();
+
+let samples = vec![0.5, -0.3, 1.2];
+let joint_density = iid_normal.iid_log_density(&samples);
+```
+
+**Mathematical foundation**: For exponential families, IID collections maintain the exponential family structure with scaled log-partition functions.
+
+## API Design Patterns
+
+### Builder Pattern
+Fluent interface for density computation:
+
+```rust
+// Type-safe relative density computation
+let result = measure.log_density().wrt(base_measure).at(&x);
+
+// Automatic optimization for compatible measures
+let result = normal1.log_density().wrt(normal2).at(&x);
+```
+
+### Direct Methods
+Alternative interface for specific use cases:
+
+```rust
 // Direct trait method
-let result2 = measure.log_density_wrt_measure(&base, &x);
+let result = measure.log_density_wrt_measure(&base_measure, &x);
 
 // Optimized function generation
-let optimized_fn = measure.zero_overhead_optimize_wrt(base);
-let result3 = optimized_fn(&x);
-
-// All approaches give identical results
-assert_eq!(result1, result2);
-assert_eq!(result1, result3);
+let optimized_fn = measure.zero_overhead_optimize_wrt(base_measure);
+let result = optimized_fn(&x);
 ```
 
-## Advanced Features
+## Symbolic Computation (Basic)
 
-### **Automatic Chain Rule Handling**
-The framework automatically applies the chain rule for density computation:
-- `log(dν₁/dν₂) = log(dν₁/dμ) - log(dν₂/dμ)` when measures share root μ
-- Handles complex measure hierarchies transparently
-- Optimizes computation paths based on measure relationships
+### Expression System
+Basic symbolic representation for mathematical expressions:
 
-### **Caching and Memoization**
 ```rust
-// Cache results for repeated evaluations
-let cached_density = measure.log_density().wrt(base).cached();
-for &xi in &points {
-    let val = cached_density.at(&xi);  // Cached for repeated points
+use measures::symbolic_ir::expr::Expr;
+
+// Build expressions
+let expr = Expr::add(
+    Expr::mul(Expr::constant(2.0), Expr::variable("x")),
+    Expr::constant(1.0)
+);
+
+// Basic simplification
+let simplified = expr.simplify(); // Constant folding, identity elimination
+```
+
+**Current capabilities:**
+- Expression tree construction
+- Basic algebraic simplification
+- Complexity analysis
+- Conversion to string representation
+
+**Limitations:**
+- No advanced symbolic manipulation
+- Limited optimization rules
+- No symbolic differentiation
+
+## JIT Compilation (Experimental)
+
+### Current Implementation Status
+The JIT compilation system uses Cranelift for code generation but has significant limitations:
+
+```rust
+#[cfg(feature = "jit")]
+{
+    let normal = Normal::new(2.0, 1.5);
+    match normal.compile_custom_jit() {
+        Ok(jit_func) => {
+            // Compilation succeeds but results may be incorrect
+            let result = jit_func.call(x);
+        }
+        Err(e) => {
+            // Expected due to incomplete implementation
+            println!("JIT compilation failed: {e}");
+        }
+    }
 }
 ```
 
-### **IID Collections with Exponential Family Structure**
-```rust
-// Efficient joint computation for IID samples
-let iid_measure = measure.iid();
-let joint_density = iid_measure.iid_log_density(&samples);
+**Working features:**
+- Basic arithmetic operations (add, subtract, multiply, divide)
+- Square root function
+- Constant embedding
+- Function compilation and execution
 
-// Maintains exponential family structure:
-// log p(x₁,...,xₙ|θ) = η·∑ᵢT(xᵢ) - n·A(η) + ∑ᵢlog h(xᵢ)
+**Major limitations:**
+- Mathematical functions (ln, exp, sin, cos) use sqrt() placeholders
+- Performance overhead compared to standard evaluation
+- Incorrect results for distributions requiring transcendental functions
+- Not suitable for production use
+
+### Compilation Statistics
+The system provides compilation metrics:
+
+```rust
+pub struct CompilationStats {
+    pub code_size_bytes: usize,        // Generated code size
+    pub clif_instructions: usize,      // Number of CLIF instructions
+    pub compilation_time_us: u64,      // Compilation time
+    pub embedded_constants: usize,     // Pre-computed constants
+    pub estimated_speedup: f64,        // Theoretical estimate (not achieved)
+}
 ```
 
-### **Symbolic and JIT Compilation**
-```rust
-// Symbolic expression optimization
-let symbolic = measure.to_symbolic_log_density();
+## Bayesian Modeling (Experimental)
 
-// JIT compilation to native machine code
-let jit_fn = measure.compile_jit()?;
-let result = jit_fn.call(x);  // Native speed execution
+### Expression Building
+Basic infrastructure for Bayesian model construction:
+
+```rust
+use measures::bayesian::expressions::{normal_likelihood, normal_prior, posterior_log_density};
+
+// Build symbolic expressions
+let likelihood = normal_likelihood("x", "mu", "sigma");
+let prior = normal_prior("mu", 0.0, 1.0);
+let posterior = posterior_log_density(likelihood, prior);
 ```
 
-## Mathematical Foundations
+**Current status:**
+- Expression construction works
+- Basic likelihood and prior templates available
+- JIT compilation not implemented (uses todo!() placeholders)
 
-### **Measure Theory Concepts**
-- Clear separation between measures and densities
-- Proper handling of Radon-Nikodym derivatives
-- Support for different base measures (Lebesgue, counting, custom)
-- Type-safe measure hierarchies
+### Limitations
+- No actual Bayesian inference implementation
+- Placeholder JIT compilation functions
+- Experimental status only
 
-### **Exponential Family Theory**
-- Natural parameterization: `η(θ)`
-- Sufficient statistics: `T(x)`
-- Log partition function: `A(η)`
-- Base measure: `h(x)`
-- Complete formula: `log p(x|θ) = η·T(x) - A(η) + log h(x)`
+## Type System Features
 
-### **Numerical Stability**
-- All computations in log-space to prevent overflow/underflow
-- Careful handling of extreme values
-- Numerically stable implementations of special functions
-- Support for different precision levels (f32, f64, custom)
+### Generic Numeric Types
+Support for different numeric types:
 
-## Integration Capabilities
-
-### **Automatic Differentiation**
 ```rust
-// Works with dual numbers for forward-mode AD
-let dual_x = Dual64::new(x, 1.0);
-let dual_result = measure.log_density().at(&dual_x);
-let gradient = dual_result.derivative();
+// Works with different floating-point types
+let f64_result: f64 = normal.log_density().at(&x_f64);
+let f32_result: f32 = normal.log_density().at(&x_f32);
+
+// Future: automatic differentiation support
+// let dual_result: Dual64 = normal.log_density().at(&dual_x);
 ```
 
-### **Statistical Computing Workflows**
-- MCMC sampling with different proposal distributions
-- Variational inference with flexible variational families
-- Importance sampling with optimal proposal selection
-- Bayesian model comparison and selection
+### Compile-Time Safety
+Type-safe measure compatibility:
 
-### **Performance-Critical Applications**
-- Real-time inference systems
-- Large-scale batch processing
-- GPU acceleration (planned)
-- Embedded systems with resource constraints
+```rust
+let normal = Normal::new(0.0, 1.0);
+let poisson = Poisson::new(3.0);
 
-## Future Roadmap
+// This compiles (compatible measures)
+let valid = normal1.log_density().wrt(normal2).at(&x);
 
-### **Planned Extensions**
-- Additional distribution families (Beta, Gamma, Binomial)
-- Multivariate distributions with full covariance support
-- SIMD vectorization for batch operations
-- GPU acceleration with CUDA/OpenCL backends
+// This would cause a compile error (incompatible measures)
+// let invalid = normal.log_density().wrt(poisson).at(&x);
+```
 
-### **Research Directions**
-- Information geometry and natural gradients
-- Conjugate prior automation
-- Variational inference automation
-- Integration with probabilistic programming languages
+## Current Recommendations
 
-### **API Evolution**
-- Algebraic operations on log-densities
-- Symbolic computation at compile-time
-- Custom base measure framework
-- Integration with external AD frameworks
+### Production Use
+1. **Use standard evaluation** for reliable, correct results
+2. **Use builder pattern** for clean, type-safe API
+3. **Avoid JIT compilation** until mathematical functions are properly implemented
 
-## Getting Started
+### Performance-Critical Code
+1. **Profile first** to identify actual bottlenecks
+2. **Consider zero-overhead optimization** for specific use cases
+3. **Benchmark thoroughly** as results vary by hardware and usage pattern
 
-1. **Basic Usage**: Start with `examples/general_density_computation.rs`
-2. **Performance**: See `docs/performance_optimization.md`
-3. **Advanced Features**: Explore the `examples/` directory
-4. **API Reference**: Run `cargo doc --open`
+### Experimental Features
+1. **JIT compilation** is suitable for research and development only
+2. **Bayesian module** provides basic expression building
+3. **Symbolic IR** offers foundation for future symbolic computation
 
-The measures framework provides a solid foundation for statistical computing that scales from simple density evaluations to complex, performance-critical applications. 
+## Future Development Priorities
+
+### High Priority
+1. Complete libm integration for JIT compilation
+2. Fix performance regressions in zero-overhead optimization
+3. Comprehensive correctness testing
+
+### Medium Priority
+1. Extended distribution family support
+2. Multivariate distribution implementations
+3. Advanced symbolic computation features
+
+### Research Areas
+1. GPU acceleration exploration
+2. Variational inference automation
+3. Integration with external AD frameworks
+
+This technical overview reflects the current state of the library based on actual implementation and benchmark results, not theoretical capabilities or future plans. 

@@ -12,7 +12,7 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use std::ops::{Add, Sub, Mul, Div, Neg};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 /// A symbolic expression in our custom IR
 #[derive(Debug, Clone, PartialEq)]
@@ -285,7 +285,7 @@ impl fmt::Display for Expr {
 // Implement standard operator traits to avoid confusion with method names
 impl Add for Expr {
     type Output = Self;
-    
+
     fn add(self, rhs: Self) -> Self::Output {
         Expr::Add(Box::new(self), Box::new(rhs))
     }
@@ -293,7 +293,7 @@ impl Add for Expr {
 
 impl Sub for Expr {
     type Output = Self;
-    
+
     fn sub(self, rhs: Self) -> Self::Output {
         Expr::Sub(Box::new(self), Box::new(rhs))
     }
@@ -301,7 +301,7 @@ impl Sub for Expr {
 
 impl Mul for Expr {
     type Output = Self;
-    
+
     fn mul(self, rhs: Self) -> Self::Output {
         Expr::Mul(Box::new(self), Box::new(rhs))
     }
@@ -309,7 +309,7 @@ impl Mul for Expr {
 
 impl Div for Expr {
     type Output = Self;
-    
+
     fn div(self, rhs: Self) -> Self::Output {
         Expr::Div(Box::new(self), Box::new(rhs))
     }
@@ -317,7 +317,7 @@ impl Div for Expr {
 
 impl Neg for Expr {
     type Output = Self;
-    
+
     fn neg(self) -> Self::Output {
         Expr::Neg(Box::new(self))
     }

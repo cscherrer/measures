@@ -75,5 +75,5 @@ pub use expr::Expr;
 
 #[cfg(feature = "jit")]
 pub use jit::{
-    GeneralJITCompiler, GeneralJITFunction, JITError, JITSignature, JITType, CompilationStats,
-}; 
+    CompilationStats, GeneralJITCompiler, GeneralJITFunction, JITError, JITSignature, JITType,
+};

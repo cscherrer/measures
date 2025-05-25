@@ -57,14 +57,14 @@ use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{Linkage, Module};
 
 #[cfg(feature = "jit")]
-use crate::exponential_family::symbolic_ir::{ConstantPool, SymbolicLogDensity};
+use crate::exponential_family::CustomSymbolicLogDensity;
 #[cfg(feature = "jit")]
-use crate::exponential_family::{CustomSymbolicLogDensity};
+use crate::exponential_family::symbolic_ir::{ConstantPool, SymbolicLogDensity};
 
 // Re-export general JIT functionality
 #[cfg(feature = "jit")]
 pub use crate::symbolic_ir::jit::{
-    GeneralJITCompiler, GeneralJITFunction, JITSignature, JITType, CompilationStats,
+    CompilationStats, GeneralJITCompiler, GeneralJITFunction, JITSignature, JITType,
 };
 
 // Re-export general expression types
@@ -334,14 +334,11 @@ impl Default for JITCompiler {
 /// Trait for Bayesian models that can be JIT-compiled
 pub trait BayesianJITOptimizer {
     /// Compile the posterior log-density function
-    fn compile_posterior_jit(
-        &self,
-        data: &[f64],
-    ) -> Result<GeneralJITFunction, JITError>;
-    
+    fn compile_posterior_jit(&self, data: &[f64]) -> Result<GeneralJITFunction, JITError>;
+
     /// Compile the likelihood function with variable parameters
     fn compile_likelihood_jit(&self) -> Result<GeneralJITFunction, JITError>;
-    
+
     /// Compile the prior log-density function
     fn compile_prior_jit(&self) -> Result<GeneralJITFunction, JITError>;
 }
@@ -546,7 +543,7 @@ fn generate_clif_from_expr_exp_fam(
     constants: &std::collections::HashMap<String, f64>,
 ) -> Result<Value, JITError> {
     use crate::exponential_family::symbolic_ir::Expr as ExpFamExpr;
-    
+
     match expr {
         ExpFamExpr::Const(value) => {
             // Load constant directly

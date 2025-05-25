@@ -1,8 +1,8 @@
 //! Optimization Approaches Comparison
 //!
-//! This example demonstrates all available optimization approaches for computing
+//! This example demonstrates available optimization approaches for computing
 //! relative densities between exponential family distributions, showing their
-//! performance characteristics and trade-offs.
+//! performance characteristics and current implementation status.
 //!
 //! Run with: cargo run --example `optimization_comparison` --features jit --release
 
@@ -11,41 +11,44 @@ use measures::{LogDensityBuilder, Normal};
 use std::time::Instant;
 
 fn main() {
-    println!("🔬 === Optimization Approaches Comparison === 🔬\n");
+    println!("=== Optimization Approaches Comparison ===\n");
 
     let normal1 = Normal::new(0.0, 1.0);
     let normal2 = Normal::new(1.0, 1.5);
     let x = 0.5;
 
-    println!("📊 Computing log(Normal(0,1)/Normal(1,1.5)) at x = {x}\n");
+    println!("Computing log(Normal(0,1)/Normal(1,1.5)) at x = {x}\n");
 
     demonstrate_approaches(&normal1, &normal2, &x);
     benchmark_performance(&normal1, &normal2);
     explain_technical_differences();
 
-    println!("\n🎉 === Comparison Complete === 🎉");
+    println!("\n=== Comparison Complete ===");
     println!("See docs/OPTIMIZATION_APPROACHES.md for detailed technical analysis!");
 }
 
 fn demonstrate_approaches(normal1: &Normal<f64>, normal2: &Normal<f64>, x: &f64) {
-    println!("=== 1. Manual Subtraction (Baseline) ===");
-    println!("Approach: Compute each density separately and subtract");
+    println!("=== Available Optimization Approaches ===\n");
+
+    println!("=== 1. Manual Subtraction ===");
+    println!("Approach: Compute each log-density separately and subtract");
     println!("Code:     normal1.log_density().at(&x) - normal2.log_density().at(&x)");
 
     let manual_result = normal1.log_density().at(x) - normal2.log_density().at(x);
     println!("Result:   {manual_result:.10}");
-    println!("Pros:     Simple, works with any distributions");
-    println!("Cons:     Slowest, error-prone, redundant computations");
+    println!("Status:   Working but inefficient");
+    println!("Issues:   Redundant computation, error-prone");
     println!();
 
-    println!("=== 2. Builder Pattern (Type-Level Dispatch) ===");
-    println!("Approach: Use type system to dispatch to optimized implementations");
+    println!("=== 2. Builder Pattern ===");
+    println!("Approach: Use fluent API for relative density computation");
     println!("Code:     normal1.log_density().wrt(normal2).at(&x)");
 
     let builder_result: f64 = normal1.log_density().wrt(normal2.clone()).at(x);
     println!("Result:   {builder_result:.10}");
-    println!("Pros:     Clean API, type-safe, consistent interface");
-    println!("Cons:     Currently uses general approach (could be optimized)");
+    println!("Status:   Working, recommended for general use");
+    println!("Benefits: Clean API, type-safe, consistent interface");
+    println!("Limitations: Uses general computation path");
     println!();
 
     println!("=== 3. Zero-Overhead Optimization ===");
@@ -55,8 +58,9 @@ fn demonstrate_approaches(normal1: &Normal<f64>, normal2: &Normal<f64>, x: &f64)
     let zero_overhead_fn = normal1.clone().zero_overhead_optimize_wrt(normal2.clone());
     let zero_overhead_result = zero_overhead_fn(x);
     println!("Result:   {zero_overhead_result:.10}");
-    println!("Pros:     Excellent performance, LLVM optimizable");
-    println!("Cons:     Requires explicit function generation");
+    println!("Status:   Working, good for performance-critical code");
+    println!("Benefits: Reduced overhead, LLVM optimizable");
+    println!("Limitations: Still computes base measures, requires explicit function generation");
     println!();
 
     println!("=== 4. JIT Compilation (Cranelift) ===");
@@ -66,31 +70,33 @@ fn demonstrate_approaches(normal1: &Normal<f64>, normal2: &Normal<f64>, x: &f64)
     #[cfg(feature = "jit")]
     {
         println!(
-            "Status:   🚧 INCOMPLETE - Infrastructure exists but code generation is placeholder"
+            "Status:   EXPERIMENTAL - Infrastructure exists but uses placeholder implementations"
         );
-        println!("Result:   Would return 0.0 (placeholder implementation)");
+        println!(
+            "Result:   Would return incorrect values (ln/exp functions use sqrt placeholders)"
+        );
     }
     #[cfg(not(feature = "jit"))]
     {
-        println!("Status:   ❌ JIT feature not enabled");
+        println!("Status:   JIT feature not enabled");
     }
-    println!("Pros:     Ultimate performance (~25x), CPU-specific optimizations");
-    println!("Cons:     High complexity, compilation overhead");
+    println!("Current limitations: Placeholder math functions, performance overhead");
+    println!("Potential benefits: Native code generation, CPU-specific optimizations");
     println!();
 
     println!("=== 5. Rust Specialization (Future) ===");
     println!("Approach: Automatic optimization in builder pattern");
     println!("Code:     normal1.log_density().wrt(normal2).at(&x)  // Auto-optimized!");
-    println!("Status:   ⏳ Waiting for Rust language feature (RFC 1210)");
-    println!("Pros:     Perfect zero-cost abstraction, automatic optimization");
-    println!("Cons:     Uncertain timeline, requires language changes");
+    println!("Status:   Waiting for Rust language feature (RFC 1210)");
+    println!("Benefits: Automatic optimization, zero-cost abstraction");
+    println!("Limitations: Uncertain timeline, requires language changes");
     println!();
 
-    // Verify all working approaches give the same result
+    // Verify working approaches give the same result
     let epsilon = 1e-10;
     assert!((manual_result - builder_result).abs() < epsilon);
     assert!((manual_result - zero_overhead_result).abs() < epsilon);
-    println!("✅ All approaches produce identical results (within {epsilon:.0e})");
+    println!("All working approaches produce identical results (within {epsilon:.0e})");
 }
 
 fn benchmark_performance(normal1: &Normal<f64>, normal2: &Normal<f64>) {
@@ -132,37 +138,36 @@ fn benchmark_performance(normal1: &Normal<f64>, normal2: &Normal<f64>) {
         manual_time.as_micros()
     );
     println!(
-        "  Builder Pattern:        {:>8.2}µs  ({:.1}x speedup)",
+        "  Builder Pattern:        {:>8.2}µs  ({:.1}x vs manual)",
         builder_time.as_micros(),
         manual_time.as_nanos() as f64 / builder_time.as_nanos() as f64
     );
     println!(
-        "  Zero-Overhead:          {:>8.2}µs  ({:.1}x speedup)",
+        "  Zero-Overhead:          {:>8.2}µs  ({:.1}x vs manual)",
         zero_overhead_time.as_micros(),
         manual_time.as_nanos() as f64 / zero_overhead_time.as_nanos() as f64
     );
     println!(
-        "  JIT (estimated):        {:>8.2}µs  ({:.1}x speedup)",
+        "  JIT (theoretical):      {:>8.2}µs  (theoretical estimate)",
         manual_time.as_micros() / 25,
-        25.0
     );
 
     println!("\nPerformance Analysis:");
-    println!("• Zero-overhead is fastest available approach");
-    println!("• Builder pattern has good performance with clean API");
+    println!("• Zero-overhead optimization provides best available performance");
+    println!("• Builder pattern offers good performance with clean API");
     println!("• Manual subtraction wastes computation on redundant base measures");
-    println!("• JIT would provide ultimate performance when implemented");
+    println!("• JIT compilation currently has overhead due to implementation limitations");
 }
 
 fn explain_technical_differences() {
     println!("\n=== Technical Differences ===");
 
-    println!("\n🔍 Mathematical Insight:");
+    println!("\nMathematical Foundation:");
     println!("For exponential families: log(p₁(x)/p₂(x)) = (η₁-η₂)·T(x) - (A(η₁)-A(η₂))");
     println!("Key insight: Base measure terms log h(x) cancel out completely!");
     println!();
 
-    println!("📊 Computational Complexity:");
+    println!("Computational Complexity:");
     println!("┌─────────────────────┬──────────────┬─────────────────┬─────────────────┐");
     println!("│ Approach            │ Parameters   │ Base Measures   │ Function Calls  │");
     println!("├─────────────────────┼──────────────┼─────────────────┼─────────────────┤");
@@ -174,20 +179,20 @@ fn explain_technical_differences() {
     println!("└─────────────────────┴──────────────┴─────────────────┴─────────────────┘");
     println!();
 
-    println!("🎯 When to Use Each:");
-    println!("• Manual Subtraction:  Never (kept for comparison only)");
+    println!("When to Use Each:");
+    println!("• Manual Subtraction:  Avoid (kept for comparison only)");
     println!("• Builder Pattern:     General use, mixed distribution types");
     println!("• Zero-Overhead:       Performance-critical loops, same family types");
-    println!("• JIT:                 Ultimate performance when available");
-    println!("• Specialization:      Best of both worlds when Rust supports it");
+    println!("• JIT:                 Future use when implementation is complete");
+    println!("• Specialization:      Future use when Rust supports it");
     println!();
 
-    println!("🚀 Optimization Techniques:");
+    println!("Optimization Techniques:");
     println!("• Constant pre-computation: Calculate parameters once");
     println!("• Base measure cancellation: Exploit mathematical structure");
     println!("• LLVM optimization: Inlining, vectorization, constant folding");
     println!("• Type-level dispatch: Zero-cost abstraction via monomorphization");
-    println!("• Native compilation: Direct machine code generation");
+    println!("• Native compilation: Direct machine code generation (future)");
 }
 
 #[cfg(test)]

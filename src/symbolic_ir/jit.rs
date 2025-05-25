@@ -78,18 +78,18 @@ pub enum JITSignature {
     /// Data and parameter vector: f(x, θ₁, θ₂, ..., θₙ) -> f64
     DataAndParameters(usize),
     /// Multiple data points and parameters: f(x₁, x₂, ..., xₘ, θ₁, θ₂, ..., θₙ) -> f64
-    MultipleDataAndParameters { 
+    MultipleDataAndParameters {
         /// Number of data dimensions
-        data_dims: usize, 
+        data_dims: usize,
         /// Number of parameter dimensions
-        param_dims: usize 
+        param_dims: usize,
     },
     /// Custom signature with specified input/output types
-    Custom { 
+    Custom {
         /// Input types
-        inputs: Vec<JITType>, 
+        inputs: Vec<JITType>,
         /// Output type
-        output: JITType 
+        output: JITType,
     },
 }
 
@@ -134,7 +134,8 @@ impl GeneralJITFunction {
             JITSignature::DataAndParameter => {
                 #[cfg(feature = "jit")]
                 {
-                    let func: fn(f64, f64) -> f64 = unsafe { std::mem::transmute(self.function_ptr) };
+                    let func: fn(f64, f64) -> f64 =
+                        unsafe { std::mem::transmute(self.function_ptr) };
                     func(x, theta)
                 }
                 #[cfg(not(feature = "jit"))]
@@ -158,14 +159,16 @@ impl GeneralJITFunction {
                     // For now, support common cases
                     match n {
                         2 => {
-                            let func: fn(f64, f64, f64) -> f64 = unsafe { std::mem::transmute(self.function_ptr) };
+                            let func: fn(f64, f64, f64) -> f64 =
+                                unsafe { std::mem::transmute(self.function_ptr) };
                             func(x, params[0], params[1])
                         }
                         3 => {
-                            let func: fn(f64, f64, f64, f64) -> f64 = unsafe { std::mem::transmute(self.function_ptr) };
+                            let func: fn(f64, f64, f64, f64) -> f64 =
+                                unsafe { std::mem::transmute(self.function_ptr) };
                             func(x, params[0], params[1], params[2])
                         }
-                        _ => panic!("Unsupported parameter count: {}", n),
+                        _ => panic!("Unsupported parameter count: {n}"),
                     }
                 }
                 #[cfg(not(feature = "jit"))]
@@ -181,14 +184,17 @@ impl GeneralJITFunction {
     /// Call the JIT function with multiple data points and parameters (for batch processing)
     pub fn call_batch(&self, data: &[f64], params: &[f64]) -> f64 {
         match &self.signature {
-            JITSignature::MultipleDataAndParameters { data_dims, param_dims } => {
+            JITSignature::MultipleDataAndParameters {
+                data_dims,
+                param_dims,
+            } => {
                 assert_eq!(data.len(), *data_dims, "Data dimension mismatch");
                 assert_eq!(params.len(), *param_dims, "Parameter dimension mismatch");
                 #[cfg(feature = "jit")]
                 {
                     // For batch processing, we'd typically pass pointers to arrays
                     // This is a simplified version - real implementation would be more complex
-                    let func: fn(*const f64, usize, *const f64, usize) -> f64 = 
+                    let func: fn(*const f64, usize, *const f64, usize) -> f64 =
                         unsafe { std::mem::transmute(self.function_ptr) };
                     func(data.as_ptr(), data.len(), params.as_ptr(), params.len())
                 }
@@ -254,17 +260,17 @@ impl GeneralJITCompiler {
 
         // Create function signature based on inputs
         let mut sig = self.module.make_signature();
-        
+
         // Add data parameters
         for _ in data_vars {
             sig.params.push(AbiParam::new(types::F64));
         }
-        
+
         // Add parameter parameters
         for _ in param_vars {
             sig.params.push(AbiParam::new(types::F64));
         }
-        
+
         sig.returns.push(AbiParam::new(types::F64));
 
         // Declare the function
@@ -286,12 +292,12 @@ impl GeneralJITCompiler {
         // Get input parameters
         let block_params = builder.block_params(entry_block);
         let mut var_map = std::collections::HashMap::new();
-        
+
         // Map data variables to their values
         for (i, var_name) in data_vars.iter().enumerate() {
             var_map.insert(var_name.clone(), block_params[i]);
         }
-        
+
         // Map parameter variables to their values
         for (i, var_name) in param_vars.iter().enumerate() {
             var_map.insert(var_name.clone(), block_params[data_vars.len() + i]);
@@ -347,7 +353,7 @@ impl GeneralJITCompiler {
             function_ptr,
             _module: self.module,
             signature,
-            source_expression: format!("Expression: {}", expr),
+            source_expression: format!("Expression: {expr}"),
             compilation_stats: stats,
         })
     }
@@ -369,7 +375,9 @@ fn generate_clif_from_expr_with_vars(
             } else if let Some(&constant) = constants.get(name) {
                 Ok(builder.ins().f64const(constant))
             } else {
-                Err(JITError::UnsupportedExpression(format!("Unknown variable: {}", name)))
+                Err(JITError::UnsupportedExpression(format!(
+                    "Unknown variable: {name}"
+                )))
             }
         }
         Expr::Add(left, right) => {
@@ -569,4 +577,4 @@ mod tests {
         let error = JITError::CompilationError("test error".to_string());
         assert_eq!(format!("{error}"), "JIT compilation error: test error");
     }
-} 
+}
