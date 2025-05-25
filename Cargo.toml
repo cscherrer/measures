@@ -30,6 +30,7 @@ dhat = "0.3"
 rand = "0.9"
 rv = { git = "https://github.com/promised-ai/rv", branch = "release/v0.19.0" }
 inferno = "0.12"      # Better flamegraph generation  
+proptest = "1.0"      # Property-based testing
 
 [profile.profiling]
 inherits = "release"

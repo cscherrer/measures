@@ -18,9 +18,12 @@ fn main() {
     let builder_result: f64 = normal1.log_density().wrt(normal2.clone()).at(&x);
 
     println!("Results:");
-    println!("  Zero-overhead: {:.10}", optimized_result);
-    println!("  Builder:       {:.10}", builder_result);
-    println!("  Difference:    {:.2e}", (optimized_result - builder_result).abs());
+    println!("  Zero-overhead: {optimized_result:.10}");
+    println!("  Builder:       {builder_result:.10}");
+    println!(
+        "  Difference:    {:.2e}",
+        (optimized_result - builder_result).abs()
+    );
 
     // Benchmark performance
     benchmark_approaches(&normal1, &normal2, &x);
@@ -51,15 +54,16 @@ fn benchmark_approaches(normal1: &Normal<f64>, normal2: &Normal<f64>, x: &f64) {
     }
     let manual_time = start.elapsed();
 
-    println!("\nBenchmark ({} iterations):", iterations);
+    println!("\nBenchmark ({iterations} iterations):");
     println!("  Zero-overhead: {:.2}µs", zero_overhead_time.as_micros());
     println!("  Builder:       {:.2}µs", builder_time.as_micros());
     println!("  Manual:        {:.2}µs", manual_time.as_micros());
 
-    let zero_overhead_speedup = manual_time.as_nanos() as f64 / zero_overhead_time.as_nanos() as f64;
+    let zero_overhead_speedup =
+        manual_time.as_nanos() as f64 / zero_overhead_time.as_nanos() as f64;
     let builder_speedup = manual_time.as_nanos() as f64 / builder_time.as_nanos() as f64;
 
     println!("\nSpeedup vs manual:");
-    println!("  Zero-overhead: {:.2}x", zero_overhead_speedup);
-    println!("  Builder:       {:.2}x", builder_speedup);
+    println!("  Zero-overhead: {zero_overhead_speedup:.2}x");
+    println!("  Builder:       {builder_speedup:.2}x");
 }

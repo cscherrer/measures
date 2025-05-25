@@ -29,8 +29,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(symbolic_result) => {
                 let expected = (x as f64).ln() - x as f64;
                 let difference = (symbolic_result - expected).abs();
-                println!("x={:.1}: symbolic={:.10}, expected={:.10}, diff={:.2e}",
-                         x, symbolic_result, expected, difference);
+                println!(
+                    "x={:.1}: symbolic={:.10}, expected={:.10}, diff={:.2e}",
+                    x, symbolic_result, expected, difference
+                );
             }
             Err(e) => {
                 println!("x={:.1}: symbolic evaluation failed: {}", x, e);
@@ -53,8 +55,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 max_error = max_error.max(difference);
                 total_error += difference;
 
-                println!("x={:.1}: rust={:.10}, jit={:.10}, diff={:.2e}",
-                         x, rust_result, jit_result, difference);
+                println!(
+                    "x={:.1}: rust={:.10}, jit={:.10}, diff={:.2e}",
+                    x, rust_result, jit_result, difference
+                );
             }
 
             let avg_error = total_error / test_values.len() as f64;

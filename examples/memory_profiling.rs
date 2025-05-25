@@ -63,7 +63,7 @@ fn test_cloning_patterns() {
         sum3 += normal.log_density_wrt_root(&x);
     }
 
-    println!("Results: {:.3}, {:.3}, {:.3}", sum1, sum2, sum3);
+    println!("Results: {sum1:.3}, {sum2:.3}, {sum3:.3}");
 }
 
 /// Test allocation-efficient patterns

@@ -14,9 +14,10 @@ fn main() {
     // Single point computation
     let direct_log_density: f64 = compute_exp_fam_log_density(&normal, &x);
     let standard_log_density: f64 = normal.log_density().at(&x);
-    
-    println!("Single point (x={}): direct={:.6}, standard={:.6}", 
-             x, direct_log_density, standard_log_density);
+
+    println!(
+        "Single point (x={x}): direct={direct_log_density:.6}, standard={standard_log_density:.6}"
+    );
     assert!((direct_log_density - standard_log_density).abs() < 1e-10);
 
     // IID computation
@@ -27,15 +28,15 @@ fn main() {
     let manual_sum: f64 = samples.iter().map(|&x| normal.log_density().at(&x)).sum();
 
     println!("IID computation:");
-    println!("  Central function: {:.6}", iid_log_density);
-    println!("  IID wrapper:      {:.6}", wrapper_log_density);
-    println!("  Standard API:     {:.6}", standard_api_result);
-    println!("  Manual sum:       {:.6}", manual_sum);
+    println!("  Central function: {iid_log_density:.6}");
+    println!("  IID wrapper:      {wrapper_log_density:.6}");
+    println!("  Standard API:     {standard_api_result:.6}");
+    println!("  Manual sum:       {manual_sum:.6}");
 
     // Verify all methods produce identical results
     assert!((iid_log_density - manual_sum).abs() < 1e-10);
     assert!((wrapper_log_density - manual_sum).abs() < 1e-10);
     assert!((standard_api_result - manual_sum).abs() < 1e-10);
-    
+
     println!("✓ All computation methods verified");
 }

@@ -46,9 +46,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let quality = evaluate_optimization_quality(&expr, &optimized);
 
-        println!("{:<18} | {:>4} | {:>3} | {:>9.0} | {:>8}% | {:>7}",
-                 name, original_complexity, optimized_complexity,
-                 duration.as_micros() as f64, reduction_percent, quality);
+        println!(
+            "{:<18} | {:>4} | {:>3} | {:>9.0} | {:>8}% | {:>7}",
+            name,
+            original_complexity,
+            optimized_complexity,
+            duration.as_micros() as f64,
+            reduction_percent,
+            quality
+        );
 
         total_time += duration;
         total_reductions += complexity_reduction;
@@ -58,13 +64,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("-------------------|------|-----|-----------|-----------|--------");
-    println!("TOTALS             |      |     | {:>9.0} | {:>8} | {:>7}",
-             total_time.as_micros() as f64, total_reductions, successful_optimizations);
+    println!(
+        "TOTALS             |      |     | {:>9.0} | {:>8} | {:>7}",
+        total_time.as_micros() as f64,
+        total_reductions,
+        successful_optimizations
+    );
 
     println!("\nSummary:");
-    println!("  Average time: {:.0}μs", total_time.as_micros() as f64 / 10.0);
-    println!("  Total reduction: {}", total_reductions);
-    println!("  Success rate: {}/10", successful_optimizations);
+    println!(
+        "  Average time: {:.0}μs",
+        total_time.as_micros() as f64 / 10.0
+    );
+    println!("  Total reduction: {total_reductions}");
+    println!("  Success rate: {successful_optimizations}/10");
 
     Ok(())
 }

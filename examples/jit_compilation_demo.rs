@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         result_standard = normal.log_density().at(&test_x);
     }
     let time_standard = start.elapsed();
-    println!("Standard: {:.10} in {:?}", result_standard, time_standard);
+    println!("Standard: {result_standard:.10} in {time_standard:?}");
 
     // Zero-overhead optimization
     let optimized_fn = normal.clone().zero_overhead_optimize();
@@ -31,14 +31,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let time_optimized = start.elapsed();
     let speedup_optimized = time_standard.as_nanos() as f64 / time_optimized.as_nanos() as f64;
-    println!("Zero-overhead: {:.10} in {:?} ({:.1}x speedup)", 
-             result_optimized, time_optimized, speedup_optimized);
+    println!(
+        "Zero-overhead: {result_optimized:.10} in {time_optimized:?} ({speedup_optimized:.1}x speedup)"
+    );
 
     // Custom symbolic IR
     let symbolic = normal.custom_symbolic_log_density();
     let symbolic_result = symbolic.evaluate_single("x", test_x)?;
-    println!("Symbolic: {:.10} (complexity: {})", 
-             symbolic_result, symbolic.expression.complexity());
+    println!(
+        "Symbolic: {:.10} (complexity: {})",
+        symbolic_result,
+        symbolic.expression.complexity()
+    );
 
     // JIT compilation
     #[cfg(feature = "jit")]
@@ -46,8 +50,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match normal.compile_custom_jit() {
             Ok(jit_function) => {
                 let stats = jit_function.stats();
-                println!("JIT compilation: {} bytes, {} CLIF instructions", 
-                         stats.code_size_bytes, stats.clif_instructions);
+                println!(
+                    "JIT compilation: {} bytes, {} CLIF instructions",
+                    stats.code_size_bytes, stats.clif_instructions
+                );
 
                 let start = Instant::now();
                 let mut result_jit = 0.0;
@@ -57,14 +63,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let time_jit = start.elapsed();
                 let speedup_jit = time_standard.as_nanos() as f64 / time_jit.as_nanos() as f64;
 
-                println!("JIT: {:.10} in {:?} ({:.1}x speedup)", 
-                         result_jit, time_jit, speedup_jit);
+                println!("JIT: {result_jit:.10} in {time_jit:?} ({speedup_jit:.1}x speedup)");
 
                 let error = (result_jit - result_standard).abs();
-                println!("Accuracy: error = {:.2e}", error);
+                println!("Accuracy: error = {error:.2e}");
             }
             Err(e) => {
-                println!("JIT compilation failed: {}", e);
+                println!("JIT compilation failed: {e}");
             }
         }
     }
