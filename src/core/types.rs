@@ -1,10 +1,13 @@
-/// Type-level boolean traits and implementations
+/// Trait for type-level boolean values used in trait dispatch
 pub trait TypeLevelBool {
+    /// The boolean value at the type level
     const VALUE: bool;
 }
 
+/// Type-level representation of `true`
 pub struct True;
 
+/// Type-level representation of `false`
 pub struct False;
 
 impl TypeLevelBool for True {

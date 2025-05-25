@@ -90,7 +90,9 @@ use num_traits::Float;
 /// This leverages the mathematical fact that:
 /// `log(dm1/dm2) = log(dm1/root) - log(dm2/root)` when both measures share the same root.
 pub trait LogDensityTrait<T> {
+    /// The measure whose log-density this represents
     type Measure: Measure<T>;
+    /// The base measure with respect to which the density is computed
     type BaseMeasure: Measure<T>;
 
     /// Get the measure whose log-density this represents
@@ -229,6 +231,7 @@ where
 
 /// Trait for dispatching based on exponential family boolean combinations
 pub trait ExpFamDispatch<T, M1, M2, F> {
+    /// Compute the relative log-density between two measures
     fn compute(measure: &M1, base_measure: &M2, x: &T) -> F;
 }
 
@@ -291,7 +294,9 @@ where
 {
     #[inline]
     fn compute(measure: &M1, base_measure: &M2, x: &T) -> F {
-        // For now, use general approach - we can add same-type optimization later
+        // General approach for exponential families (both same and different types)
+        // The optimization for same-type exponential families is available via
+        // the compute_exp_fam_relative_density function for manual use
         measure.log_density_wrt_root(x) - base_measure.log_density_wrt_root(x)
     }
 }
@@ -347,6 +352,7 @@ where
     T: Clone + std::hash::Hash + Eq,
     F: Clone,
 {
+    /// Create a new cached log-density wrapper
     pub fn new(inner: L) -> Self {
         Self {
             inner,
@@ -398,6 +404,7 @@ pub trait LogDensityCaching<T>: LogDensityTrait<T> + Sized
 where
     T: Clone,
 {
+    /// Create a cached version of this log-density for a specific numeric type
     fn cached_for<F: Clone>(self) -> CachedLogDensity<Self, T, F>
     where
         T: std::hash::Hash + Eq,

@@ -1,10 +1,10 @@
-//! Core abstractions for measures and densities.
-//!
-//! This module provides the fundamental types and traits for working with
-//! measure theory concepts in a type-safe way.
+//! Core traits and types for the measures library.
 
+/// Log-density computation traits and implementations
 pub mod density;
+/// Core measure trait and implementations
 pub mod measure;
+/// Type-level programming utilities
 pub mod types;
 pub mod utils;
 

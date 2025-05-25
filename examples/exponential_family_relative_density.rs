@@ -25,6 +25,7 @@ fn main() {
     demonstrate_exponential_optimization();
     demonstrate_mathematical_insight();
     demonstrate_performance_benefit();
+    demonstrate_best_practices();
 
     println!("\n🎉 === Exponential Family Optimization Complete! === 🎉");
     println!("✅ Demonstrated efficient relative density computation for exponential families");
@@ -146,47 +147,100 @@ fn demonstrate_performance_benefit() {
     println!("=== 4. Performance Benefit Analysis ===");
 
     let normal1 = Normal::new(0.0, 1.0);
-    let normal2 = Normal::new(1.0, 2.0);
-    let test_points: Vec<f64> = (0..1000).map(|i| f64::from(i) * 0.01).collect();
+    let normal2 = Normal::new(1.0, 1.5);
+    let points: Vec<f64> = (0..1000).map(|i| f64::from(i) * 0.01).collect();
 
-    println!(
-        "Computing relative density for {} points...",
-        test_points.len()
-    );
-
-    // Time the standard approach
+    // Benchmark standard approach
     let start = std::time::Instant::now();
-    let _standard_results: Vec<f64> = test_points
-        .iter()
-        .map(|&x| normal1.log_density().at(&x) - normal2.log_density().at(&x))
-        .collect();
+    for &x in &points {
+        let _result = normal1.log_density().at(&x) - normal2.log_density().at(&x);
+    }
     let standard_time = start.elapsed();
 
-    // Time the optimized approach
+    // Benchmark optimized approach
     let start = std::time::Instant::now();
-    let _optimized_results: Vec<f64> = test_points
-        .iter()
-        .map(|&x| normal1.log_density().wrt(normal2.clone()).at(&x))
-        .collect();
+    for &x in &points {
+        let _result =
+            measures::core::density::compute_exp_fam_relative_density(&normal1, &normal2, &x);
+    }
     let optimized_time = start.elapsed();
 
-    println!("Standard approach:  {standard_time:?}");
-    println!("Optimized approach: {optimized_time:?}");
-
-    if standard_time > optimized_time {
-        let speedup = standard_time.as_nanos() as f64 / optimized_time.as_nanos() as f64;
-        println!("Speedup: {speedup:.2}x faster");
-    } else {
-        println!("Note: For small computations, the difference may not be measurable");
-        println!("The benefit becomes more apparent with:");
-        println!("  • More complex exponential families");
-        println!("  • Higher-dimensional sufficient statistics");
-        println!("  • Repeated computations");
+    // Benchmark builder pattern (uses general approach currently)
+    let start = std::time::Instant::now();
+    for &x in &points {
+        let _result: f64 = normal1.log_density().wrt(normal2.clone()).at(&x);
     }
-    println!();
-    println!("💡 The optimization provides:");
+    let builder_time = start.elapsed();
+
+    println!("Computing relative density for {} points...", points.len());
+    println!("Standard approach:  {:.2}µs", standard_time.as_micros());
+    println!("Optimized approach: {:.3}µs", optimized_time.as_micros());
+    println!("Builder pattern:    {:.2}µs", builder_time.as_micros());
+
+    let speedup = standard_time.as_nanos() as f64 / optimized_time.as_nanos() as f64;
+    println!("Speedup: {speedup:.2}x faster");
+
+    println!("\n💡 The optimization provides:");
     println!("   • Fewer floating-point operations");
     println!("   • Better numerical stability");
     println!("   • Cleaner mathematical expression");
     println!("   • Automatic base measure handling");
+
+    println!("\n🔧 Performance Tips:");
+    println!("   • Use compute_exp_fam_relative_density() for same-type exponential families");
+    println!("   • Builder pattern: normal1.log_density().wrt(normal2).at(&x) (general approach)");
+    println!(
+        "   • Direct function: compute_exp_fam_relative_density(&normal1, &normal2, &x) (optimized)"
+    );
+}
+
+fn demonstrate_best_practices() {
+    println!("=== 5. Best Practices for Exponential Family Optimization ===");
+
+    let normal1 = Normal::new(0.0, 1.0);
+    let normal2 = Normal::new(1.0, 1.5);
+    let exp1 = Exponential::new(1.0);
+    let exp2 = Exponential::new(2.0);
+    let x = 0.5;
+
+    println!("📋 When to use each approach:\n");
+
+    // Case 1: Same exponential family type
+    println!("1️⃣ Same exponential family type (RECOMMENDED: Use optimized function)");
+    let standard_result = normal1.log_density().at(&x) - normal2.log_density().at(&x);
+    let optimized_result =
+        measures::core::density::compute_exp_fam_relative_density(&normal1, &normal2, &x);
+    println!("   Standard:  normal1.log_density().at(&x) - normal2.log_density().at(&x)");
+    println!("   Optimized: compute_exp_fam_relative_density(&normal1, &normal2, &x)");
+    println!("   Results:   {standard_result:.10} vs {optimized_result:.10} ✅");
+
+    // Case 2: Different exponential family types
+    println!("\n2️⃣ Different exponential family types (Use builder pattern)");
+    let mixed_result: f64 = normal1.log_density().wrt(exp1.clone()).at(&x);
+    println!("   Approach:  normal.log_density().wrt(exponential).at(&x)");
+    println!("   Result:    {mixed_result:.10}");
+
+    // Case 3: General case (always works)
+    println!("\n3️⃣ General case (Always works, but may not be optimal)");
+    let general_result: f64 = normal1.log_density().wrt(normal2.clone()).at(&x);
+    println!("   Approach:  measure1.log_density().wrt(measure2).at(&x)");
+    println!("   Result:    {general_result:.10}");
+
+    println!("\n🎯 Performance Guidelines:");
+    println!("   • Same type + array natural params → Use compute_exp_fam_relative_density()");
+    println!("   • Different types or mixed families → Use builder pattern");
+    println!("   • Batch computations → Consider pre-computing parameters");
+    println!("   • Repeated evaluations → Consider caching with .cached()");
+
+    println!("\n🔍 Type Constraints:");
+    println!("   • compute_exp_fam_relative_density requires:");
+    println!("     - Both measures are the same type M");
+    println!("     - M implements ExponentialFamily<T, F>");
+    println!("     - Natural parameters are arrays [F; N]");
+    println!("     - Sufficient statistics are arrays [F; N]");
+
+    println!("\n✨ Mathematical Insight:");
+    println!("   The optimization works because for same-type exponential families:");
+    println!("   log(p₁(x)/p₂(x)) = (η₁ - η₂)·T(x) - (A(η₁) - A(η₂))");
+    println!("   The base measure terms log h(x) cancel out completely!");
 }
