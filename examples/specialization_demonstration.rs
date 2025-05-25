@@ -4,7 +4,7 @@
 //! for exponential family relative density computation. Currently, we use
 //! zero-overhead optimization as the best available alternative.
 //!
-//! Run with: cargo run --example specialization_demonstration --features jit
+//! Run with: cargo run --example `specialization_demonstration` --features jit
 
 use measures::exponential_family::jit::ZeroOverheadOptimizer;
 use measures::{LogDensityBuilder, Normal};
@@ -28,7 +28,10 @@ fn main() {
 
     println!("Standard computation:  {standard_result:.10}");
     println!("Zero-overhead result:  {optimized_result:.10}");
-    println!("Difference:            {:.2e}", (standard_result - optimized_result).abs());
+    println!(
+        "Difference:            {:.2e}",
+        (standard_result - optimized_result).abs()
+    );
 
     println!("\n✨ === How Specialization Would Improve This === ✨");
     println!();
@@ -50,4 +53,4 @@ fn main() {
     println!("✅ Builder pattern provides consistent API");
     println!("⏳ Automatic dispatch awaits Rust specialization");
     println!("🚀 Performance is excellent with current approach!");
-} 
+}

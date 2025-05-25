@@ -3,7 +3,7 @@
 //! This example demonstrates why compile-time optimization (zero-overhead)
 //! is preferred over runtime type checking for exponential family optimization.
 //!
-//! Run with: cargo run --example runtime_vs_compile_time_optimization --features jit
+//! Run with: cargo run --example `runtime_vs_compile_time_optimization` --features jit
 
 use measures::exponential_family::jit::ZeroOverheadOptimizer;
 use measures::{LogDensityBuilder, Normal};
@@ -26,7 +26,10 @@ fn main() {
     println!("🎯 Results Comparison:");
     println!("Zero-overhead optimize: {optimized_result:.10}");
     println!("Builder pattern:        {builder_result:.10}");
-    println!("Difference:             {:.2e}", (optimized_result - builder_result).abs());
+    println!(
+        "Difference:             {:.2e}",
+        (optimized_result - builder_result).abs()
+    );
 
     println!("\n📊 Performance Analysis:");
     benchmark_approaches(&normal1, &normal2, &x);
@@ -53,7 +56,7 @@ fn main() {
 
 fn benchmark_approaches(normal1: &Normal<f64>, normal2: &Normal<f64>, x: &f64) {
     let iterations = 100_000;
-    
+
     // Benchmark zero-overhead optimization
     let optimized_fn = normal1.clone().zero_overhead_optimize_wrt(normal2.clone());
     let start = Instant::now();
@@ -77,14 +80,21 @@ fn benchmark_approaches(normal1: &Normal<f64>, normal2: &Normal<f64>, x: &f64) {
     let manual_time = start.elapsed();
 
     println!("Benchmark results ({iterations} iterations):");
-    println!("  Zero-overhead optimize: {:.2}µs", zero_overhead_time.as_micros());
-    println!("  Builder pattern:        {:.2}µs", builder_time.as_micros());
+    println!(
+        "  Zero-overhead optimize: {:.2}µs",
+        zero_overhead_time.as_micros()
+    );
+    println!(
+        "  Builder pattern:        {:.2}µs",
+        builder_time.as_micros()
+    );
     println!("  Manual subtraction:     {:.2}µs", manual_time.as_micros());
 
-    let zero_overhead_speedup = manual_time.as_nanos() as f64 / zero_overhead_time.as_nanos() as f64;
+    let zero_overhead_speedup =
+        manual_time.as_nanos() as f64 / zero_overhead_time.as_nanos() as f64;
     let builder_speedup = manual_time.as_nanos() as f64 / builder_time.as_nanos() as f64;
 
     println!("\nSpeedup vs manual subtraction:");
     println!("  Zero-overhead optimize: {zero_overhead_speedup:.2}x");
     println!("  Builder pattern:        {builder_speedup:.2}x");
-} 
+}

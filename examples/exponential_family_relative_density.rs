@@ -12,10 +12,10 @@
 //! The base measure terms log h(x) cancel out completely!
 //! This optimization is automatically applied by the zero-overhead system.
 //!
-//! Run with: cargo run --example exponential_family_relative_density --features jit
+//! Run with: cargo run --example `exponential_family_relative_density` --features jit
 
-use measures::exponential_family::jit::ZeroOverheadOptimizer;
 use measures::exponential_family::ExponentialFamily;
+use measures::exponential_family::jit::ZeroOverheadOptimizer;
 use measures::traits::DotProduct;
 use measures::{LogDensityBuilder, Normal, distributions::Exponential};
 
@@ -29,7 +29,9 @@ fn main() {
     demonstrate_best_practices();
 
     println!("\n🎉 === Zero-Overhead Optimization Complete! === 🎉");
-    println!("✅ Demonstrated efficient relative density computation using zero-overhead optimization");
+    println!(
+        "✅ Demonstrated efficient relative density computation using zero-overhead optimization"
+    );
     println!("✅ Showed mathematical correctness of the optimization");
     println!("🚀 Zero-overhead system provides significant performance improvements!");
 }
@@ -176,13 +178,23 @@ fn demonstrate_performance_benefit() {
     let zero_overhead_time = start.elapsed();
 
     println!("Computing relative density for {} points...", points.len());
-    println!("Manual subtraction:     {:.2}µs (not recommended)", manual_time.as_micros());
-    println!("Builder pattern:        {:.2}µs (RECOMMENDED)", builder_time.as_micros());
-    println!("Zero-overhead optimize: {:.2}µs (fastest)", zero_overhead_time.as_micros());
+    println!(
+        "Manual subtraction:     {:.2}µs (not recommended)",
+        manual_time.as_micros()
+    );
+    println!(
+        "Builder pattern:        {:.2}µs (RECOMMENDED)",
+        builder_time.as_micros()
+    );
+    println!(
+        "Zero-overhead optimize: {:.2}µs (fastest)",
+        zero_overhead_time.as_micros()
+    );
 
     let builder_vs_manual = manual_time.as_nanos() as f64 / builder_time.as_nanos() as f64;
-    let zero_overhead_vs_manual = manual_time.as_nanos() as f64 / zero_overhead_time.as_nanos() as f64;
-    
+    let zero_overhead_vs_manual =
+        manual_time.as_nanos() as f64 / zero_overhead_time.as_nanos() as f64;
+
     println!("\nSpeedup vs manual subtraction:");
     println!("  Builder pattern:        {builder_vs_manual:.2}x");
     println!("  Zero-overhead optimize: {zero_overhead_vs_manual:.2}x");
