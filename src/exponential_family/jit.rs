@@ -29,7 +29,7 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use measures::exponential_family::jit::{ZeroOverheadOptimizer, JITOptimizer};
+//! use measures::exponential_family::jit::{ZeroOverheadOptimizer, JITOptimizer, CustomJITOptimizer};
 //! use measures::Normal;
 //!
 //! let normal = Normal::new(2.0, 1.5);
@@ -41,7 +41,7 @@
 //! // JIT compilation (best for >88k calls)
 //! # #[cfg(feature = "jit")]
 //! # {
-//! if let Ok(jit_fn) = normal.compile_jit() {
+//! if let Ok(jit_fn) = normal.compile_custom_jit() {
 //!     let result = jit_fn.call(1.5);
 //! }
 //! # }
@@ -62,7 +62,6 @@ use crate::exponential_family::symbolic_ir::{ConstantPool, SymbolicLogDensity};
 use crate::exponential_family::{CustomSymbolicLogDensity, Expr};
 
 use crate::core::HasLogDensity;
-use crate::exponential_family::ExponentialFamily;
 use crate::traits::DotProduct;
 
 /// Errors that can occur during JIT compilation

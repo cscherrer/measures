@@ -113,8 +113,15 @@ where
         let natural_params = [self.alpha - T::one(), self.beta - T::one()];
 
         // Log partition: log B(α, β) = log Γ(α) + log Γ(β) - log Γ(α + β)
-        let log_partition =
-            gamma_ln(self.alpha) + gamma_ln(self.beta) - gamma_ln(self.alpha + self.beta);
+        let log_partition = {
+            let alpha_f64 = self.alpha.to_f64().unwrap();
+            let beta_f64 = self.beta.to_f64().unwrap();
+            let (ln_gamma_alpha, _) = alpha_f64.ln_gamma();
+            let (ln_gamma_beta, _) = beta_f64.ln_gamma();
+            let (ln_gamma_sum, _) = (alpha_f64 + beta_f64).ln_gamma();
+            let result_f64 = ln_gamma_alpha + ln_gamma_beta - ln_gamma_sum;
+            T::from(result_f64).unwrap()
+        };
 
         (natural_params, log_partition)
     }
@@ -143,7 +150,7 @@ where
     {
         let alpha_f64 = self.alpha.to_f64().unwrap();
         let beta_f64 = self.beta.to_f64().unwrap();
-        let log_beta_fn_f64 = {
+        let _log_beta_fn_f64 = {
             let (ln_gamma_alpha, _) = alpha_f64.ln_gamma();
             let (ln_gamma_beta, _) = beta_f64.ln_gamma();
             let (ln_gamma_sum, _) = (alpha_f64 + beta_f64).ln_gamma();

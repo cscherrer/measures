@@ -7,7 +7,6 @@
 
 use crate::exponential_family::jit::{JITError, JITFunction};
 use crate::exponential_family::symbolic_ir::{Expr, SymbolicLogDensity};
-use num_traits::Float;
 use std::any::TypeId;
 use std::collections::HashMap;
 

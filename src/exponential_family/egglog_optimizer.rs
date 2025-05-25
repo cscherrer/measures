@@ -80,7 +80,7 @@ impl EgglogOptimizer {
     /// Optimize an expression using egglog's equality saturation with limited iterations
     pub fn optimize(&mut self, expr: &Expr) -> Result<Expr, egglog::Error> {
         // Convert our Expr to egglog format
-        let egglog_expr = self.expr_to_egglog(expr)?;
+        let egglog_expr = Self::expr_to_egglog(expr)?;
 
         // Add the expression to the egraph
         let expr_id = format!("expr_{}", self.expr_counter);
@@ -98,57 +98,57 @@ impl EgglogOptimizer {
     }
 
     /// Convert our Expr to egglog string representation
-    fn expr_to_egglog(&self, expr: &Expr) -> Result<String, egglog::Error> {
+    fn expr_to_egglog(expr: &Expr) -> Result<String, egglog::Error> {
         match expr {
             Expr::Const(c) => Ok(format!("(Const {c:.1})")),
             Expr::Var(name) => Ok(format!("(Var \"{name}\")")),
             Expr::Add(left, right) => {
-                let left_str = self.expr_to_egglog(left)?;
-                let right_str = self.expr_to_egglog(right)?;
+                let left_str = Self::expr_to_egglog(left)?;
+                let right_str = Self::expr_to_egglog(right)?;
                 Ok(format!("(Add {left_str} {right_str})"))
             }
             Expr::Sub(left, right) => {
-                let left_str = self.expr_to_egglog(left)?;
-                let right_str = self.expr_to_egglog(right)?;
+                let left_str = Self::expr_to_egglog(left)?;
+                let right_str = Self::expr_to_egglog(right)?;
                 Ok(format!("(Sub {left_str} {right_str})"))
             }
             Expr::Mul(left, right) => {
-                let left_str = self.expr_to_egglog(left)?;
-                let right_str = self.expr_to_egglog(right)?;
+                let left_str = Self::expr_to_egglog(left)?;
+                let right_str = Self::expr_to_egglog(right)?;
                 Ok(format!("(Mul {left_str} {right_str})"))
             }
             Expr::Div(left, right) => {
-                let left_str = self.expr_to_egglog(left)?;
-                let right_str = self.expr_to_egglog(right)?;
+                let left_str = Self::expr_to_egglog(left)?;
+                let right_str = Self::expr_to_egglog(right)?;
                 Ok(format!("(Div {left_str} {right_str})"))
             }
             Expr::Pow(base, exp) => {
-                let base_str = self.expr_to_egglog(base)?;
-                let exp_str = self.expr_to_egglog(exp)?;
+                let base_str = Self::expr_to_egglog(base)?;
+                let exp_str = Self::expr_to_egglog(exp)?;
                 Ok(format!("(Pow {base_str} {exp_str})"))
             }
             Expr::Ln(inner) => {
-                let inner_str = self.expr_to_egglog(inner)?;
+                let inner_str = Self::expr_to_egglog(inner)?;
                 Ok(format!("(Ln {inner_str})"))
             }
             Expr::Exp(inner) => {
-                let inner_str = self.expr_to_egglog(inner)?;
+                let inner_str = Self::expr_to_egglog(inner)?;
                 Ok(format!("(Exp {inner_str})"))
             }
             Expr::Sqrt(inner) => {
-                let inner_str = self.expr_to_egglog(inner)?;
+                let inner_str = Self::expr_to_egglog(inner)?;
                 Ok(format!("(Sqrt {inner_str})"))
             }
             Expr::Sin(inner) => {
-                let inner_str = self.expr_to_egglog(inner)?;
+                let inner_str = Self::expr_to_egglog(inner)?;
                 Ok(format!("(Sin {inner_str})"))
             }
             Expr::Cos(inner) => {
-                let inner_str = self.expr_to_egglog(inner)?;
+                let inner_str = Self::expr_to_egglog(inner)?;
                 Ok(format!("(Cos {inner_str})"))
             }
             Expr::Neg(inner) => {
-                let inner_str = self.expr_to_egglog(inner)?;
+                let inner_str = Self::expr_to_egglog(inner)?;
                 Ok(format!("(Neg {inner_str})"))
             }
         }
@@ -183,16 +183,14 @@ mod tests {
 
     #[test]
     fn test_expr_to_egglog_conversion() {
-        let optimizer = EgglogOptimizer::new().unwrap();
-
         // Test simple constant
         let expr = Expr::Const(42.0);
-        let egglog_str = optimizer.expr_to_egglog(&expr).unwrap();
+        let egglog_str = EgglogOptimizer::expr_to_egglog(&expr).unwrap();
         assert_eq!(egglog_str, "(Const 42.0)");
 
         // Test variable
         let expr = Expr::Var("x".to_string());
-        let egglog_str = optimizer.expr_to_egglog(&expr).unwrap();
+        let egglog_str = EgglogOptimizer::expr_to_egglog(&expr).unwrap();
         assert_eq!(egglog_str, "(Var \"x\")");
 
         // Test addition
@@ -200,7 +198,7 @@ mod tests {
             Box::new(Expr::Var("x".to_string())),
             Box::new(Expr::Const(1.0)),
         );
-        let egglog_str = optimizer.expr_to_egglog(&expr).unwrap();
+        let egglog_str = EgglogOptimizer::expr_to_egglog(&expr).unwrap();
         assert_eq!(egglog_str, "(Add (Var \"x\") (Const 1.0))");
     }
 

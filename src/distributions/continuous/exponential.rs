@@ -18,21 +18,18 @@
 //! ```
 
 use crate::core::types::{False, True};
-use crate::core::utils::safe_convert;
 use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::Float;
 
-/// Exponential distribution Exp(λ).
+/// Exponential distribution Exp(λ)
 ///
-/// This is a member of the exponential family with:
-/// - Natural parameter: η = -λ
-/// - Sufficient statistic: T(x) = x
-/// - Log partition: A(η) = -log(-η) = log(λ)
-/// - Base measure: Lebesgue measure on [0, ∞)
-#[derive(Clone, Debug)]
+/// The exponential distribution is a continuous probability distribution that models
+/// the time between events in a Poisson process. It's parameterized by rate λ.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Exponential<T> {
+    /// Rate parameter λ (must be positive)
     pub rate: T,
 }
 
@@ -107,6 +104,9 @@ where
         (natural_param, log_partition)
     }
 }
+
+#[cfg(feature = "jit")]
+use crate::core::utils::safe_convert;
 
 // JIT optimization implementation
 #[cfg(feature = "jit")]

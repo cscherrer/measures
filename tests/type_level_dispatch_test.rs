@@ -6,7 +6,6 @@
 //! 3. The dispatch happens at compile time based on the `IsExponentialFamily` marker
 
 use measures::core::LogDensityBuilder;
-use measures::core::density::EvaluateAt;
 use measures::distributions::continuous::Cauchy;
 use measures::distributions::continuous::normal::Normal;
 use measures::measures::primitive::lebesgue::LebesgueMeasure;
@@ -56,7 +55,7 @@ fn test_type_level_dispatch_is_zero_cost() {
     let _log_density = normal.log_density();
 
     // If this compiles, the dispatch is working at compile time
-    assert!(true);
+    // No assertion needed - compilation success is the test
 }
 
 #[test]

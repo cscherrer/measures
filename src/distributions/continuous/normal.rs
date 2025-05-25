@@ -23,16 +23,15 @@ use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
-/// Normal distribution N(μ, σ²).
+/// Normal distribution N(μ, σ²)
 ///
-/// This is a member of the exponential family with:
-/// - Natural parameters: η = [μ/σ², -1/(2σ²)]
-/// - Sufficient statistics: T(x) = [x, x²]
-/// - Log partition: A(η) = -η₁²/(4η₂) - ½log(-2η₂) - ½log(2π)
-/// - Base measure: Lebesgue measure (dx)
-#[derive(Clone, Debug)]
+/// The normal distribution is a continuous probability distribution characterized by
+/// its bell-shaped curve. It's parameterized by mean μ and standard deviation σ.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Normal<T> {
+    /// Mean parameter μ
     pub mean: T,
+    /// Standard deviation parameter σ
     pub std_dev: T,
 }
 
