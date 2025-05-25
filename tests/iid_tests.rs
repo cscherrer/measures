@@ -132,70 +132,69 @@ fn test_iid_empty_samples() {
 #[test]
 fn test_iid_is_proper_exponential_family() {
     use measures::exponential_family::ExponentialFamily;
-    
+
     // Create a normal distribution and IID version
     let normal = Normal::new(1.0, 2.0);
     let iid_normal = normal.clone().iid();
-    
+
     let samples = vec![0.5, 1.2, 0.8];
-    
+
     // Test that IID implements ExponentialFamily trait
     println!("✓ IID implements ExponentialFamily trait");
-    
+
     // Test natural parameters (should be same as underlying distribution)
     let natural_params = iid_normal.to_natural();
     let expected_natural_params = normal.to_natural();
     assert_eq!(natural_params[0], expected_natural_params[0]);
     assert_eq!(natural_params[1], expected_natural_params[1]);
     println!("✓ Natural parameters match underlying distribution");
-    
+
     // Test sufficient statistic computation (should be sum of individual sufficient statistics)
     let iid_sufficient_stat = iid_normal.sufficient_statistic(&samples);
-    
+
     // Compute expected sufficient statistic manually
-    let individual_stats: Vec<[f64; 2]> = samples.iter()
+    let individual_stats: Vec<[f64; 2]> = samples
+        .iter()
         .map(|&x| normal.sufficient_statistic(&x))
         .collect();
     let expected_stat = [
         individual_stats.iter().map(|s| s[0]).sum::<f64>(),
         individual_stats.iter().map(|s| s[1]).sum::<f64>(),
     ];
-    
+
     assert!((iid_sufficient_stat[0] - expected_stat[0]).abs() < 1e-10);
     assert!((iid_sufficient_stat[1] - expected_stat[1]).abs() < 1e-10);
     println!("✓ Sufficient statistics correctly computed as sum");
-    
+
     // Test base measure
     let _base_measure = iid_normal.base_measure();
     println!("✓ Base measure created successfully");
-    
+
     // Test that IID uses the specialized IID computation
     // NOTE: The general compute_exp_fam_log_density doesn't work for IID distributions
-    // because it doesn't handle the n·A(η) scaling. IID distributions need the 
+    // because it doesn't handle the n·A(η) scaling. IID distributions need the
     // specialized compute_iid_exp_fam_log_density function.
-    let log_density_via_iid_central_fn: f64 = 
+    let log_density_via_iid_central_fn: f64 =
         measures::exponential_family::compute_iid_exp_fam_log_density(&normal, &samples);
     let log_density_via_iid_method: f64 = iid_normal.iid_log_density(&samples);
-    
-    println!("IID central function result: {}", log_density_via_iid_central_fn);
-    println!("IID method result: {}", log_density_via_iid_method);
-    
+
+    println!("IID central function result: {log_density_via_iid_central_fn}");
+    println!("IID method result: {log_density_via_iid_method}");
+
     assert!(
         (log_density_via_iid_central_fn - log_density_via_iid_method).abs() < 1e-10,
-        "IID central function should match IID method: {} vs {}",
-        log_density_via_iid_central_fn, log_density_via_iid_method
+        "IID central function should match IID method: {log_density_via_iid_central_fn} vs {log_density_via_iid_method}"
     );
     println!("✓ IID central computation matches IID method");
-    
+
     // Verify this matches manual computation
     let manual_sum: f64 = samples.iter().map(|&x| normal.log_density().at(&x)).sum();
     assert!(
         (log_density_via_iid_method - manual_sum).abs() < 1e-10,
-        "IID method should match manual sum: {} vs {}",
-        log_density_via_iid_method, manual_sum
+        "IID method should match manual sum: {log_density_via_iid_method} vs {manual_sum}"
     );
     println!("✓ IID computation matches manual sum");
-    
+
     println!("=== IID is now a proper exponential family! ===");
 }
 

@@ -4,73 +4,37 @@
 //! distribution with mean 0 and standard deviation 1. It's a special case of the Normal
 //! distribution that is particularly optimized for computations.
 
-use crate::core::{False, Measure, MeasureMarker, True};
-use crate::exponential_family::traits::PrecomputeCache;
-use crate::exponential_family::{ExponentialFamily, ExponentialFamilyCache};
+use crate::core::types::{False, True};
+use crate::core::{Measure, MeasureMarker};
+use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
 use num_traits::{Float, FloatConst};
 
-/// Precomputed cache for standard normal distribution.
+/// Standard normal distribution N(0, 1).
 ///
-/// This struct caches the exponential family components for standard normal:
-/// - Natural parameters η = [0, -1/2]
-/// - Log partition function A(η) = ½log(2π)
-/// - Base measure (Lebesgue measure)
-#[derive(Clone)]
-pub struct StdNormalCache<T: Float> {
-    /// Cached natural parameters η = [0, -1/2]
-    pub natural_params: [T; 2],
-    /// Cached log partition function A(η) = ½log(2π)
-    pub log_partition: T,
-    /// Cached base measure
-    pub base_measure: LebesgueMeasure<T>,
+/// This is a special case of the normal distribution with mean 0 and standard deviation 1.
+/// It's a member of the exponential family with:
+/// - Natural parameters: η = [0, -1/2]
+/// - Sufficient statistics: T(x) = [x, x²]
+/// - Log partition: A(η) = -½log(2π)
+/// - Base measure: Lebesgue measure (dx)
+#[derive(Clone, Debug)]
+pub struct StdNormal<T> {
+    _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Float + FloatConst> StdNormalCache<T> {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            natural_params: [T::zero(), -T::from(0.5).unwrap()],
-            log_partition: T::PI().ln() / T::from(2.0).unwrap() + T::from(0.5).unwrap().ln(),
-            base_measure: LebesgueMeasure::new(),
-        }
-    }
-}
-
-impl<T: Float + FloatConst> Default for StdNormalCache<T> {
+impl<T: Float + FloatConst> Default for StdNormal<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-/// Implement the `ExponentialFamilyCache` trait - boilerplate eliminated!
-impl<T: Float + FloatConst> ExponentialFamilyCache<T, T> for StdNormalCache<T> {
-    type Distribution = StdNormal<T>;
-
-    fn from_distribution(_distribution: &Self::Distribution) -> Self {
-        Self::new()
-    }
-
-    fn log_partition(&self) -> T {
-        self.log_partition
-    }
-    fn natural_params(&self) -> &[T; 2] {
-        &self.natural_params
-    }
-    fn base_measure(&self) -> &LebesgueMeasure<T> {
-        &self.base_measure
-    }
+impl<T: Float> MeasureMarker for StdNormal<T> {
+    type IsPrimitive = False;
+    type IsExponentialFamily = True;
 }
 
-/// A standard normal (Gaussian) distribution with mean 0 and standard deviation 1.
-///
-/// This specialized implementation is optimized for the standard case.
-#[derive(Clone, Debug, Default)]
-pub struct StdNormal<T: Float> {
-    _phantom: std::marker::PhantomData<T>,
-}
-
-impl<T: Float> StdNormal<T> {
+impl<T: Float + FloatConst> StdNormal<T> {
     /// Create a new standard normal distribution.
     #[must_use]
     pub fn new() -> Self {
@@ -80,11 +44,6 @@ impl<T: Float> StdNormal<T> {
     }
 }
 
-impl<T: Float> MeasureMarker for StdNormal<T> {
-    type IsPrimitive = False;
-    type IsExponentialFamily = True;
-}
-
 impl<T: Float> Measure<T> for StdNormal<T> {
     type RootMeasure = LebesgueMeasure<T>;
 
@@ -92,35 +51,27 @@ impl<T: Float> Measure<T> for StdNormal<T> {
         true
     }
 
-    fn root_measure(&self) -> <Self as Measure<T>>::RootMeasure {
+    fn root_measure(&self) -> Self::RootMeasure {
         LebesgueMeasure::<T>::new()
     }
 }
 
-impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
-    type NaturalParam = [T; 2]; // (η₁, η₂) = (0, -1/2)
-    type SufficientStat = [T; 2]; // (x, x²)
+// Exponential family implementation
+impl<T> ExponentialFamily<T, T> for StdNormal<T>
+where
+    T: Float + FloatConst + std::fmt::Debug + 'static,
+{
+    type NaturalParam = [T; 2];
+    type SufficientStat = [T; 2];
     type BaseMeasure = LebesgueMeasure<T>;
-    type Cache = StdNormalCache<T>; // Simple cache for standard normal
 
-    fn from_natural(_param: <Self as ExponentialFamily<T, T>>::NaturalParam) -> Self {
-        // For StdNormal, natural parameters are always (0, -1/2)
-        // This implementation is included for completeness
+    fn from_natural(param: Self::NaturalParam) -> Self {
+        // For standard normal, we ignore the parameters and always return N(0,1)
+        let _ = param;
         Self::new()
     }
 
-    fn to_natural(&self) -> <Self as ExponentialFamily<T, T>>::NaturalParam {
-        // For StdNormal, natural parameters are (0, -1/2)
-        [T::zero(), -T::from(0.5).unwrap()]
-    }
-
-    fn log_partition(&self) -> T {
-        // Use cached computation for efficiency
-        let cache = StdNormalCache::from_distribution(self);
-        cache.log_partition()
-    }
-
-    fn sufficient_statistic(&self, x: &T) -> <Self as ExponentialFamily<T, T>>::SufficientStat {
+    fn sufficient_statistic(&self, x: &T) -> Self::SufficientStat {
         [*x, *x * *x]
     }
 
@@ -128,14 +79,14 @@ impl<T: Float + FloatConst> ExponentialFamily<T, T> for StdNormal<T> {
         LebesgueMeasure::<T>::new()
     }
 
-    fn cached_log_density(&self, cache: &Self::Cache, x: &T) -> T {
-        // Use the new ExponentialFamilyCache trait for cleaner implementation
-        cache.log_density(x)
-    }
-}
+    fn natural_and_log_partition(&self) -> (Self::NaturalParam, T) {
+        let natural_params = [
+            T::zero(),              // μ/σ² = 0/1 = 0
+            T::from(-0.5).unwrap(), // -1/(2σ²) = -1/2
+        ];
 
-impl<T: Float + FloatConst> PrecomputeCache<T, T> for StdNormal<T> {
-    fn precompute_cache(&self) -> Self::Cache {
-        StdNormalCache::new()
+        let log_partition = (T::from(2.0).unwrap() * T::PI()).ln() * T::from(0.5).unwrap();
+
+        (natural_params, log_partition)
     }
 }

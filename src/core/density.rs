@@ -1,7 +1,5 @@
 use super::measure::Measure;
 use crate::core::types::True;
-use crate::exponential_family::ExponentialFamily;
-use crate::exponential_family::traits::PrecomputeCache;
 use num_traits::Float;
 
 /// A trait representing the log-density between two measures. Goals for the
@@ -243,21 +241,21 @@ pub trait HasLogDensity<T, F> {
 /// Automatic implementation of `HasLogDensity` for exponential families.
 ///
 /// This implementation automatically provides log-density computation for any
-/// exponential family using the standard formula:
+/// exponential family using the simplified formula:
 /// log p(x|θ) = η·T(x) - A(η) + log h(x)
 impl<T: Clone, F, M> HasLogDensity<T, F> for M
 where
-    M: Measure<T, IsExponentialFamily = True> + ExponentialFamily<T, F> + Clone,
-    M: PrecomputeCache<T, F>,
+    M: Measure<T, IsExponentialFamily = True>
+        + crate::exponential_family::ExponentialFamily<T, F>
+        + Clone,
     F: Float,
     M::NaturalParam: crate::traits::DotProduct<M::SufficientStat, Output = F> + Clone,
     M::BaseMeasure: HasLogDensity<T, F>,
 {
     #[inline]
     fn log_density_wrt_root(&self, x: &T) -> F {
-        // Use cached exponential family computation automatically
-        let cache = self.precompute_cache();
-        self.cached_log_density(&cache, x)
+        // Use the simplified exponential family computation
+        self.exp_fam_log_density(x)
     }
 }
 

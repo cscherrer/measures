@@ -4,39 +4,28 @@
 //! distribution that expresses the probability of a given number of events occurring
 //! in a fixed interval of time or space.
 
-use crate::core::{False, Measure, MeasureMarker, True};
-use crate::exponential_family::traits::PrecomputeCache;
-use crate::exponential_family::{ExponentialFamily, GenericExpFamCache, GenericExpFamImpl};
+use crate::core::types::{False, True};
+use crate::core::{Measure, MeasureMarker};
+use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::derived::factorial::FactorialMeasure;
 use crate::measures::primitive::counting::CountingMeasure;
 use num_traits::{Float, FloatConst};
 
-/// A Poisson distribution.
+/// Poisson distribution with rate parameter λ.
 ///
-/// The Poisson distribution has a single parameter lambda (rate) and
-/// is defined over non-negative integers.
-///
-/// Uses the generic exponential family cache - no need for distribution-specific cache!
-#[derive(Clone)]
-pub struct Poisson<F: Float> {
-    /// The rate parameter (expected number of occurrences)
-    pub lambda: F,
+/// This is a member of the exponential family with:
+/// - Natural parameters: η = [log(λ)]
+/// - Sufficient statistics: T(x) = [x]
+/// - Log partition: A(η) = exp(η)
+/// - Base measure: Factorial measure (factorial term)
+#[derive(Clone, Debug)]
+pub struct Poisson<F> {
+    pub rate: F,
 }
 
-impl<F: Float + FloatConst> Poisson<F> {
-    /// Create a new Poisson distribution with the given rate.
-    ///
-    /// # Arguments
-    ///
-    /// * `lambda` - The rate parameter (must be positive)
-    ///
-    /// # Panics
-    ///
-    /// Panics if `lambda` is not positive.
-    #[must_use]
-    pub fn new(lambda: F) -> Self {
-        assert!(lambda > F::zero(), "Rate parameter must be positive");
-        Self { lambda }
+impl<F: Float> Default for Poisson<F> {
+    fn default() -> Self {
+        Self { rate: F::one() }
     }
 }
 
@@ -45,39 +34,38 @@ impl<F: Float> MeasureMarker for Poisson<F> {
     type IsExponentialFamily = True;
 }
 
+impl<F: Float + FloatConst> Poisson<F> {
+    /// Create a new Poisson distribution with the given rate parameter.
+    pub fn new(rate: F) -> Self {
+        assert!(rate > F::zero(), "Rate parameter must be positive");
+        Self { rate }
+    }
+}
+
 impl<F: Float> Measure<u64> for Poisson<F> {
     type RootMeasure = CountingMeasure<u64>;
 
     fn in_support(&self, _x: u64) -> bool {
-        true // All non-negative integers are in the support
+        true
     }
 
     fn root_measure(&self) -> Self::RootMeasure {
-        CountingMeasure::new()
+        CountingMeasure::<u64>::new()
     }
 }
 
-// Note: HasLogDensity implementation is now automatic via the blanket impl
-// for exponential families in density.rs! No manual implementation needed.
-
-impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
-    // Types specified once - no redundancy!
-    type NaturalParam = [F; 1]; // η = [log(λ)]
-    type SufficientStat = [F; 1]; // T(x) = [x] (as Float)
+// Exponential family implementation
+impl<F> ExponentialFamily<u64, F> for Poisson<F>
+where
+    F: Float + FloatConst + std::fmt::Debug + 'static,
+{
+    type NaturalParam = [F; 1];
+    type SufficientStat = [F; 1];
     type BaseMeasure = FactorialMeasure<F>;
-    type Cache = GenericExpFamCache<Self, u64, F>; // Generic cache!
 
     fn from_natural(param: Self::NaturalParam) -> Self {
-        Self::new(param[0].exp())
-    }
-
-    fn to_natural(&self) -> Self::NaturalParam {
-        [self.lambda.ln()]
-    }
-
-    fn log_partition(&self) -> F {
-        // For Poisson(λ), A(η) = e^η = λ
-        self.lambda
+        let [eta] = param;
+        Self::new(eta.exp())
     }
 
     fn sufficient_statistic(&self, x: &u64) -> Self::SufficientStat {
@@ -85,16 +73,12 @@ impl<F: Float + FloatConst> ExponentialFamily<u64, F> for Poisson<F> {
     }
 
     fn base_measure(&self) -> Self::BaseMeasure {
-        FactorialMeasure::new()
+        FactorialMeasure::<F>::new()
     }
 
-    fn cached_log_density(&self, cache: &Self::Cache, x: &u64) -> F {
-        self.cached_log_density_generic(cache, x)
-    }
-}
-
-impl<F: Float + FloatConst> PrecomputeCache<u64, F> for Poisson<F> {
-    fn precompute_cache(&self) -> Self::Cache {
-        self.precompute_cache_default()
+    fn natural_and_log_partition(&self) -> (Self::NaturalParam, F) {
+        let natural_params = [self.rate.ln()];
+        let log_partition = self.rate;
+        (natural_params, log_partition)
     }
 }

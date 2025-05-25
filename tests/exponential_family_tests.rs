@@ -79,7 +79,7 @@ fn test_poisson_exponential_family_conversion() {
     let reconstructed = Poisson::from_natural(natural_param);
 
     // Should reconstruct the same distribution
-    assert!((reconstructed.lambda - poisson.lambda).abs() < 1e-10);
+    assert!((reconstructed.rate - poisson.rate).abs() < 1e-10);
 }
 
 #[test]
@@ -100,7 +100,7 @@ fn test_poisson_log_partition() {
     let log_partition = poisson.log_partition();
 
     // For Poisson(λ), A(η) = e^η = λ
-    assert!((log_partition - poisson.lambda).abs() < 1e-10);
+    assert!((log_partition - poisson.rate).abs() < 1e-10);
 }
 
 #[test]
@@ -235,7 +235,7 @@ fn test_automatic_chain_rule_for_poisson() {
     let automatic_result = poisson.exp_fam_log_density(&k);
 
     // Manual computation for comparison
-    let manual_exp_fam = (k as f64) * poisson.lambda.ln() - poisson.lambda;
+    let manual_exp_fam = (k as f64) * poisson.rate.ln() - poisson.rate;
     let manual_factorial = if k == 0 {
         0.0
     } else {

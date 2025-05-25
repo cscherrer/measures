@@ -10,9 +10,9 @@
 //! 4. Generating optimized executable code
 //!
 //! The symbolic optimization can provide significant performance improvements
-//! over traditional caching by eliminating all runtime overhead.
+//! over traditional approaches by eliminating all runtime overhead.
 
-use crate::exponential_family::traits::{ExponentialFamily, PrecomputeCache};
+use crate::exponential_family::traits::ExponentialFamily;
 use rusymbols::Expression;
 use std::collections::HashMap;
 
@@ -23,7 +23,7 @@ where
 {
     /// Create a symbolic representation of the log-density function.
     fn symbolic_log_density(&self) -> SymbolicLogDensity;
-    
+
     /// Generate an optimized function from the symbolic representation.
     fn generate_optimized_function(&self) -> OptimizedFunction<X, F>;
 }
@@ -40,10 +40,11 @@ pub struct SymbolicLogDensity {
 
 impl SymbolicLogDensity {
     /// Create a new symbolic log-density representation.
+    #[must_use]
     pub fn new(
-        expression: Expression, 
-        parameters: HashMap<String, f64>, 
-        variables: Vec<String>
+        expression: Expression,
+        parameters: HashMap<String, f64>,
+        variables: Vec<String>,
     ) -> Self {
         Self {
             expression,
@@ -51,15 +52,19 @@ impl SymbolicLogDensity {
             variables,
         }
     }
-    
+
     /// Evaluate the symbolic expression at given variable values.
+    #[must_use]
     pub fn evaluate(&self, vars: &HashMap<&str, f64>) -> Option<f64> {
         self.expression.eval_args(vars)
     }
-    
+
     /// Evaluate the symbolic expression for a single variable.
+    #[must_use]
     pub fn evaluate_single(&self, var_name: &str, value: f64) -> Option<f64> {
-        let mut vars = self.parameters.iter()
+        let mut vars = self
+            .parameters
+            .iter()
             .map(|(k, v)| (k.as_str(), *v))
             .collect::<HashMap<&str, f64>>();
         vars.insert(var_name, value);
@@ -77,11 +82,12 @@ pub struct OptimizedFunction<X, F> {
     pub source_expression: String,
 }
 
-impl<X, F> OptimizedFunction<X, F> 
+impl<X, F> OptimizedFunction<X, F>
 where
     F: num_traits::Float,
 {
     /// Create a new optimized function.
+    #[must_use]
     pub fn new(
         function: Box<dyn Fn(&X) -> F>,
         constants: HashMap<String, f64>,
@@ -93,7 +99,7 @@ where
             source_expression,
         }
     }
-    
+
     /// Call the optimized function.
     pub fn call(&self, x: &X) -> F {
         (self.function)(x)
@@ -101,7 +107,7 @@ where
 }
 
 /// Extension trait to add symbolic optimization to existing distributions.
-pub trait SymbolicExtension<X, F>: ExponentialFamily<X, F> + PrecomputeCache<X, F>
+pub trait SymbolicExtension<X, F>: ExponentialFamily<X, F>
 where
     X: Clone,
     F: num_traits::Float + std::fmt::Debug,
@@ -115,10 +121,10 @@ where
     }
 }
 
-// Blanket implementation for all types that implement the required traits
+// Blanket implementation for all exponential family types
 impl<T, X, F> SymbolicExtension<X, F> for T
 where
-    T: ExponentialFamily<X, F> + PrecomputeCache<X, F>,
+    T: ExponentialFamily<X, F>,
     X: Clone,
     F: num_traits::Float + std::fmt::Debug,
 {
@@ -126,38 +132,39 @@ where
 
 /// Utility functions for symbolic optimization.
 pub mod utils {
-    use super::*;
-    
+    use super::{Expression, HashMap};
+
     /// Create a symbolic variable.
+    #[must_use]
     pub fn symbolic_var(name: &str) -> Expression {
         Expression::new_var(name)
     }
-    
+
     /// Create a symbolic constant.
+    #[must_use]
     pub fn symbolic_const(value: f64) -> Expression {
         Expression::new_val(value)
     }
-    
+
     /// Build a quadratic term: -(x - mu)² / (2 * sigma²)
-    pub fn quadratic_term(
-        x: &Expression, 
-        mu: f64, 
-        sigma: f64
-    ) -> Expression {
+    #[must_use]
+    pub fn quadratic_term(x: &Expression, mu: f64, sigma: f64) -> Expression {
         let mu_expr = Expression::new_val(mu);
         let sigma_squared = Expression::new_val(sigma * sigma);
         let two = Expression::new_val(2.0);
-        
+
         let x_minus_mu = x.clone() - mu_expr;
         -(x_minus_mu.clone() * x_minus_mu) / (two * sigma_squared)
     }
-    
+
     /// Build a linear term: coeff * x
+    #[must_use]
     pub fn linear_term(x: &Expression, coeff: f64) -> Expression {
         Expression::new_val(coeff) * x.clone()
     }
-    
+
     /// Extract numerical constants from an expression for code generation.
+    #[must_use]
     pub fn extract_constants(_expr: &Expression) -> HashMap<String, f64> {
         // This is a simplified implementation - a full version would
         // traverse the expression tree and extract all constants
@@ -168,36 +175,32 @@ pub mod utils {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_symbolic_log_density_creation() {
         let x = Expression::new_var("x");
         let mu = Expression::new_val(1.0);
         let expr = x - mu;
-        
+
         let mut params = HashMap::new();
         params.insert("mu".to_string(), 1.0);
-        
-        let symbolic = SymbolicLogDensity::new(
-            expr,
-            params,
-            vec!["x".to_string()]
-        );
-        
+
+        let symbolic = SymbolicLogDensity::new(expr, params, vec!["x".to_string()]);
+
         // Test evaluation
         let result = symbolic.evaluate_single("x", 2.0);
         assert_eq!(result, Some(1.0)); // 2.0 - 1.0 = 1.0
     }
-    
+
     #[test]
     fn test_quadratic_term() {
         let x = Expression::new_var("x");
         let quad = utils::quadratic_term(&x, 0.0, 1.0);
-        
+
         let mut vars = HashMap::new();
         vars.insert("x", 2.0);
-        
+
         let result = quad.eval_args(&vars);
         assert_eq!(result, Some(-2.0)); // -(2-0)²/(2*1²) = -4/2 = -2
     }
-} 
+}
