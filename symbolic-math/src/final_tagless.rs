@@ -39,16 +39,12 @@ use std::collections::HashMap;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 #[cfg(feature = "jit")]
-use cranelift_codegen::ir::{AbiParam, Function, InstBuilder, Value, types};
+use cranelift_codegen::ir::{InstBuilder, Value};
 #[cfg(feature = "jit")]
-use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
-#[cfg(feature = "jit")]
-use cranelift_jit::{JITBuilder, JITModule};
-#[cfg(feature = "jit")]
-use cranelift_module::{Linkage, Module};
+use cranelift_frontend::FunctionBuilder;
 
 #[cfg(feature = "jit")]
-use crate::jit::{JITError, GeneralJITFunction, JITSignature, CompilationStats, GeneralJITCompiler};
+use crate::jit::{GeneralJITCompiler, GeneralJITFunction, JITError};
 
 /// Helper trait that bundles all the common trait bounds for numeric types
 /// This makes the main `MathExpr` trait much cleaner and easier to read
@@ -835,6 +831,7 @@ pub struct JITEval;
 #[cfg(feature = "jit")]
 impl JITEval {
     /// Create a variable for JIT compilation
+    #[must_use]
     pub fn var<T: NumericType>(name: &str) -> JITExprBuilder {
         JITExprBuilder::new_var(name.to_string())
     }
@@ -843,18 +840,18 @@ impl JITEval {
     pub fn compile(expr: JITExprBuilder) -> Result<GeneralJITFunction, JITError> {
         // Convert JITExprBuilder to Expr for compatibility with existing JIT infrastructure
         let ast_expr = expr.to_expr();
-        
+
         // Analyze the expression to determine variables
         let variables = expr.collect_variables();
         let sorted_vars: Vec<_> = variables.into_iter().collect();
-        
+
         // Create the JIT compiler
         let compiler = GeneralJITCompiler::new()?;
-        
+
         // Compile using the existing infrastructure
         // For now, treat all variables as data variables (no parameters)
         let constants = std::collections::HashMap::new();
-        
+
         compiler.compile_expression(&ast_expr, &sorted_vars, &[], &constants)
     }
 }
@@ -881,11 +878,13 @@ pub enum JITExprBuilder {
 #[cfg(feature = "jit")]
 impl JITExprBuilder {
     /// Create a new variable
+    #[must_use]
     pub fn new_var(name: String) -> Self {
         Self::Variable(name)
     }
 
     /// Collect all variables in the expression
+    #[must_use]
     pub fn collect_variables(&self) -> std::collections::HashSet<String> {
         let mut vars = std::collections::HashSet::new();
         self.collect_variables_recursive(&mut vars);
@@ -918,6 +917,7 @@ impl JITExprBuilder {
     }
 
     /// Estimate the complexity of the expression for performance metrics
+    #[must_use]
     pub fn estimate_complexity(&self) -> usize {
         match self {
             Self::Constant(_) | Self::Variable(_) => 1,
@@ -940,6 +940,7 @@ impl JITExprBuilder {
     }
 
     /// Count the number of constants in the expression
+    #[must_use]
     pub fn count_constants(&self) -> usize {
         match self {
             Self::Constant(_) => 1,
@@ -959,15 +960,26 @@ impl JITExprBuilder {
     }
 
     /// Convert to Expr AST for compatibility with existing JIT infrastructure
+    #[must_use]
     pub fn to_expr(&self) -> Expr {
         match self {
             Self::Constant(c) => Expr::Const(*c),
             Self::Variable(name) => Expr::Var(name.clone()),
-            Self::Add(left, right) => Expr::Add(Box::new(left.to_expr()), Box::new(right.to_expr())),
-            Self::Sub(left, right) => Expr::Sub(Box::new(left.to_expr()), Box::new(right.to_expr())),
-            Self::Mul(left, right) => Expr::Mul(Box::new(left.to_expr()), Box::new(right.to_expr())),
-            Self::Div(left, right) => Expr::Div(Box::new(left.to_expr()), Box::new(right.to_expr())),
-            Self::Pow(left, right) => Expr::Pow(Box::new(left.to_expr()), Box::new(right.to_expr())),
+            Self::Add(left, right) => {
+                Expr::Add(Box::new(left.to_expr()), Box::new(right.to_expr()))
+            }
+            Self::Sub(left, right) => {
+                Expr::Sub(Box::new(left.to_expr()), Box::new(right.to_expr()))
+            }
+            Self::Mul(left, right) => {
+                Expr::Mul(Box::new(left.to_expr()), Box::new(right.to_expr()))
+            }
+            Self::Div(left, right) => {
+                Expr::Div(Box::new(left.to_expr()), Box::new(right.to_expr()))
+            }
+            Self::Pow(left, right) => {
+                Expr::Pow(Box::new(left.to_expr()), Box::new(right.to_expr()))
+            }
             Self::Neg(inner) => Expr::Neg(Box::new(inner.to_expr())),
             Self::Ln(inner) => Expr::Ln(Box::new(inner.to_expr())),
             Self::Exp(inner) => Expr::Exp(Box::new(inner.to_expr())),
@@ -1072,29 +1084,29 @@ fn generate_ln_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, 
     // For now, use a simple Taylor series approximation
     // ln(1+x) ≈ x - x²/2 + x³/3 for |x| < 1
     // For general ln(x), we can use ln(x) = ln(1 + (x-1)) when x is close to 1
-    
+
     // This is a simplified implementation - a production version would use
     // more sophisticated approximations or call to libm
     let one = builder.ins().f64const(1.0);
     let two = builder.ins().f64const(2.0);
     let three = builder.ins().f64const(3.0);
-    
+
     // x - 1
     let x_minus_1 = builder.ins().fsub(val, one);
-    
+
     // (x-1)²
     let x2 = builder.ins().fmul(x_minus_1, x_minus_1);
-    
+
     // (x-1)³
     let x3 = builder.ins().fmul(x2, x_minus_1);
-    
+
     // x - x²/2 + x³/3
     let term2 = builder.ins().fdiv(x2, two);
     let term3 = builder.ins().fdiv(x3, three);
-    
+
     let result = builder.ins().fsub(x_minus_1, term2);
     let result = builder.ins().fadd(result, term3);
-    
+
     Ok(result)
 }
 
@@ -1104,21 +1116,21 @@ fn generate_exp_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value,
     let one = builder.ins().f64const(1.0);
     let two = builder.ins().f64const(2.0);
     let six = builder.ins().f64const(6.0);
-    
+
     // x²
     let x2 = builder.ins().fmul(val, val);
-    
+
     // x³
     let x3 = builder.ins().fmul(x2, val);
-    
+
     // 1 + x + x²/2 + x³/6
     let term2 = builder.ins().fdiv(x2, two);
     let term3 = builder.ins().fdiv(x3, six);
-    
+
     let result = builder.ins().fadd(one, val);
     let result = builder.ins().fadd(result, term2);
     let result = builder.ins().fadd(result, term3);
-    
+
     Ok(result)
 }
 
@@ -1127,22 +1139,22 @@ fn generate_sin_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value,
     // Taylor series: sin(x) ≈ x - x³/6 + x⁵/120
     let six = builder.ins().f64const(6.0);
     let one_twenty = builder.ins().f64const(120.0);
-    
+
     // x³
     let x2 = builder.ins().fmul(val, val);
     let x3 = builder.ins().fmul(x2, val);
-    
+
     // x⁵
     let x4 = builder.ins().fmul(x3, val);
     let x5 = builder.ins().fmul(x4, val);
-    
+
     // x - x³/6 + x⁵/120
     let term2 = builder.ins().fdiv(x3, six);
     let term3 = builder.ins().fdiv(x5, one_twenty);
-    
+
     let result = builder.ins().fsub(val, term2);
     let result = builder.ins().fadd(result, term3);
-    
+
     Ok(result)
 }
 
@@ -1152,20 +1164,20 @@ fn generate_cos_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value,
     let one = builder.ins().f64const(1.0);
     let two = builder.ins().f64const(2.0);
     let twentyfour = builder.ins().f64const(24.0);
-    
+
     // x²
     let x2 = builder.ins().fmul(val, val);
-    
+
     // x⁴
     let x4 = builder.ins().fmul(x2, x2);
-    
+
     // 1 - x²/2 + x⁴/24
     let term2 = builder.ins().fdiv(x2, two);
     let term3 = builder.ins().fdiv(x4, twentyfour);
-    
+
     let result = builder.ins().fsub(one, term2);
     let result = builder.ins().fadd(result, term3);
-    
+
     Ok(result)
 }
 
@@ -1176,7 +1188,8 @@ impl MathExpr for JITEval {
     fn constant<T: NumericType>(value: T) -> Self::Repr<T> {
         // For JIT compilation, we need to convert to f64
         // This is a limitation we'll address when we support more numeric types
-        let f64_value = format!("{value}").parse::<f64>()
+        let f64_value = format!("{value}")
+            .parse::<f64>()
             .unwrap_or_else(|_| panic!("Cannot convert {value} to f64 for JIT compilation"));
         JITExprBuilder::Constant(f64_value)
     }
@@ -1392,7 +1405,7 @@ mod tests {
 
         let jit_expr = test_expr::<JITEval>(JITEval::var::<f64>("x"));
         let compiled = JITEval::compile(jit_expr).expect("JIT compilation should succeed");
-        
+
         // Test the compiled function
         let result = compiled.call_single(5.0);
         assert_eq!(result, 6.0); // 5 + 1 = 6
@@ -1408,17 +1421,18 @@ mod tests {
         let two = JITEval::constant::<f64>(2.0);
         let x_var = JITEval::var::<f64>("x");
         let x_var2 = JITEval::var::<f64>("x");
-        
+
         let x_squared = JITEval::pow::<f64>(x_var, two);
         let two_x = JITEval::mul::<f64, f64, f64>(JITEval::constant::<f64>(2.0), x_var2);
-        let jit_expr = JITEval::add::<f64, f64, f64>(JITEval::add::<f64, f64, f64>(x_squared, two_x), one);
+        let jit_expr =
+            JITEval::add::<f64, f64, f64>(JITEval::add::<f64, f64, f64>(x_squared, two_x), one);
 
         let compiled = JITEval::compile(jit_expr).expect("JIT compilation should succeed");
-        
+
         // Test the compiled function
         let result = compiled.call_single(3.0);
         assert_eq!(result, 16.0); // (3+1)^2 = 16
-        
+
         let result = compiled.call_single(-1.0);
         assert_eq!(result, 0.0); // (-1+1)^2 = 0
     }
@@ -1433,9 +1447,12 @@ mod tests {
 
         let jit_expr = test_expr::<JITEval>(JITEval::var::<f64>("x"));
         let compiled = JITEval::compile(jit_expr).expect("JIT compilation should succeed");
-        
+
         // Test the compiled function (with some tolerance for Taylor series approximation)
         let result = compiled.call_single(2.0);
-        assert!((result - 2.0).abs() < 0.1, "exp(ln(2)) should be approximately 2, got {result}");
+        assert!(
+            (result - 2.0).abs() < 0.1,
+            "exp(ln(2)) should be approximately 2, got {result}"
+        );
     }
 }
