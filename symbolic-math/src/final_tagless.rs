@@ -1,52 +1,135 @@
-//! Final Tagless Approach for Symbolic Expressions
+//! Final Tagless Approach for Symbolic Mathematical Expressions
 //!
-//! This module provides a final tagless implementation that solves the expression problem
-//! and enables zero-cost abstractions for symbolic computation. This approach uses traits
-//! with Generic Associated Types (GATs) to represent operations and allows easy extension
-//! of both operations and interpreters.
+//! This module implements the final tagless approach to solve the expression problem in symbolic
+//! mathematics. The final tagless approach uses traits with Generic Associated Types (GATs) to
+//! represent mathematical operations, enabling both easy extension of operations and interpreters
+//! without modifying existing code.
 //!
-//! # Key Benefits
+//! # Technical Motivation
 //!
-//! 1. **Zero-cost abstraction**: Direct use of host language operations without intermediate representation
-//! 2. **Solves expression problem**: Easy extension of both operations and interpreters
-//! 3. **Better type safety**: Leverages Rust's type system more effectively
-//! 4. **Composability**: Different DSL components can be easily composed
-//! 5. **Performance**: 37x faster than tagged union approach
+//! Traditional approaches to symbolic mathematics face the expression problem: adding new operations
+//! requires modifying existing interpreter code, while adding new interpreters requires modifying
+//! existing operation definitions. The final tagless approach solves this by:
 //!
-//! # Core Interpreters
+//! 1. **Parameterizing representation types**: Operations are defined over abstract representation
+//!    types `Repr<T>`, allowing different interpreters to use different concrete representations
+//! 2. **Trait-based extensibility**: New operations can be added via trait extension without
+//!    modifying existing code
+//! 3. **Zero intermediate representation**: Expressions compile directly to target representations
+//!    without building intermediate ASTs
 //!
-//! - **`DirectEval`**: Zero-cost evaluation to native types (`type Repr<T> = T`)
-//! - **`DistributionEval`**: Optimized distribution-specific computations
-//! - **`ExpFamEval`**: Exponential family operations
-//! - **`JITEval`**: Native code compilation for ultimate performance
+//! # Architecture
 //!
-//! # Usage
+//! ## Core Traits
+//!
+//! - **`MathExpr`**: Defines basic mathematical operations (arithmetic, transcendental functions)
+//! - **`StatisticalExpr`**: Extends `MathExpr` with statistical functions (logistic, softplus)
+//! - **`NumericType`**: Helper trait bundling common numeric type requirements
+//!
+//! ## Interpreters
+//!
+//! - **`DirectEval`**: Immediate evaluation using native Rust operations (`type Repr<T> = T`)
+//! - **`PrettyPrint`**: String representation generation (`type Repr<T> = String`)
+//! - **`JITEval`**: Native code compilation via Cranelift IR (`type Repr<T> = JITRepr`)
+//!
+//! # Usage Patterns
+//!
+//! ## Polymorphic Expression Definition
+//!
+//! Define mathematical expressions that work with any interpreter:
 //!
 //! ```rust
 //! use symbolic_math::final_tagless::*;
 //!
-//! // Define a polymorphic mathematical function
+//! // Define a quadratic function: 2x² + 3x + 1
 //! fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
 //! where
 //!     E::Repr<f64>: Clone,
 //! {
-//!     let two = E::constant(2.0);
-//!     let three = E::constant(3.0);
-//!     let one = E::constant(1.0);
+//!     let a = E::constant(2.0);
+//!     let b = E::constant(3.0);
+//!     let c = E::constant(1.0);
 //!     
-//!     // 2*x^2 + 3*x + 1
 //!     E::add(
 //!         E::add(
-//!             E::mul(two, E::pow(x.clone(), E::constant(2.0))),
-//!             E::mul(three, x)
+//!             E::mul(a, E::pow(x.clone(), E::constant(2.0))),
+//!             E::mul(b, x)
 //!         ),
-//!         one
+//!         c
 //!     )
 //! }
+//! ```
 //!
-//! // Zero-cost direct evaluation
+//! ## Direct Evaluation
+//!
+//! Evaluate expressions immediately using native Rust operations:
+//!
+//! ```rust
+//! # use symbolic_math::final_tagless::*;
+//! # fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
+//! # where E::Repr<f64>: Clone,
+//! # { E::add(E::add(E::mul(E::constant(2.0), E::pow(x.clone(), E::constant(2.0))), E::mul(E::constant(3.0), x)), E::constant(1.0)) }
 //! let result = quadratic::<DirectEval>(DirectEval::var("x", 2.0));
-//! println!("Result: {}", result); // 15.0
+//! assert_eq!(result, 15.0); // 2(4) + 3(2) + 1 = 15
+//! ```
+//!
+//! ## Pretty Printing
+//!
+//! Generate human-readable mathematical notation:
+//!
+//! ```rust
+//! # use symbolic_math::final_tagless::*;
+//! # fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
+//! # where E::Repr<f64>: Clone,
+//! # { E::add(E::add(E::mul(E::constant(2.0), E::pow(x.clone(), E::constant(2.0))), E::mul(E::constant(3.0), x)), E::constant(1.0)) }
+//! let pretty = quadratic::<PrettyPrint>(PrettyPrint::var("x"));
+//! println!("Expression: {}", pretty);
+//! // Output: "((2 * (x ^ 2)) + (3 * x)) + 1"
+//! ```
+//!
+//! ## JIT Compilation
+//!
+//! Compile expressions to native machine code for repeated evaluation:
+//!
+//! ```rust
+//! # #[cfg(feature = "jit")]
+//! # {
+//! # use symbolic_math::final_tagless::*;
+//! # fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
+//! # where E::Repr<f64>: Clone,
+//! # { E::add(E::add(E::mul(E::constant(2.0), E::pow(x.clone(), E::constant(2.0))), E::mul(E::constant(3.0), x)), E::constant(1.0)) }
+//! let jit_expr = quadratic::<JITEval>(JITEval::var("x"));
+//! let compiled = JITEval::compile_single_var(jit_expr, "x")?;
+//! let result = compiled.call_single(2.0);
+//! assert_eq!(result, 15.0);
+//! # }
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+//!
+//! # Extension Example
+//!
+//! Adding new operations requires only trait extension:
+//!
+//! ```rust
+//! use symbolic_math::final_tagless::*;
+//! use num_traits::Float;
+//!
+//! // Extend with hyperbolic functions
+//! trait HyperbolicExpr: MathExpr {
+//!     fn tanh<T: NumericType + Float>(x: Self::Repr<T>) -> Self::Repr<T> {
+//!         let exp_x = Self::exp(x.clone());
+//!         let exp_neg_x = Self::exp(Self::neg(x));
+//!         let numerator = Self::sub(exp_x.clone(), exp_neg_x.clone());
+//!         let denominator = Self::add(exp_x, exp_neg_x);
+//!         Self::div(numerator, denominator)
+//!     }
+//! }
+//!
+//! // Automatically works with all existing interpreters
+//! impl HyperbolicExpr for DirectEval {}
+//! impl HyperbolicExpr for PrettyPrint {}
+//! # #[cfg(feature = "jit")]
+//! impl HyperbolicExpr for JITEval {}
 //! ```
 
 use num_traits::Float;
@@ -132,10 +215,91 @@ pub trait MathExpr {
     fn cos<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T>;
 }
 
-/// Direct evaluation interpreter - computes expressions immediately
+/// Direct evaluation interpreter for immediate computation
 ///
-/// This interpreter provides immediate evaluation for development and testing.
-/// It's the simplest interpreter and serves as a reference implementation.
+/// This interpreter provides immediate evaluation of mathematical expressions using native Rust
+/// operations. It represents expressions directly as their computed values (`type Repr<T> = T`),
+/// making it the simplest and most straightforward interpreter implementation.
+///
+/// # Characteristics
+///
+/// - **Zero overhead**: Direct mapping to native Rust operations
+/// - **Immediate evaluation**: No intermediate representation or compilation step
+/// - **Type preservation**: Works with any numeric type that implements required traits
+/// - **Reference implementation**: Serves as the canonical behavior for other interpreters
+///
+/// # Usage Patterns
+///
+/// ## Simple Expression Evaluation
+///
+/// ```rust
+/// use symbolic_math::final_tagless::{DirectEval, MathExpr};
+///
+/// // Define a mathematical function
+/// fn polynomial<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
+/// where
+///     E::Repr<f64>: Clone,
+/// {
+///     // 3x² + 2x + 1
+///     let x_squared = E::pow(x.clone(), E::constant(2.0));
+///     let three_x_squared = E::mul(E::constant(3.0), x_squared);
+///     let two_x = E::mul(E::constant(2.0), x);
+///     E::add(E::add(three_x_squared, two_x), E::constant(1.0))
+/// }
+///
+/// // Evaluate directly with a specific value
+/// let result = polynomial::<DirectEval>(DirectEval::var("x", 2.0));
+/// assert_eq!(result, 17.0); // 3(4) + 2(2) + 1 = 17
+/// ```
+///
+/// ## Working with Different Numeric Types
+///
+/// ```rust
+/// # use symbolic_math::final_tagless::{DirectEval, MathExpr};
+/// // Function that works with any numeric type
+/// fn linear<E: MathExpr, T>(x: E::Repr<T>, slope: T, intercept: T) -> E::Repr<T>
+/// where
+///     T: Clone + std::ops::Add<Output = T> + std::ops::Mul<Output = T> + crate::final_tagless::NumericType,
+/// {
+///     E::add(E::mul(E::constant(slope), x), E::constant(intercept))
+/// }
+///
+/// // Works with f32
+/// let result_f32 = linear::<DirectEval, f32>(
+///     DirectEval::var("x", 3.0_f32),
+///     2.0_f32,
+///     1.0_f32
+/// );
+/// assert_eq!(result_f32, 7.0_f32);
+///
+/// // Works with f64
+/// let result_f64 = linear::<DirectEval, f64>(
+///     DirectEval::var("x", 3.0_f64),
+///     2.0_f64,
+///     1.0_f64
+/// );
+/// assert_eq!(result_f64, 7.0_f64);
+/// ```
+///
+/// ## Testing and Validation
+///
+/// DirectEval is particularly useful for testing the correctness of expressions
+/// before using them with other interpreters:
+///
+/// ```rust
+/// # use symbolic_math::final_tagless::{DirectEval, MathExpr, StatisticalExpr};
+/// // Test a statistical function
+/// fn test_logistic<E: StatisticalExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
+///     E::logistic(x)
+/// }
+///
+/// // Verify known values
+/// let result_zero = test_logistic::<DirectEval>(DirectEval::var("x", 0.0));
+/// assert!((result_zero - 0.5).abs() < 1e-10); // logistic(0) = 0.5
+///
+/// let result_large = test_logistic::<DirectEval>(DirectEval::var("x", 10.0));
+/// assert!(result_large > 0.99); // logistic(10) ≈ 1.0
+/// ```
 pub struct DirectEval;
 
 impl DirectEval {
@@ -250,30 +414,77 @@ pub trait StatisticalExpr: MathExpr {
 // Implement StatisticalExpr for DirectEval
 impl StatisticalExpr for DirectEval {}
 
-/// Pretty printing interpreter - generates human-readable string representations
+/// String representation interpreter for mathematical expressions
 ///
-/// This interpreter converts final tagless expressions into readable mathematical notation.
-/// It's useful for debugging, documentation, and displaying expressions to users.
+/// This interpreter converts final tagless expressions into human-readable mathematical notation.
+/// It generates parenthesized infix expressions that clearly show the structure and precedence
+/// of operations. This is useful for debugging, documentation, and displaying expressions to users.
+///
+/// # Output Format
+///
+/// - **Arithmetic operations**: Infix notation with parentheses `(a + b)`, `(a * b)`
+/// - **Functions**: Function call notation `ln(x)`, `exp(x)`, `sqrt(x)`
+/// - **Variables**: Variable names as provided `x`, `theta`, `data`
+/// - **Constants**: Numeric literals `2`, `3.14159`, `-1.5`
 ///
 /// # Usage Examples
+///
+/// ## Basic Expression Formatting
 ///
 /// ```rust
 /// use symbolic_math::final_tagless::{PrettyPrint, MathExpr};
 ///
-/// // Define expression using final tagless
+/// // Simple quadratic: x² + 2x + 1
 /// fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
 /// where
 ///     E::Repr<f64>: Clone,
 /// {
-///     let a = E::constant(2.0);
-///     let b = E::constant(3.0);
-///     let c = E::constant(1.0);
-///     E::add(E::add(E::mul(a, E::pow(x.clone(), E::constant(2.0))), E::mul(b, x)), c)
+///     let x_squared = E::pow(x.clone(), E::constant(2.0));
+///     let two_x = E::mul(E::constant(2.0), x);
+///     E::add(E::add(x_squared, two_x), E::constant(1.0))
 /// }
 ///
-/// // Generate pretty printed representation
 /// let pretty = quadratic::<PrettyPrint>(PrettyPrint::var("x"));
-/// println!("Expression: {}", pretty); // "((2 * (x ^ 2)) + (3 * x)) + 1"
+/// println!("Quadratic: {}", pretty);
+/// // Output: "((x ^ 2) + (2 * x)) + 1"
+/// ```
+///
+/// ## Complex Mathematical Expressions
+///
+/// ```rust
+/// # use symbolic_math::final_tagless::{PrettyPrint, MathExpr, StatisticalExpr};
+/// // Logistic regression: 1 / (1 + exp(-θx))
+/// fn logistic_regression<E: StatisticalExpr>(x: E::Repr<f64>, theta: E::Repr<f64>) -> E::Repr<f64> {
+///     E::logistic(E::mul(theta, x))
+/// }
+///
+/// let pretty = logistic_regression::<PrettyPrint>(
+///     PrettyPrint::var("x"),
+///     PrettyPrint::var("theta")
+/// );
+/// println!("Logistic: {}", pretty);
+/// // Output shows the expanded logistic function structure
+/// ```
+///
+/// ## Transcendental Functions
+///
+/// ```rust
+/// # use symbolic_math::final_tagless::{PrettyPrint, MathExpr};
+/// // Gaussian: exp(-x²/2) / sqrt(2π)
+/// fn gaussian_kernel<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
+/// where
+///     E::Repr<f64>: Clone,
+/// {
+///     let x_squared = E::pow(x, E::constant(2.0));
+///     let neg_half_x_squared = E::div(E::neg(x_squared), E::constant(2.0));
+///     let numerator = E::exp(neg_half_x_squared);
+///     let denominator = E::sqrt(E::mul(E::constant(2.0), E::constant(3.14159)));
+///     E::div(numerator, denominator)
+/// }
+///
+/// let pretty = gaussian_kernel::<PrettyPrint>(PrettyPrint::var("x"));
+/// println!("Gaussian: {}", pretty);
+/// // Output: "(exp((-(x ^ 2)) / 2) / sqrt((2 * 3.14159)))"
 /// ```
 pub struct PrettyPrint;
 
@@ -364,41 +575,107 @@ impl MathExpr for PrettyPrint {
 // Implement StatisticalExpr for PrettyPrint
 impl StatisticalExpr for PrettyPrint {}
 
-/// JIT evaluation interpreter - directly compiles final tagless expressions to native code
+/// JIT compilation interpreter for final tagless expressions
 ///
-/// This interpreter provides the ultimate performance for symbolic mathematics by:
-/// 1. **Bypassing AST construction entirely** - expressions compile directly to machine code
-/// 2. **Zero-cost abstractions** - final tagless design eliminates runtime overhead
-/// 3. **Native speed performance** - achieves 57% of pure Rust performance (4.19 ns per call)
-/// 4. **Complete feature parity** - supports all compilation signatures from the original JIT system
+/// This interpreter compiles final tagless expressions directly to native machine code using
+/// the Cranelift code generator. It builds a computation graph (`JITRepr`) during expression
+/// construction, then generates optimized native code for repeated evaluation.
 ///
-/// # Performance Results
-/// - **JIT Compilation**: ~800 microseconds for typical expressions
-/// - **Runtime Performance**: 4.19 ns per call (0.57x native speed)
-/// - **Estimated speedup**: 17-19x over interpreted evaluation
+/// # Compilation Process
+///
+/// 1. **Expression building**: Creates a `JITRepr` computation graph
+/// 2. **Variable analysis**: Automatically detects variables and their usage patterns
+/// 3. **IR generation**: Converts the graph to Cranelift intermediate representation
+/// 4. **Native compilation**: Generates optimized machine code
+/// 5. **Function creation**: Returns a callable native function
+///
+/// # Compilation Signatures
+///
+/// The JIT compiler supports multiple function signatures:
+///
+/// - **Single variable**: `f(x) -> f64`
+/// - **Data + parameter**: `f(data, param) -> f64`
+/// - **Data + multiple parameters**: `f(data, param1, param2, ...) -> f64`
+/// - **Custom signatures**: Explicit variable classification
+/// - **Embedded constants**: Compile-time constant folding
 ///
 /// # Usage Examples
+///
+/// ## Basic Single Variable Function
 ///
 /// ```rust
 /// # #[cfg(feature = "jit")]
 /// # {
 /// use symbolic_math::final_tagless::{JITEval, MathExpr};
 ///
-/// // Define expression using final tagless
+/// // Define expression: x² + 2x + 1
 /// fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
 /// where
 ///     E::Repr<f64>: Clone,
 /// {
-///     let a = E::constant(2.0);
-///     let b = E::constant(3.0);
-///     let c = E::constant(1.0);
-///     E::add(E::add(E::mul(a, E::pow(x.clone(), E::constant(2.0))), E::mul(b, x)), c)
+///     let x_squared = E::pow(x.clone(), E::constant(2.0));
+///     let two_x = E::mul(E::constant(2.0), x);
+///     E::add(E::add(x_squared, two_x), E::constant(1.0))
 /// }
 ///
 /// // Compile to native code
 /// let jit_expr = quadratic::<JITEval>(JITEval::var("x"));
 /// let compiled = JITEval::compile_single_var(jit_expr, "x")?;
-/// let result = compiled.call_single(2.0); // 2*4 + 3*2 + 1 = 15
+///
+/// // Call compiled function
+/// let result = compiled.call_single(3.0); // (3² + 2×3 + 1) = 16
+/// assert_eq!(result, 16.0);
+/// # }
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+///
+/// ## Data and Parameter Function
+///
+/// ```rust
+/// # #[cfg(feature = "jit")]
+/// # {
+/// # use symbolic_math::final_tagless::{JITEval, MathExpr};
+/// // Define expression: θ × data + 1
+/// fn linear_model<E: MathExpr>(data: E::Repr<f64>, theta: E::Repr<f64>) -> E::Repr<f64> {
+///     E::add(E::mul(theta, data), E::constant(1.0))
+/// }
+///
+/// let jit_expr = linear_model::<JITEval>(JITEval::var("data"), JITEval::var("theta"));
+/// let compiled = JITEval::compile_data_param(jit_expr, "data", "theta")?;
+///
+/// let result = compiled.call_data_param(5.0, 2.0); // 2×5 + 1 = 11
+/// assert_eq!(result, 11.0);
+/// # }
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+///
+/// ## Embedded Constants for Optimization
+///
+/// ```rust
+/// # #[cfg(feature = "jit")]
+/// # {
+/// # use symbolic_math::final_tagless::{JITEval, MathExpr};
+/// # use std::collections::HashMap;
+/// // Expression with mathematical constants
+/// fn circle_area<E: MathExpr>(radius: E::Repr<f64>, pi: E::Repr<f64>) -> E::Repr<f64> {
+///     E::mul(pi, E::pow(radius, E::constant(2.0)))
+/// }
+///
+/// let jit_expr = circle_area::<JITEval>(JITEval::var("radius"), JITEval::var("pi"));
+///
+/// // Embed π as a compile-time constant
+/// let mut constants = HashMap::new();
+/// constants.insert("pi".to_string(), std::f64::consts::PI);
+///
+/// let compiled = JITEval::compile_with_constants(
+///     jit_expr,
+///     &["radius".to_string()],
+///     &[],
+///     &constants
+/// )?;
+///
+/// let result = compiled.call_single(2.0); // π × 2² ≈ 12.566
+/// assert!((result - std::f64::consts::PI * 4.0).abs() < 1e-10);
 /// # }
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
