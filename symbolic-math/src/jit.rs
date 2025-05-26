@@ -26,6 +26,8 @@ use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{Linkage, Module};
 
 use crate::expr::Expr;
+#[cfg(feature = "jit")]
+use crate::final_tagless::JITRepr;
 
 /// Errors that can occur during JIT compilation
 #[derive(Debug)]
@@ -437,6 +439,125 @@ impl GeneralJITCompiler {
             compilation_stats: stats,
         })
     }
+
+    /// Compile a final tagless expression (`JITRepr`) to native machine code
+    pub fn compile_final_tagless(
+        mut self,
+        expr: &JITRepr,
+        data_vars: &[String],
+        param_vars: &[String],
+        constants: &std::collections::HashMap<String, f64>,
+    ) -> Result<GeneralJITFunction, JITError> {
+        let start_time = std::time::Instant::now();
+
+        // Create function signature based on inputs
+        let mut sig = self.module.make_signature();
+
+        // Add data parameters
+        for _ in data_vars {
+            sig.params.push(AbiParam::new(types::F64));
+        }
+
+        // Add parameter parameters
+        for _ in param_vars {
+            sig.params.push(AbiParam::new(types::F64));
+        }
+
+        sig.returns.push(AbiParam::new(types::F64));
+
+        // Declare the function
+        let func_id = self
+            .module
+            .declare_function("compiled_final_tagless", Linkage::Export, &sig)
+            .map_err(|e| JITError::CompilationError(format!("Failed to declare function: {e}")))?;
+
+        // Define the function
+        let mut func = Function::new();
+        func.signature = sig;
+
+        // Build the function body
+        let mut builder = FunctionBuilder::new(&mut func, &mut self.builder_context);
+        let entry_block = builder.create_block();
+        builder.switch_to_block(entry_block);
+        builder.append_block_params_for_function_params(entry_block);
+
+        // Get input parameters
+        let block_params = builder.block_params(entry_block);
+        let mut var_map = std::collections::HashMap::new();
+
+        // Map data variables to their values
+        for (i, var_name) in data_vars.iter().enumerate() {
+            var_map.insert(var_name.clone(), block_params[i]);
+        }
+
+        // Map parameter variables to their values
+        for (i, var_name) in param_vars.iter().enumerate() {
+            var_map.insert(var_name.clone(), block_params[data_vars.len() + i]);
+        }
+
+        // Add constants to the variable map as constant values
+        for (name, &value) in constants {
+            let const_val = builder.ins().f64const(value);
+            var_map.insert(name.clone(), const_val);
+        }
+
+        // Generate CLIF IR for the final tagless expression
+        let result = expr.generate_ir(&mut builder, &var_map)?;
+
+        // Return the result
+        builder.ins().return_(&[result]);
+        builder.seal_all_blocks();
+        builder.finalize();
+
+        // Compile the function
+        let mut ctx = cranelift_codegen::Context::new();
+        ctx.func = func;
+
+        self.module
+            .define_function(func_id, &mut ctx)
+            .map_err(|e| JITError::CompilationError(format!("Failed to define function: {e}")))?;
+
+        // Finalize the module
+        self.module
+            .finalize_definitions()
+            .map_err(|e| JITError::CompilationError(format!("Failed to finalize module: {e}")))?;
+
+        // Get the function pointer
+        let function_ptr = self.module.get_finalized_function(func_id);
+
+        let compilation_time = start_time.elapsed();
+
+        // Determine signature type
+        let signature = if data_vars.len() == 1 && param_vars.is_empty() {
+            JITSignature::SingleInput
+        } else if data_vars.len() == 1 && param_vars.len() == 1 {
+            JITSignature::DataAndParameter
+        } else if data_vars.len() == 1 && param_vars.len() > 1 {
+            JITSignature::DataAndParameters(param_vars.len())
+        } else {
+            JITSignature::MultipleDataAndParameters {
+                data_dims: data_vars.len(),
+                param_dims: param_vars.len(),
+            }
+        };
+
+        // Create compilation statistics
+        let stats = CompilationStats {
+            code_size_bytes: 128, // Estimate - in practice we'd get this from Cranelift
+            clif_instructions: expr.estimate_complexity(),
+            compilation_time_us: compilation_time.as_micros() as u64,
+            embedded_constants: constants.len(),
+            estimated_speedup: estimate_speedup(expr.estimate_complexity()),
+        };
+
+        Ok(GeneralJITFunction {
+            function_ptr,
+            _module: self.module,
+            signature,
+            source_expression: format!("FinalTagless: {expr:?}"),
+            compilation_stats: stats,
+        })
+    }
 }
 
 /// Generate CLIF IR from expression with variable mapping support
@@ -546,140 +667,292 @@ fn generate_clif_from_expr_with_vars(
     }
 }
 
-/// Generate a call to the pow function
+/// Generate a call to the pow function using basic math operations
 #[cfg(feature = "jit")]
-fn generate_pow_call(
+pub fn generate_pow_call(
     builder: &mut FunctionBuilder,
     base: Value,
     exponent: Value,
 ) -> Result<Value, JITError> {
-    // General case: use exp(exponent * ln(base)) with accurate implementations
+    // Use the standard approach: exp(exponent * ln(base))
     let ln_base = generate_accurate_ln_call(builder, base)?;
     let product = builder.ins().fmul(exponent, ln_base);
     generate_exp_call(builder, product)
 }
 
-/// Generate CLIF IR for natural logarithm using a more accurate implementation
+/// Generate CLIF IR for natural logarithm using range reduction and rational function approximation
+/// Uses coefficients from Julia's `ratfn_minimax` for ln on [1, 2] with ~3.7e-12 error (degree 7,2)
 #[cfg(feature = "jit")]
-fn generate_accurate_ln_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    // Use the identity: ln(x) = 2 * artanh((x-1)/(x+1)) for better accuracy
-    // artanh(z) ≈ z + z³/3 + z⁵/5 + z⁷/7 + ... (for |z| < 1)
-
+pub fn generate_accurate_ln_call(
+    builder: &mut FunctionBuilder,
+    val: Value,
+) -> Result<Value, JITError> {
+    // Special case: ln(1) = 0 exactly
     let one = builder.ins().f64const(1.0);
-    let two = builder.ins().f64const(2.0);
-    let three = builder.ins().f64const(3.0);
-    let five = builder.ins().f64const(5.0);
+    let zero = builder.ins().f64const(0.0);
+    let is_one = builder
+        .ins()
+        .fcmp(cranelift_codegen::ir::condcodes::FloatCC::Equal, val, one);
 
-    // z = (x-1)/(x+1)
-    let x_minus_1 = builder.ins().fsub(val, one);
-    let x_plus_1 = builder.ins().fadd(val, one);
-    let z = builder.ins().fdiv(x_minus_1, x_plus_1);
+    // Use range reduction: x = 2^k * m where 1.0 <= m < 2.0
+    // Then ln(x) = k*ln(2) + ln(m)
+    // This is the proper way to implement ln with good accuracy across all ranges
 
-    // z²
-    let z2 = builder.ins().fmul(z, z);
+    // Convert to integer bits for manipulation
+    let x_bits = builder
+        .ins()
+        .bitcast(types::I64, cranelift_codegen::ir::MemFlags::new(), val);
 
-    // z³
-    let z3 = builder.ins().fmul(z2, z);
+    // Extract exponent (IEEE 754 format)
+    let exponent_mask = builder.ins().iconst(types::I64, 0x7FF0000000000000);
+    let exponent_bits = builder.ins().band(x_bits, exponent_mask);
+    let exponent_shifted = builder.ins().ushr_imm(exponent_bits, 52);
+    let bias = builder.ins().iconst(types::I64, 1023);
+    let k_i64 = builder.ins().isub(exponent_shifted, bias);
+    let k = builder.ins().fcvt_from_sint(types::F64, k_i64);
 
-    // z⁵
-    let z5 = builder.ins().fmul(z3, z2);
+    // Extract mantissa and normalize to [1, 2)
+    let mantissa_mask = builder.ins().iconst(types::I64, 0x000FFFFFFFFFFFFF);
+    let mantissa_bits = builder.ins().band(x_bits, mantissa_mask);
+    let normalized_exp = builder.ins().iconst(types::I64, 0x3FF0000000000000); // Exponent for 1.0
+    let m_bits = builder.ins().bor(mantissa_bits, normalized_exp);
+    let m = builder
+        .ins()
+        .bitcast(types::F64, cranelift_codegen::ir::MemFlags::new(), m_bits);
 
-    // artanh(z) ≈ z + z³/3 + z⁵/5
-    let term2 = builder.ins().fdiv(z3, three);
-    let term3 = builder.ins().fdiv(z5, five);
+    // Rational function approximation for ln(m) on [1, 2] with ~3.7e-12 error
+    // Numerator coefficients (degree 7)
+    let n0 = builder.ins().f64const(-3.757_488_530_222_454);
+    let n1 = builder.ins().f64const(-11.054_916_701_724_03);
+    let n2 = builder.ins().f64const(11.288_438_153_376_154);
+    let n3 = builder.ins().f64const(4.139_561_514_484_466);
+    let n4 = builder.ins().f64const(-0.722_936_179_175_468);
+    let n5 = builder.ins().f64const(0.120_402_162_146_429_54);
+    let n6 = builder.ins().f64const(-0.013_833_868_987_268_428);
+    let n7 = builder.ins().f64const(0.000_773_450_181_076_160_1);
 
-    let artanh_z = builder.ins().fadd(z, term2);
-    let artanh_z = builder.ins().fadd(artanh_z, term3);
+    // Denominator coefficients (degree 2)
+    let d0 = builder.ins().f64const(1.0);
+    let d1 = builder.ins().f64const(9.977_721_025_877_55);
+    let d2 = builder.ins().f64const(10.595_600_174_718_957);
 
-    // ln(x) = 2 * artanh(z)
-    let result = builder.ins().fmul(two, artanh_z);
+    // Compute numerator: n0 + n1*m + n2*m² + n3*m³ + n4*m⁴ + n5*m⁵ + n6*m⁶ + n7*m⁷
+    let m2 = builder.ins().fmul(m, m);
+    let m3 = builder.ins().fmul(m2, m);
+    let m4 = builder.ins().fmul(m2, m2);
+    let m5 = builder.ins().fmul(m4, m);
+    let m6 = builder.ins().fmul(m4, m2);
+    let m7 = builder.ins().fmul(m4, m3);
+
+    let num_term1 = builder.ins().fmul(n1, m);
+    let num_term2 = builder.ins().fmul(n2, m2);
+    let num_term3 = builder.ins().fmul(n3, m3);
+    let num_term4 = builder.ins().fmul(n4, m4);
+    let num_term5 = builder.ins().fmul(n5, m5);
+    let num_term6 = builder.ins().fmul(n6, m6);
+    let num_term7 = builder.ins().fmul(n7, m7);
+
+    let num_partial1 = builder.ins().fadd(n0, num_term1);
+    let num_partial2 = builder.ins().fadd(num_partial1, num_term2);
+    let num_partial3 = builder.ins().fadd(num_partial2, num_term3);
+    let num_partial4 = builder.ins().fadd(num_partial3, num_term4);
+    let num_partial5 = builder.ins().fadd(num_partial4, num_term5);
+    let num_partial6 = builder.ins().fadd(num_partial5, num_term6);
+    let numerator = builder.ins().fadd(num_partial6, num_term7);
+
+    // Compute denominator: d0 + d1*m + d2*m²
+    let den_term1 = builder.ins().fmul(d1, m);
+    let den_term2 = builder.ins().fmul(d2, m2);
+    let den_partial1 = builder.ins().fadd(d0, den_term1);
+    let denominator = builder.ins().fadd(den_partial1, den_term2);
+
+    // Rational approximation: ln(m) ≈ numerator / denominator
+    let ln_m = builder.ins().fdiv(numerator, denominator);
+
+    // Final result: ln(x) = k*ln(2) + ln(m)
+    let ln_2 = builder.ins().f64const(std::f64::consts::LN_2);
+    let k_ln_2 = builder.ins().fmul(k, ln_2);
+    let ln_x = builder.ins().fadd(k_ln_2, ln_m);
+
+    // Return ln(1) = 0 exactly, otherwise return computed value
+    let result = builder.ins().select(is_one, zero, ln_x);
+    Ok(result)
+}
+
+/// Generate CLIF IR for exponential function using proven rational function approximation
+/// Uses coefficients from Julia's `ratfn_minimax` for exp on [0, ln(2)] with ~2.7e-12 error
+#[cfg(feature = "jit")]
+pub fn generate_exp_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+    // For range reduction: exp(x) = 2^k * exp(r) where r ∈ [0, ln(2)]
+    // Split x = k*ln(2) + r where k is integer and r ∈ [0, ln(2)]
+
+    let ln2 = builder.ins().f64const(std::f64::consts::LN_2);
+    let ln2_inv = builder.ins().f64const(1.0 / std::f64::consts::LN_2);
+
+    // Compute k = floor(x / ln(2))
+    let x_over_ln2 = builder.ins().fmul(val, ln2_inv);
+    let k_float = builder.ins().floor(x_over_ln2);
+
+    // Compute r = x - k*ln(2), so r ∈ [0, ln(2)]
+    let k_ln2 = builder.ins().fmul(k_float, ln2);
+    let r = builder.ins().fsub(val, k_ln2);
+
+    // Now use rational approximation for exp(r) where r ∈ [0, ln(2)]
+    // Rational function approximation: P(r) / Q(r)
+    // Numerator coefficients (degree 5)
+    let n0 = builder.ins().f64const(0.999_999_999_997_277_7);
+    let n1 = builder.ins().f64const(0.726_006_320_449_981);
+    let n2 = builder.ins().f64const(0.247_557_081_600_051_33);
+    let n3 = builder.ins().f64const(0.051_220_753_494_353_26);
+    let n4 = builder.ins().f64const(0.006_775_629_189_039_916);
+    let n5 = builder.ins().f64const(0.000_511_051_952_348_079_5);
+
+    // Denominator coefficients (degree 2)
+    let d0 = builder.ins().f64const(1.0);
+    let d1 = builder.ins().f64const(-0.273_993_680_027_297_7);
+    let d2 = builder.ins().f64const(0.021_550_775_407_834_573);
+
+    // Compute powers of r
+    let r2 = builder.ins().fmul(r, r);
+    let r3 = builder.ins().fmul(r2, r);
+    let r4 = builder.ins().fmul(r3, r);
+    let r5 = builder.ins().fmul(r4, r);
+
+    // Compute numerator: n0 + n1*r + n2*r² + n3*r³ + n4*r⁴ + n5*r⁵
+    let num_term1 = builder.ins().fmul(n1, r);
+    let num_term2 = builder.ins().fmul(n2, r2);
+    let num_term3 = builder.ins().fmul(n3, r3);
+    let num_term4 = builder.ins().fmul(n4, r4);
+    let num_term5 = builder.ins().fmul(n5, r5);
+
+    let numerator = builder.ins().fadd(n0, num_term1);
+    let numerator = builder.ins().fadd(numerator, num_term2);
+    let numerator = builder.ins().fadd(numerator, num_term3);
+    let numerator = builder.ins().fadd(numerator, num_term4);
+    let numerator = builder.ins().fadd(numerator, num_term5);
+
+    // Compute denominator: d0 + d1*r + d2*r²
+    let den_term1 = builder.ins().fmul(d1, r);
+    let den_term2 = builder.ins().fmul(d2, r2);
+
+    let denominator = builder.ins().fadd(d0, den_term1);
+    let denominator = builder.ins().fadd(denominator, den_term2);
+
+    // Rational function result: exp(r)
+    let exp_r = builder.ins().fdiv(numerator, denominator);
+
+    // Apply 2^k scaling - use a simpler conditional approach
+    let k_int = builder.ins().fcvt_to_sint(types::I32, k_float);
+
+    // For common small integer powers, use exact multiplication
+    // This avoids floating point precision issues
+    let zero = builder.ins().iconst(types::I32, 0);
+    let one_i32 = builder.ins().iconst(types::I32, 1);
+    let neg_one_i32 = builder.ins().iconst(types::I32, -1);
+
+    let two_f64 = builder.ins().f64const(2.0);
+    let half_f64 = builder.ins().f64const(0.5);
+
+    // Check for k = 0 (most common case)
+    let is_k_zero = builder
+        .ins()
+        .icmp(cranelift_codegen::ir::condcodes::IntCC::Equal, k_int, zero);
+    let result_k_zero = exp_r; // 2^0 = 1, so result = exp_r * 1 = exp_r
+
+    // Check for k = 1
+    let is_k_one = builder.ins().icmp(
+        cranelift_codegen::ir::condcodes::IntCC::Equal,
+        k_int,
+        one_i32,
+    );
+    let result_k_one = builder.ins().fmul(exp_r, two_f64); // 2^1 = 2
+
+    // Check for k = -1
+    let is_k_neg_one = builder.ins().icmp(
+        cranelift_codegen::ir::condcodes::IntCC::Equal,
+        k_int,
+        neg_one_i32,
+    );
+    let result_k_neg_one = builder.ins().fmul(exp_r, half_f64); // 2^(-1) = 0.5
+
+    // For other cases, use bit manipulation (ldexp-like operation)
+    let exp_r_bits =
+        builder
+            .ins()
+            .bitcast(types::I64, cranelift_codegen::ir::MemFlags::new(), exp_r);
+    let k_64 = builder.ins().sextend(types::I64, k_int);
+    let exponent_shift = builder.ins().ishl_imm(k_64, 52); // Shift k to exponent position
+    let result_bits = builder.ins().iadd(exp_r_bits, exponent_shift);
+    let result_general = builder.ins().bitcast(
+        types::F64,
+        cranelift_codegen::ir::MemFlags::new(),
+        result_bits,
+    );
+
+    // Use select instructions to choose the right result
+    let temp_result = builder
+        .ins()
+        .select(is_k_zero, result_k_zero, result_general);
+    let temp_result2 = builder.ins().select(is_k_one, result_k_one, temp_result);
+    let result = builder
+        .ins()
+        .select(is_k_neg_one, result_k_neg_one, temp_result2);
 
     Ok(result)
 }
 
-/// Generate CLIF IR for exponential function using Taylor series
+/// Generate CLIF IR for sine function using polynomial approximation
 #[cfg(feature = "jit")]
-fn generate_exp_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    let one = builder.ins().f64const(1.0);
-    let two = builder.ins().f64const(2.0);
-    let six = builder.ins().f64const(6.0);
-    let twentyfour = builder.ins().f64const(24.0);
+pub fn generate_sin_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+    // Use polynomial approximation for sin(x)
+    // sin(x) ≈ x - x³/6 + x⁵/120
 
-    // x²
     let x2 = builder.ins().fmul(val, val);
-
-    // x³
     let x3 = builder.ins().fmul(x2, val);
-
-    // x⁴
-    let x4 = builder.ins().fmul(x3, val);
-
-    // Terms: 1 + x + x²/2 + x³/6 + x⁴/24
-    let term2 = builder.ins().fdiv(x2, two);
-    let term3 = builder.ins().fdiv(x3, six);
-    let term4 = builder.ins().fdiv(x4, twentyfour);
-
-    let result = builder.ins().fadd(one, val);
-    let result = builder.ins().fadd(result, term2);
-    let result = builder.ins().fadd(result, term3);
-    let result = builder.ins().fadd(result, term4);
-
-    Ok(result)
-}
-
-/// Generate a call to the square root function
-#[cfg(feature = "jit")]
-fn generate_sqrt_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    // Cranelift has a built-in sqrt instruction
-    Ok(builder.ins().sqrt(val))
-}
-
-/// Generate CLIF IR for sine function using Taylor series
-#[cfg(feature = "jit")]
-fn generate_sin_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
-    let six = builder.ins().f64const(6.0);
-    let onetwenty = builder.ins().f64const(120.0);
-
-    // x²
-    let x2 = builder.ins().fmul(val, val);
-
-    // x³
-    let x3 = builder.ins().fmul(x2, val);
-
-    // x⁵
     let x5 = builder.ins().fmul(x3, x2);
 
-    // Terms: x - x³/6 + x⁵/120
-    let term2 = builder.ins().fdiv(x3, six);
-    let term3 = builder.ins().fdiv(x5, onetwenty);
+    let coeff2 = builder.ins().f64const(-0.16666666667);
+    let coeff3 = builder.ins().f64const(0.00833333333);
 
-    let result = builder.ins().fsub(val, term2);
-    let result = builder.ins().fadd(result, term3);
+    let term1 = val;
+    let term2 = builder.ins().fmul(x3, coeff2);
+    let term3 = builder.ins().fmul(x5, coeff3);
+
+    let sum1 = builder.ins().fadd(term1, term2);
+    let result = builder.ins().fadd(sum1, term3);
 
     Ok(result)
 }
 
-/// Generate CLIF IR for cosine function using Taylor series
+/// Generate CLIF IR for cosine function using polynomial approximation
 #[cfg(feature = "jit")]
-fn generate_cos_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+pub fn generate_cos_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+    // Use polynomial approximation for cos(x)
+    // cos(x) ≈ 1 - x²/2 + x⁴/24
+
     let one = builder.ins().f64const(1.0);
-    let two = builder.ins().f64const(2.0);
-    let twentyfour = builder.ins().f64const(24.0);
-
-    // x²
     let x2 = builder.ins().fmul(val, val);
-
-    // x⁴
     let x4 = builder.ins().fmul(x2, x2);
 
-    // Terms: 1 - x²/2 + x⁴/24
-    let term2 = builder.ins().fdiv(x2, two);
-    let term3 = builder.ins().fdiv(x4, twentyfour);
+    let coeff2 = builder.ins().f64const(-0.5);
+    let coeff3 = builder.ins().f64const(0.04166666667);
 
-    let result = builder.ins().fsub(one, term2);
-    let result = builder.ins().fadd(result, term3);
+    let term1 = one;
+    let term2 = builder.ins().fmul(x2, coeff2);
+    let term3 = builder.ins().fmul(x4, coeff3);
+
+    let sum1 = builder.ins().fadd(term1, term2);
+    let result = builder.ins().fadd(sum1, term3);
 
     Ok(result)
+}
+
+/// Generate CLIF IR for square root using Cranelift's built-in instruction
+#[cfg(feature = "jit")]
+pub fn generate_sqrt_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+    // Use Cranelift's built-in sqrt instruction
+    // This is exactly what Rust's f64::sqrt does and is highly optimized
+    Ok(builder.ins().sqrt(val))
 }
 
 /// Custom symbolic log-density for exponential families and other specialized use cases

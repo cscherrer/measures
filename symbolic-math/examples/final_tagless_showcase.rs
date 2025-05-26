@@ -3,17 +3,15 @@
 //! This example demonstrates the power of the final tagless approach for symbolic computation.
 //! It shows how the same expression definition can be interpreted in multiple ways:
 //! - Direct evaluation for maximum performance
-//! - AST building for compatibility with existing systems
-//! - Contextual evaluation with variable bindings
-//! - Pretty printing for human-readable output
+//! - JIT compilation for native code generation
 //!
 //! The final tagless approach solves the expression problem and provides zero-cost abstractions.
 
-use std::collections::HashMap;
 use std::time::Instant;
-use symbolic_math::final_tagless::{
-    ContextualEval, ContextualRepr, ExprBuilder, MathExpr, PrettyPrint, StatisticalExpr,
-};
+use symbolic_math::final_tagless::{DirectEval, MathExpr, StatisticalExpr};
+
+#[cfg(feature = "jit")]
+use symbolic_math::final_tagless::JITEval;
 
 /// A simple linear function for performance testing
 fn linear<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
@@ -21,168 +19,133 @@ fn linear<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
     let three = E::constant(3.0);
 
     // 2*x + 3
-    E::add::<f64, f64, f64>(E::mul::<f64, f64, f64>(two, x), three)
+    E::add(E::mul(two, x), three)
 }
 
 /// A more complex expression demonstrating various operations
-fn complex_expr<E: MathExpr>() -> E::Repr<f64> {
-    let x: E::Repr<f64> = E::var("x");
-    let x2: E::Repr<f64> = E::var("x");
-
+fn complex_expr<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
+where
+    E::Repr<f64>: Clone,
+{
     // ln(exp(x) + sqrt(x^2 + 1))
-    E::ln(E::add::<f64, f64, f64>(
-        E::exp(x),
-        E::sqrt(E::add::<f64, f64, f64>(
-            E::pow(x2, E::constant(2.0)),
-            E::constant(1.0),
-        )),
+    E::ln(E::add(
+        E::exp(x.clone()),
+        E::sqrt(E::add(E::pow(x, E::constant(2.0)), E::constant(1.0))),
     ))
 }
 
 /// Demonstrate statistical functions using extension traits
-fn statistical_example<E: StatisticalExpr>() -> E::Repr<f64> {
-    let x = E::var("x");
+fn statistical_example<E: StatisticalExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
     // softplus(logistic(x))
     E::softplus(E::logistic(x))
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🚀 Final Tagless Symbolic Math Showcase");
     println!("========================================");
 
     // 1. Direct Evaluation Example
     println!("\n=== 1. Direct Evaluation (Zero-cost) ===");
     let start = Instant::now();
-    let result_direct = linear_direct_eval(2.0);
+    let result_direct = linear::<DirectEval>(DirectEval::var("x", 2.0));
     let direct_time = start.elapsed();
     println!("linear(2.0) = {result_direct}");
     println!("Time: {direct_time:?}");
 
-    // 2. Expression Building Example
-    println!("\n=== 2. Expression Building (AST) ===");
+    // 2. Complex Expression Example
+    println!("\n=== 2. Complex Expression ===");
     let start = Instant::now();
-    let expr_ast = linear::<ExprBuilder>(ExprBuilder::var("x"));
-    let build_time = start.elapsed();
-    println!("AST: {expr_ast:?}");
-    println!("Build time: {build_time:?}");
-
-    // Evaluate the AST
-    let mut vars = HashMap::new();
-    vars.insert("x".to_string(), 2.0);
-    let ast_result = expr_ast.evaluate(&vars).unwrap();
-    println!("AST eval result: {ast_result}");
-
-    // 3. Contextual Evaluation Example
-    println!("\n=== 3. Contextual Evaluation ===");
-    let contextual_expr = linear_contextual();
-    let mut context = HashMap::new();
-    context.insert("x".to_string(), 2.0);
-    let contextual_result = ContextualEval::eval_with(&contextual_expr, &context);
-    println!("Contextual result: {contextual_result}");
-
-    // 4. Pretty Printing Example
-    println!("\n=== 4. Pretty Printing ===");
-    let pretty_result = linear::<PrettyPrint>(PrettyPrint::var("x"));
-    println!("Pretty: {pretty_result}");
-
-    // 5. Complex Expression Example
-    println!("\n=== 5. Complex Expression ===");
-    let complex_expr_contextual = complex_expr_contextual();
-    let mut context = HashMap::new();
-    context.insert("x".to_string(), 1.0);
-    let complex_result = ContextualEval::eval_with(&complex_expr_contextual, &context);
-
-    let complex_pretty = complex_expr::<PrettyPrint>();
+    let complex_result = complex_expr::<DirectEval>(DirectEval::var("x", 1.0));
+    let complex_time = start.elapsed();
     println!("complex_expr(1.0) = {complex_result}");
-    println!("Complex pretty: {complex_pretty}");
+    println!("Time: {complex_time:?}");
 
-    // 6. Statistical Extensions
-    println!("\n=== 6. Statistical Extensions ===");
-    let stat_expr_contextual = statistical_example_contextual();
-    let mut context = HashMap::new();
-    context.insert("x".to_string(), 0.0);
-    let stat_result = ContextualEval::eval_with(&stat_expr_contextual, &context);
-
-    let stat_pretty = statistical_example::<PrettyPrint>();
+    // 3. Statistical Extensions
+    println!("\n=== 3. Statistical Extensions ===");
+    let start = Instant::now();
+    let stat_result = statistical_example::<DirectEval>(DirectEval::var("x", 0.0));
+    let stat_time = start.elapsed();
     println!("statistical_example(0.0) = {stat_result}");
-    println!("Statistical pretty: {stat_pretty}");
+    println!("Time: {stat_time:?}");
 
-    // 7. Performance Comparison
-    println!("\n=== 7. Performance Comparison ===");
+    // 4. JIT Compilation Example
+    #[cfg(feature = "jit")]
+    {
+        println!("\n=== 4. JIT Compilation ===");
+
+        // Compile linear function
+        let jit_expr = linear::<JITEval>(JITEval::var("x"));
+        let start = Instant::now();
+        let compiled = JITEval::compile_single_var(jit_expr, "x")?;
+        let compile_time = start.elapsed();
+        println!("JIT compilation time: {compile_time:?}");
+
+        // Test the compiled function
+        let start = Instant::now();
+        let jit_result = compiled.call_single(2.0);
+        let jit_time = start.elapsed();
+        println!("JIT linear(2.0) = {jit_result}");
+        println!("JIT execution time: {jit_time:?}");
+
+        // Compile complex expression
+        let complex_jit_expr = complex_expr::<JITEval>(JITEval::var("x"));
+        let complex_compiled = JITEval::compile_single_var(complex_jit_expr, "x")?;
+        let complex_jit_result = complex_compiled.call_single(1.0);
+        println!("JIT complex_expr(1.0) = {complex_jit_result}");
+
+        // Verify results match
+        println!("Direct vs JIT linear: {result_direct} vs {jit_result}");
+        println!("Direct vs JIT complex: {complex_result} vs {complex_jit_result}");
+    }
+
+    // 5. Performance Comparison
+    println!("\n=== 5. Performance Comparison ===");
 
     // Benchmark DirectEval (should be very fast)
     let start = Instant::now();
     let mut sum = 0.0;
     for i in 0..10000 {
-        sum += linear_direct_eval(f64::from(i));
+        sum += linear::<DirectEval>(DirectEval::var("x", f64::from(i)));
     }
     let direct_time = start.elapsed();
     println!("DirectEval (10k iterations): {direct_time:?}, sum: {sum}");
 
+    #[cfg(feature = "jit")]
+    {
+        // Benchmark JIT (should be even faster for repeated calls)
+        let jit_expr = linear::<JITEval>(JITEval::var("x"));
+        let compiled = JITEval::compile_single_var(jit_expr, "x")?;
+
+        let start = Instant::now();
+        let mut jit_sum = 0.0;
+        for i in 0..10000 {
+            jit_sum += compiled.call_single(f64::from(i));
+        }
+        let jit_time = start.elapsed();
+        println!("JIT (10k iterations): {jit_time:?}, sum: {jit_sum}");
+
+        let speedup = direct_time.as_nanos() as f64 / jit_time.as_nanos() as f64;
+        println!("JIT speedup: {speedup:.2}x");
+    }
+
     println!("\nFinal tagless approach demonstrates:");
     println!("✅ Zero-cost abstractions with DirectEval");
-    println!("✅ AST building with ExprBuilder");
-    println!("✅ Contextual evaluation with ContextualEval");
-    println!("✅ Pretty printing with PrettyPrint");
-    println!("✅ Operator overloading support");
+    #[cfg(feature = "jit")]
+    println!("✅ Native code generation with JITEval");
     println!("✅ Easy extension (expression problem solved)");
+    println!("✅ Type safety at compile time");
+    println!("✅ Composable DSL components");
 
-    // 8. Type Safety Demonstration
-    println!("\n=== 8. Type Safety & Extensibility ===");
+    // 6. Type Safety Demonstration
+    println!("\n=== 6. Type Safety & Extensibility ===");
     println!("✅ Compile-time type checking");
     println!("✅ Zero runtime overhead for DirectEval");
     println!("✅ Easy addition of new operations (StatisticalExpr)");
     println!("✅ Easy addition of new interpreters");
     println!("✅ Solves the expression problem elegantly");
     println!("✅ Composable DSL components");
-}
 
-/// Direct evaluation version of linear function
-fn linear_direct_eval(x_val: f64) -> f64 {
-    2.0 * x_val + 3.0
-}
-
-/// Contextual evaluation version of linear function
-fn linear_contextual() -> ContextualRepr<f64> {
-    let x = ContextualEval::var("x");
-    let two = ContextualEval::constant(2.0);
-    let three = ContextualEval::constant(3.0);
-
-    // 2*x + 3
-    ContextualEval::add_same(ContextualEval::mul_same(two, x), three)
-}
-
-/// Contextual evaluation version of complex expression
-fn complex_expr_contextual() -> ContextualRepr<f64> {
-    let x = ContextualEval::var("x");
-    let x2 = ContextualEval::var("x");
-    let one = ContextualEval::constant(1.0);
-    let two = ContextualEval::constant(2.0);
-
-    // ln(exp(x) + sqrt(x^2 + 1))
-    ContextualEval::ln(ContextualEval::add_same(
-        ContextualEval::exp(x),
-        ContextualEval::sqrt(ContextualEval::add_same(ContextualEval::pow(x2, two), one)),
-    ))
-}
-
-/// Contextual evaluation version of statistical example
-fn statistical_example_contextual() -> ContextualRepr<f64> {
-    let x = ContextualEval::var("x");
-
-    // ln(1 + exp(logistic(x)))
-    let logistic_x = ContextualEval::div_same(
-        ContextualEval::constant(1.0),
-        ContextualEval::add_same(
-            ContextualEval::constant(1.0),
-            ContextualEval::exp(ContextualEval::neg(x)),
-        ),
-    );
-
-    ContextualEval::ln(ContextualEval::add_same(
-        ContextualEval::constant(1.0),
-        ContextualEval::exp(logistic_x),
-    ))
+    Ok(())
 }
 
 #[cfg(test)]
@@ -190,47 +153,35 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_final_tagless_equivalence() {
-        // Test that final tagless and tagged union produce equivalent results
+    fn test_final_tagless_direct_eval() {
+        // Test that final tagless produces correct results
         fn test_expr<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
             E::add(E::mul(E::constant(2.0), x), E::constant(1.0))
         }
 
-        let final_tagless_result = test_expr::<DirectEval>(DirectEval::var("x", 5.0));
-
-        let tagged_expr = Expr::Add(
-            Box::new(Expr::Mul(
-                Box::new(Expr::Const(2.0)),
-                Box::new(Expr::Var("x".to_string())),
-            )),
-            Box::new(Expr::Const(1.0)),
-        );
-
-        let mut vars = HashMap::new();
-        vars.insert("x".to_string(), 5.0);
-        let tagged_result = tagged_expr.evaluate(&vars)?;
-
-        assert_eq!(final_tagless_result, tagged_result);
+        let result = test_expr::<DirectEval>(DirectEval::var("x", 5.0));
+        assert_eq!(result, 11.0); // 2*5 + 1 = 11
     }
 
     #[test]
-    fn test_multiple_interpreters() {
+    #[cfg(feature = "jit")]
+    fn test_final_tagless_jit_eval() {
+        // Test that JIT produces correct results
         fn test_expr<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
-            E::pow(x, E::constant(2.0))
+            E::add(E::mul(E::constant(2.0), x), E::constant(1.0))
         }
 
-        // Direct evaluation
-        let direct = test_expr::<DirectEval>(DirectEval::var("x", 3.0));
-        assert_eq!(direct, 9.0);
+        let jit_expr = test_expr::<JITEval>(JITEval::var("x"));
+        let compiled = JITEval::compile_single_var(jit_expr, "x").unwrap();
+        let result = compiled.call_single(5.0);
+        assert_eq!(result, 11.0); // 2*5 + 1 = 11
+    }
 
-        // Expression building
-        let expr_builder = test_expr::<ExprBuilder>(ExprBuilder::var("x"));
-        assert!(matches!(expr_builder, Expr::Pow(_, _)));
-
-        // Contextual evaluation
-        let contextual = test_expr::<ContextualEval>(ContextualEval::var("x"));
-        let mut context = HashMap::new();
-        context.insert("x".to_string(), 3.0);
-        assert_eq!(ContextualEval::eval_with(&contextual, &context), 9.0);
+    #[test]
+    fn test_statistical_extensions() {
+        // Test statistical extension trait
+        let result = statistical_example::<DirectEval>(DirectEval::var("x", 0.0));
+        // At x=0, logistic(0) = 0.5, softplus(0.5) ≈ 0.974
+        assert!((result - 0.9740769841801067).abs() < 1e-10);
     }
 }

@@ -11,13 +11,9 @@ pub mod multivariate;
 pub mod final_tagless;
 
 // Re-export common distributions for convenience
-pub use continuous::{
-    Beta, Cauchy, ChiSquared, Exponential, Gamma, Normal, StdNormal,
-};
+pub use continuous::{Beta, Cauchy, ChiSquared, Exponential, Gamma, Normal, StdNormal};
 
-pub use discrete::{
-    Bernoulli, Binomial, Categorical, Geometric, NegativeBinomial, Poisson,
-};
+pub use discrete::{Bernoulli, Binomial, Categorical, Geometric, NegativeBinomial, Poisson};
 
 // Note: Multivariate distributions are not yet implemented
 // pub use multivariate::{
@@ -25,9 +21,7 @@ pub use discrete::{
 // };
 
 // Re-export final tagless functionality
-pub use final_tagless::{
-    DistributionExpr, DistributionEval, DistributionMathExpr, patterns,
-};
+pub use final_tagless::{DistributionEval, DistributionExpr, DistributionMathExpr, patterns};
 
 // pub use multivariate::multinormal::MultivariateNormal;
 // pub use nalgebra::{DMatrix, DVector};

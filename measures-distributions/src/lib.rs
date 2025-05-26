@@ -62,34 +62,44 @@ pub mod distributions;
 
 // Re-export core distributions for convenience
 pub use distributions::{
-    // Continuous distributions
-    Beta, Cauchy, ChiSquared, Exponential, Gamma, Normal, StdNormal,
     // Discrete distributions
-    Bernoulli, Binomial, Categorical, Geometric, NegativeBinomial, Poisson,
+    Bernoulli,
+    // Continuous distributions
+    Beta,
+    Binomial,
+    Categorical,
+    Cauchy,
+    ChiSquared,
+    DistributionEval,
     // Final tagless functionality
-    DistributionExpr, DistributionEval, DistributionMathExpr, patterns,
+    DistributionExpr,
+    DistributionMathExpr,
+    Exponential,
+    Gamma,
+    Geometric,
+    NegativeBinomial,
+    Normal,
+    Poisson,
+    StdNormal,
+    patterns,
 };
 
 // Re-export core traits for convenience
-pub use measures_core::{
-    HasLogDensity, Measure, PrimitiveMeasure,
-};
+pub use measures_core::{HasLogDensity, Measure, PrimitiveMeasure};
 
 // Re-export exponential family traits when available
 #[cfg(feature = "jit")]
-pub use measures_exponential_family::{
-    ExponentialFamily, IIDExtension,
-};
+pub use measures_exponential_family::{ExponentialFamily, IIDExtension};
 
 /// Convenience module for final tagless distribution operations
 pub mod final_tagless {
     pub use super::distributions::final_tagless::*;
-    pub use symbolic_math::final_tagless::{MathExpr, DirectEval, PrettyPrint};
-    
+    pub use symbolic_math::final_tagless::{DirectEval, MathExpr, PrettyPrint};
+
     // JITEval is only available with the jit feature
     #[cfg(feature = "jit")]
     pub use symbolic_math::final_tagless::JITEval;
-    
+
     // Exponential family operations when available
     #[cfg(feature = "jit")]
     pub use measures_exponential_family::final_tagless::*;

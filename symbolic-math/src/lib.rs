@@ -93,10 +93,7 @@ pub use jit::{
 pub use optimization::EgglogOptimize;
 
 // Re-export final tagless types
-pub use final_tagless::{
-    ContextualEval, DirectEval, ExprBuilder, FinalTaglessConversion, MathExpr, PrettyPrint,
-    StatisticalExpr, dsl,
-};
+pub use final_tagless::{DirectEval, JITEval, MathExpr, StatisticalExpr};
 
 /// Ergonomic macros for building expressions with natural Rust syntax
 pub mod macros {

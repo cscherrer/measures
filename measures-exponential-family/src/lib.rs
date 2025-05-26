@@ -78,7 +78,7 @@ pub use exponential_family::implementations::ExpFam;
 
 // Re-export final tagless functionality
 pub use exponential_family::final_tagless::{
-    ExponentialFamilyExpr, ExpFamEval, patterns, ExpFamFinalTaglessConversion
+    ExpFamEval, ExpFamFinalTaglessConversion, ExponentialFamilyExpr, patterns,
 };
 
 // Re-export JIT functionality when available
@@ -100,8 +100,8 @@ pub use measures_core::{
 /// Convenience module for final tagless exponential family operations
 pub mod final_tagless {
     pub use super::exponential_family::final_tagless::*;
-    pub use symbolic_math::final_tagless::{MathExpr, DirectEval, PrettyPrint};
-    
+    pub use symbolic_math::final_tagless::{DirectEval, MathExpr, PrettyPrint};
+
     // JITEval is only available with the jit feature
     #[cfg(feature = "jit")]
     pub use symbolic_math::final_tagless::JITEval;

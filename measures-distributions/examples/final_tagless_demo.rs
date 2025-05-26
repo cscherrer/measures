@@ -4,7 +4,7 @@
 //! showcasing zero-cost abstractions and multiple interpreters for distribution computations.
 
 use measures_distributions::final_tagless::*;
-use symbolic_math::final_tagless::{DirectEval, PrettyPrint, MathExpr};
+use symbolic_math::final_tagless::{DirectEval, MathExpr, PrettyPrint};
 
 #[cfg(feature = "jit")]
 use symbolic_math::final_tagless::JITEval;
@@ -83,7 +83,7 @@ fn demo_pretty_printing() {
     let x = PrettyPrint::var("x");
     let mu = PrettyPrint::var("mu");
     let sigma = PrettyPrint::var("sigma");
-    
+
     let normal_expr = patterns::normal_log_density::<PrettyPrint>(x, mu, sigma);
     println!("  Normal log-density expression:");
     println!("    {}", normal_expr);
@@ -97,7 +97,7 @@ fn demo_pretty_printing() {
     // Exponential distribution expression
     let x = PrettyPrint::var("x");
     let rate = PrettyPrint::var("rate");
-    
+
     let exp_expr = patterns::exponential_log_density::<PrettyPrint>(x, rate);
     println!("  Exponential log-density expression:");
     println!("    {}", exp_expr);
@@ -106,7 +106,7 @@ fn demo_pretty_printing() {
     let x = PrettyPrint::var("x");
     let location = PrettyPrint::var("x0");
     let scale = PrettyPrint::var("gamma");
-    
+
     let cauchy_expr = patterns::cauchy_log_density::<PrettyPrint>(x, location, scale);
     println!("  Cauchy log-density expression:");
     println!("    {}", cauchy_expr);
@@ -115,7 +115,7 @@ fn demo_pretty_printing() {
 /// Demonstrate distribution pattern library
 fn demo_pattern_library() {
     let test_points = [0.0, 1.0, -1.0, 2.0];
-    
+
     // Standard normal pattern
     println!("  Standard Normal log-densities:");
     for &point in &test_points {
@@ -157,45 +157,49 @@ fn demo_pattern_library() {
 
 /// Demonstrate comparison with traditional distribution implementations
 fn demo_traditional_comparison() {
-    use measures_distributions::{Normal, Exponential};
     use measures_core::HasLogDensity;
+    use measures_distributions::{Exponential, Normal};
 
     let test_points = [0.0, 1.0, -1.0, 2.0];
-    
+
     println!("  Comparison: Normal(μ=0, σ=1)");
     let normal_traditional = Normal::new(0.0, 1.0);
-    
+
     for &point in &test_points {
         // Traditional approach
         let traditional_result = normal_traditional.log_density_wrt_root(&point);
-        
+
         // Final tagless approach
         let x = DirectEval::constant(point);
         let mu = DirectEval::constant(0.0);
         let sigma = DirectEval::constant(1.0);
         let final_tagless_result = patterns::normal_log_density::<DirectEval>(x, mu, sigma);
-        
+
         let diff = (traditional_result - final_tagless_result).abs();
-        println!("    x={:4.1}: Traditional={:8.4}, FinalTagless={:8.4}, Diff={:.2e}", 
-                 point, traditional_result, final_tagless_result, diff);
+        println!(
+            "    x={:4.1}: Traditional={:8.4}, FinalTagless={:8.4}, Diff={:.2e}",
+            point, traditional_result, final_tagless_result, diff
+        );
     }
 
     println!("  Comparison: Exponential(λ=1.5)");
     let exp_traditional = Exponential::new(1.5);
     let exp_points = [0.1, 0.5, 1.0, 2.0];
-    
+
     for &point in &exp_points {
         // Traditional approach
         let traditional_result = exp_traditional.log_density_wrt_root(&point);
-        
+
         // Final tagless approach
         let x = DirectEval::constant(point);
         let rate = DirectEval::constant(1.5);
         let final_tagless_result = patterns::exponential_log_density::<DirectEval>(x, rate);
-        
+
         let diff = (traditional_result - final_tagless_result).abs();
-        println!("    x={:4.1}: Traditional={:8.4}, FinalTagless={:8.4}, Diff={:.2e}", 
-                 point, traditional_result, final_tagless_result, diff);
+        println!(
+            "    x={:4.1}: Traditional={:8.4}, FinalTagless={:8.4}, Diff={:.2e}",
+            point, traditional_result, final_tagless_result, diff
+        );
     }
 }
 
@@ -205,49 +209,55 @@ fn demo_jit_compilation() -> Result<(), Box<dyn std::error::Error>> {
     use std::time::Instant;
 
     println!("  Compiling normal log-density with JIT...");
-    
+
     // Create JIT expression for normal log-density
     let x = JITEval::var::<f64>("x");
     let mu = JITEval::var::<f64>("mu");
     let sigma = JITEval::var::<f64>("sigma");
-    
+
     let jit_expr = patterns::normal_log_density::<JITEval>(x, mu, sigma);
-    
+
     // Compile with data + parameters signature
     let start_compile = Instant::now();
-    let compiled = JITEval::compile_data_params(
-        jit_expr, 
-        "x", 
-        &["mu".to_string(), "sigma".to_string()]
-    )?;
+    let compiled =
+        JITEval::compile_data_params(jit_expr, "x", &["mu".to_string(), "sigma".to_string()])?;
     let compile_time = start_compile.elapsed();
-    
-    println!("  Normal distribution compilation completed in {:?}", compile_time);
-    
+
+    println!(
+        "  Normal distribution compilation completed in {:?}",
+        compile_time
+    );
+
     // Test the compiled function
     let test_points = [0.0, 1.0, -1.0, 2.0];
     let mu_val = 0.0;
     let sigma_val = 1.0;
-    
-    println!("  JIT-compiled Normal(μ={}, σ={}) results:", mu_val, sigma_val);
+
+    println!(
+        "  JIT-compiled Normal(μ={}, σ={}) results:",
+        mu_val, sigma_val
+    );
     for &x_val in &test_points {
         let result = compiled.call_data_params(x_val, &[mu_val, sigma_val]);
         println!("    f({:4.1}) = {:8.4}", x_val, result);
     }
-    
+
     // Compile exponential distribution
     println!("  Compiling exponential log-density with JIT...");
     let x = JITEval::var::<f64>("x");
     let rate = JITEval::var::<f64>("rate");
-    
+
     let exp_jit_expr = patterns::exponential_log_density::<JITEval>(x, rate);
-    
+
     let start_compile = Instant::now();
     let exp_compiled = JITEval::compile_data_param(exp_jit_expr, "x", "rate")?;
     let compile_time = start_compile.elapsed();
-    
-    println!("  Exponential distribution compilation completed in {:?}", compile_time);
-    
+
+    println!(
+        "  Exponential distribution compilation completed in {:?}",
+        compile_time
+    );
+
     let rate_val = 1.5;
     println!("  JIT-compiled Exponential(λ={}) results:", rate_val);
     let exp_points = [0.1, 0.5, 1.0, 2.0];
@@ -255,19 +265,22 @@ fn demo_jit_compilation() -> Result<(), Box<dyn std::error::Error>> {
         let result = exp_compiled.call_data_param(x_val, rate_val);
         println!("    f({:4.1}) = {:8.4}", x_val, result);
     }
-    
+
     Ok(())
 }
 
 /// Demonstrate performance comparison between interpreters
 fn demo_performance_comparison() {
     use std::time::Instant;
-    
+
     let iterations = 100000;
     let test_points = [0.0, 1.0, -1.0, 2.0, 0.5];
-    
-    println!("  Performance comparison ({} iterations per point):", iterations);
-    
+
+    println!(
+        "  Performance comparison ({} iterations per point):",
+        iterations
+    );
+
     // DirectEval performance
     let start = Instant::now();
     for _ in 0..iterations {
@@ -280,9 +293,9 @@ fn demo_performance_comparison() {
     }
     let direct_time = start.elapsed();
     let direct_ns = direct_time.as_nanos() / (iterations as u128 * test_points.len() as u128);
-    
+
     println!("    DirectEval:         {:6} ns per call", direct_ns);
-    
+
     // DistributionEval performance (optimized)
     let start = Instant::now();
     for _ in 0..iterations {
@@ -292,13 +305,13 @@ fn demo_performance_comparison() {
     }
     let dist_time = start.elapsed();
     let dist_ns = dist_time.as_nanos() / (iterations as u128 * test_points.len() as u128);
-    
+
     println!("    DistributionEval:   {:6} ns per call", dist_ns);
-    
+
     // Traditional distribution performance
-    use measures_distributions::Normal;
     use measures_core::HasLogDensity;
-    
+    use measures_distributions::Normal;
+
     let normal = Normal::new(0.0, 1.0);
     let start = Instant::now();
     for _ in 0..iterations {
@@ -307,10 +320,11 @@ fn demo_performance_comparison() {
         }
     }
     let traditional_time = start.elapsed();
-    let traditional_ns = traditional_time.as_nanos() / (iterations as u128 * test_points.len() as u128);
-    
+    let traditional_ns =
+        traditional_time.as_nanos() / (iterations as u128 * test_points.len() as u128);
+
     println!("    Traditional:        {:6} ns per call", traditional_ns);
-    
+
     // Native Rust implementation for comparison
     let start = Instant::now();
     for _ in 0..iterations {
@@ -321,26 +335,32 @@ fn demo_performance_comparison() {
     }
     let native_time = start.elapsed();
     let native_ns = native_time.as_nanos() / (iterations as u128 * test_points.len() as u128);
-    
+
     println!("    Native Rust:        {:6} ns per call", native_ns);
-    
+
     // Calculate speedup ratios
     let direct_ratio = direct_ns as f64 / native_ns as f64;
     let dist_ratio = dist_ns as f64 / native_ns as f64;
     let traditional_ratio = traditional_ns as f64 / native_ns as f64;
-    
+
     println!("  Overhead ratios (vs native):");
     println!("    DirectEval:         {:.2}x", direct_ratio);
     println!("    DistributionEval:   {:.2}x", dist_ratio);
     println!("    Traditional:        {:.2}x", traditional_ratio);
-    
+
     if dist_ns < direct_ns {
         let speedup = direct_ns as f64 / dist_ns as f64;
-        println!("  DistributionEval is {:.2}x faster than DirectEval", speedup);
+        println!(
+            "  DistributionEval is {:.2}x faster than DirectEval",
+            speedup
+        );
     }
-    
+
     if dist_ns < traditional_ns {
         let speedup = traditional_ns as f64 / dist_ns as f64;
-        println!("  DistributionEval is {:.2}x faster than Traditional", speedup);
+        println!(
+            "  DistributionEval is {:.2}x faster than Traditional",
+            speedup
+        );
     }
-} 
+}
