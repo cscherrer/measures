@@ -11,10 +11,28 @@
 
 use num_traits::Float;
 
-/// Extension trait for dot product operations
+/// Trait for computing dot products between two types.
+///
+/// This trait provides a generic interface for dot product computation,
+/// which is fundamental for many statistical and mathematical operations.
+/// It's particularly important for exponential family computations where
+/// natural parameters and sufficient statistics need to be combined.
+///
+/// # Examples
+///
+/// ```rust
+/// use measures_core::DotProduct;
+///
+/// // For vectors, this would typically be the standard dot product
+/// let a = vec![1.0, 2.0, 3.0];
+/// let b = vec![4.0, 5.0, 6.0];
+/// // let result = a.dot(&b); // Would compute 1*4 + 2*5 + 3*6 = 32
+/// ```
 pub trait DotProduct<Rhs = Self> {
+    /// The result type of the dot product operation
     type Output;
 
+    /// Compute the dot product between self and other
     fn dot(&self, other: &Rhs) -> Self::Output;
 }
 

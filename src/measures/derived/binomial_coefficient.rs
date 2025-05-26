@@ -1,5 +1,5 @@
-use crate::core::{False, HasLogDensity, Measure, MeasureMarker};
 use crate::measures::primitive::counting::CountingMeasure;
+use measures_core::{False, HasLogDensity, Measure, MeasureMarker};
 use num_traits::{Float, ToPrimitive};
 use special::Gamma as GammaTrait;
 

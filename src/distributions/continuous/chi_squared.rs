@@ -17,10 +17,10 @@
 //! let log_density_value: f64 = ld.at(&2.0);
 //! ```
 
-use crate::core::types::{False, True};
-use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
+use measures_core::{False, True};
+use measures_core::{Measure, MeasureMarker};
 use num_traits::Float;
 use special::Gamma as GammaTrait;
 
@@ -139,7 +139,7 @@ fn gamma_ln<T: Float>(x: T) -> T {
         T::from(ln_gamma_val).unwrap()
     } else {
         // Fallback for types that don't convert to f64
-        x.ln()
+        todo!()
     }
 }
 
@@ -166,5 +166,36 @@ where
                 "ChiSquared distribution JIT compilation not yet implemented".to_string(),
             ),
         )
+    }
+}
+
+// Implementation of HasLogDensity for ChiSquared distribution
+impl<T: Float> measures_core::HasLogDensity<T, T> for ChiSquared<T> {
+    fn log_density_wrt_root(&self, x: &T) -> T {
+        if *x > T::zero() {
+            // Chi-squared is a special case of Gamma with shape = k/2, rate = 1/2
+            // PDF: f(x|k) = (1/(2^(k/2) * Γ(k/2))) * x^(k/2-1) * exp(-x/2)
+            // log f(x|k) = -(k/2)*log(2) - log(Γ(k/2)) + (k/2-1)*log(x) - x/2
+            let k = self.degrees_of_freedom;
+            let half_k = k / (T::one() + T::one());
+            let two = T::one() + T::one();
+
+            -half_k * two.ln() - chi_squared_ln_gamma(half_k) + (half_k - T::one()) * x.ln()
+                - *x / two
+        } else {
+            // Outside support, return negative infinity
+            T::neg_infinity()
+        }
+    }
+}
+
+// Helper function for log gamma function
+fn chi_squared_ln_gamma<T: Float>(x: T) -> T {
+    if let Some(x_f64) = x.to_f64() {
+        let (ln_gamma_val, _sign) = x_f64.ln_gamma();
+        T::from(ln_gamma_val).unwrap()
+    } else {
+        // Fallback for types that don't convert to f64
+        x.ln()
     }
 }

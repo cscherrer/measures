@@ -3,9 +3,9 @@
 //! This module provides the `TransformMeasure` type for applying differentiable
 //! transformations to measures, automatically handling Jacobian determinants.
 
-use crate::core::Measure;
 #[cfg(feature = "autodiff")]
 use ad_trait::AD;
+use measures_core::Measure;
 use num_traits::Float;
 use std::marker::PhantomData;
 

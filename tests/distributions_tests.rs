@@ -3,7 +3,7 @@
 //! These tests focus on semantic invariants and mathematical properties
 //! that should hold for probability distributions, using property-based testing.
 
-use measures::core::*;
+use measures::Measure;
 use measures::distributions::continuous::beta::Beta;
 use measures::distributions::continuous::chi_squared::ChiSquared;
 use measures::distributions::continuous::exponential::Exponential;

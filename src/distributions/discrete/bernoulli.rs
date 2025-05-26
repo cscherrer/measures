@@ -17,11 +17,11 @@
 //! let log_density_value: f64 = ld.at(&1);
 //! ```
 
-use crate::core::types::{False, True};
-use crate::core::utils::float_constant;
-use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::counting::CountingMeasure;
+use measures_core::float_constant;
+use measures_core::{False, True};
+use measures_core::{Measure, MeasureMarker};
 use num_traits::Float;
 
 /// Bernoulli distribution Bernoulli(p).
@@ -132,10 +132,11 @@ where
         &self,
     ) -> Result<crate::exponential_family::jit::JITFunction, crate::exponential_family::jit::JITError>
     {
-        use crate::core::utils::safe_convert;
+        use measures_core::safe_convert;
 
         let _prob_f64: f64 = safe_convert(self.prob);
-        let _log_odds = (_prob_f64 / (1.0 - _prob_f64)).ln();
+        let _one_minus_prob_f64: f64 = safe_convert(T::one() - self.prob);
+        let _log_odds = (_prob_f64 / _one_minus_prob_f64).ln();
         let _log_partition = (1.0 + _log_odds.exp()).ln();
 
         // For now, return an error since compile_function is not available
@@ -145,5 +146,16 @@ where
                 "Bernoulli distribution JIT compilation not yet implemented".to_string(),
             ),
         )
+    }
+}
+
+// Implementation of HasLogDensity for Bernoulli distribution
+impl<T: Float> measures_core::HasLogDensity<u8, T> for Bernoulli<T> {
+    fn log_density_wrt_root(&self, x: &u8) -> T {
+        match *x {
+            0 => (T::one() - self.prob).ln(),
+            1 => self.prob.ln(),
+            _ => T::neg_infinity(), // Outside support
+        }
     }
 }

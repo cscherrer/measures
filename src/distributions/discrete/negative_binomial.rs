@@ -20,11 +20,11 @@
 //! let log_density_value: f64 = ld.at(&3);
 //! ```
 
-use crate::core::types::{False, True};
-use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::derived::negative_binomial_coefficient::NegativeBinomialCoefficientMeasure;
 use crate::measures::primitive::counting::CountingMeasure;
+use measures_core::{False, True};
+use measures_core::{Measure, MeasureMarker};
 use num_traits::Float;
 
 /// Negative Binomial distribution NB(r, p) with fixed r.
@@ -153,5 +153,18 @@ where
                 "NegativeBinomial distribution JIT compilation not yet implemented".to_string(),
             ),
         )
+    }
+}
+
+// Implementation of HasLogDensity for NegativeBinomial distribution
+impl<T: Float> measures_core::HasLogDensity<u64, T> for NegativeBinomial<T> {
+    fn log_density_wrt_root(&self, x: &u64) -> T {
+        // Negative Binomial PMF: P(X = k) = C(k+r-1, k) * p^r * (1-p)^k
+        // log P(X = k) = log(C(k+r-1, k)) + r*log(p) + k*log(1-p)
+        let k = T::from(*x).unwrap();
+        let r = T::from(self.r).unwrap();
+
+        // The log binomial coefficient is handled by the base measure
+        r * self.prob.ln() + k * (T::one() - self.prob).ln()
     }
 }

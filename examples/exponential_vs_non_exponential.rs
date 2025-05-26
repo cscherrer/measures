@@ -4,6 +4,7 @@
 //! distributions (Normal) and non-exponential family distributions (Cauchy).
 
 use measures::{Cauchy, LogDensityBuilder, Normal};
+use measures::{MeasureMarker, TypeLevelBool};
 
 fn main() {
     let normal = Normal::new(0.0, 1.0); // Exponential family
@@ -31,8 +32,6 @@ fn main() {
     );
 
     // Type-level dispatch verification
-    use measures::core::{MeasureMarker, types::TypeLevelBool};
-
     let normal_is_exp_fam = <Normal<f64> as MeasureMarker>::IsExponentialFamily::VALUE;
     let cauchy_is_exp_fam = <Cauchy<f64> as MeasureMarker>::IsExponentialFamily::VALUE;
 

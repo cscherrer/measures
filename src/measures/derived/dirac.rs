@@ -1,5 +1,5 @@
-use crate::core::{False, Measure, MeasureMarker};
 use crate::measures::primitive::counting::CountingMeasure;
+use measures_core::{False, Measure, MeasureMarker};
 
 #[derive(Clone)]
 pub struct Dirac<T: Clone> {

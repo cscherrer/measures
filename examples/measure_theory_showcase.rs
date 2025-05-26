@@ -4,11 +4,10 @@
 //! works for both exponential families and non-exponential families,
 //! and how combinators can be used to build complex models.
 
-use measures::core::LogDensityBuilder;
-use measures::distributions::continuous::{cauchy::Cauchy, normal::Normal};
+use measures::distributions::continuous::cauchy::Cauchy;
 use measures::distributions::discrete::poisson::Poisson;
-use measures::measures::combinators::{product::ProductMeasureExt, superposition::MixtureExt};
 use measures::mixture;
+use measures::{LogDensityBuilder, MixtureExt, Normal, ProductMeasureExt};
 
 fn main() {
     println!("=== Measure Theory Showcase ===\n");

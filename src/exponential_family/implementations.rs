@@ -4,8 +4,8 @@ use num_traits::Float;
 use std::marker::PhantomData;
 
 use super::traits::ExponentialFamilyMeasure;
-use crate::core::{False, LogDensity, Measure, MeasureMarker, True};
-use crate::traits::DotProduct;
+use measures_core::DotProduct;
+use measures_core::{False, LogDensity, Measure, MeasureMarker, True};
 
 // Helper for converting LogDensity to f64 for exponential family measures
 pub struct ExponentialFamilyDensity<X, F, M>(pub LogDensity<X, M>, PhantomData<(X, F)>)

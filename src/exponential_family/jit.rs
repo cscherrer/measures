@@ -50,9 +50,9 @@
 //! # }
 //! ```
 
-use crate::core::HasLogDensity;
 use crate::exponential_family::traits::ExponentialFamily as ExponentialFamilyTrait;
-use crate::traits::DotProduct;
+use measures_core::DotProduct;
+use measures_core::HasLogDensity;
 
 // Re-export all JIT functionality from symbolic-math crate
 #[cfg(feature = "jit")]
@@ -103,8 +103,8 @@ pub trait CustomJITOptimizer<X, F> {
 pub fn generate_zero_overhead_exp_fam<D, X, F>(distribution: D) -> impl Fn(&X) -> F
 where
     D: crate::exponential_family::ExponentialFamily<X, F> + Clone,
-    D::NaturalParam: crate::traits::DotProduct<D::SufficientStat, Output = F> + Clone,
-    D::BaseMeasure: crate::core::HasLogDensity<X, F> + Clone,
+    D::NaturalParam: measures_core::DotProduct<D::SufficientStat, Output = F> + Clone,
+    D::BaseMeasure: measures_core::HasLogDensity<X, F> + Clone,
     X: Clone,
     F: num_traits::Float + Clone,
 {
@@ -126,9 +126,9 @@ pub fn generate_zero_overhead_exp_fam_wrt<D, B, X, F>(
 ) -> impl Fn(&X) -> F
 where
     D: crate::exponential_family::ExponentialFamily<X, F> + Clone,
-    D::NaturalParam: crate::traits::DotProduct<D::SufficientStat, Output = F> + Clone,
-    D::BaseMeasure: crate::core::HasLogDensity<X, F> + Clone,
-    B: crate::core::Measure<X> + crate::core::HasLogDensity<X, F> + Clone,
+    D::NaturalParam: measures_core::DotProduct<D::SufficientStat, Output = F> + Clone,
+    D::BaseMeasure: measures_core::HasLogDensity<X, F> + Clone,
+    B: measures_core::Measure<X> + measures_core::HasLogDensity<X, F> + Clone,
     X: Clone,
     F: num_traits::Float + std::ops::Sub<Output = F> + Clone,
 {
@@ -159,8 +159,8 @@ pub trait ZeroOverheadOptimizer<X, F>:
 where
     X: Clone,
     F: num_traits::Float + Clone,
-    Self::NaturalParam: crate::traits::DotProduct<Self::SufficientStat, Output = F> + Clone,
-    Self::BaseMeasure: crate::core::HasLogDensity<X, F> + Clone,
+    Self::NaturalParam: measures_core::DotProduct<Self::SufficientStat, Output = F> + Clone,
+    Self::BaseMeasure: measures_core::HasLogDensity<X, F> + Clone,
 {
     /// Generate a zero-overhead optimized function for this distribution
     fn zero_overhead_optimize(self) -> impl Fn(&X) -> F {
@@ -170,7 +170,7 @@ where
     /// Generate a zero-overhead optimized function with respect to a custom base measure
     fn zero_overhead_optimize_wrt<B>(self, base_measure: B) -> impl Fn(&X) -> F
     where
-        B: crate::core::Measure<X> + crate::core::HasLogDensity<X, F> + Clone,
+        B: measures_core::Measure<X> + measures_core::HasLogDensity<X, F> + Clone,
         F: std::ops::Sub<Output = F>,
     {
         generate_zero_overhead_exp_fam_wrt(self, base_measure)
@@ -183,8 +183,8 @@ where
     D: crate::exponential_family::ExponentialFamily<X, F> + Clone,
     X: Clone,
     F: num_traits::Float + Clone,
-    D::NaturalParam: crate::traits::DotProduct<D::SufficientStat, Output = F> + Clone,
-    D::BaseMeasure: crate::core::HasLogDensity<X, F> + Clone,
+    D::NaturalParam: measures_core::DotProduct<D::SufficientStat, Output = F> + Clone,
+    D::BaseMeasure: measures_core::HasLogDensity<X, F> + Clone,
 {
 }
 
@@ -410,8 +410,8 @@ mod tests {
 
     #[test]
     fn test_normal_custom_jit() {
-        use crate::core::LogDensityBuilder;
         use crate::distributions::continuous::Normal;
+        use measures_core::LogDensityBuilder;
 
         let normal = Normal::new(1.0, 2.0);
         let symbolic = normal.custom_symbolic_log_density();

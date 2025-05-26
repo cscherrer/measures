@@ -228,19 +228,20 @@ impl Default for BayesianJITOptimizer {
 #[cfg(test)]
 mod tests {
     use super::expressions::*;
+    use symbolic_math::Expr;
 
     #[test]
     fn test_normal_likelihood_expression() {
         let likelihood = normal_likelihood("x", "mu", "sigma");
         // normal_log_pdf returns normalization + quadratic, which is an Add expression
-        assert!(matches!(likelihood, symbolic_math::expr::Expr::Add(_, _)));
+        assert!(matches!(likelihood, Expr::Add(_, _)));
     }
 
     #[test]
     fn test_normal_prior_expression() {
         let prior = normal_prior("mu", 0.0, 1.0);
         // normal_log_pdf returns normalization + quadratic, which is an Add expression
-        assert!(matches!(prior, symbolic_math::expr::Expr::Add(_, _)));
+        assert!(matches!(prior, Expr::Add(_, _)));
     }
 
     #[test]
@@ -248,7 +249,7 @@ mod tests {
         let likelihood = normal_likelihood("x", "mu", "sigma");
         let prior = normal_prior("mu", 0.0, 1.0);
         let posterior = posterior_log_density(likelihood, prior);
-        assert!(matches!(posterior, symbolic_math::expr::Expr::Add(_, _)));
+        assert!(matches!(posterior, Expr::Add(_, _)));
     }
 }
 

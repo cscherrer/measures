@@ -4,8 +4,8 @@
 //! using property-based testing to ensure robustness.
 
 use measures::LogDensityTrait;
-use measures::core::density::{LogDensity, log_density_at, log_density_batch};
 use measures::distributions::continuous::normal::Normal;
+use measures::{LogDensity, log_density_at, log_density_batch};
 use proptest::prelude::*;
 
 // Constants for testing - no magic numbers

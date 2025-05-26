@@ -17,11 +17,11 @@
 //! let log_density_value: f64 = ld.at(&1);
 //! ```
 
-use crate::core::types::{False, True};
-use crate::core::{HasLogDensity, Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::counting::CountingMeasure;
-use crate::traits::DotProduct;
+use measures_core::DotProduct;
+use measures_core::{False, True};
+use measures_core::{HasLogDensity, Measure, MeasureMarker};
 use num_traits::Float;
 
 /// Categorical distribution Cat(p₁, p₂, ..., pₖ).
@@ -180,8 +180,8 @@ where
     /// Override `exp_fam_log_density` to check support first
     fn exp_fam_log_density(&self, x: &usize) -> T
     where
-        Self::NaturalParam: crate::traits::DotProduct<Self::SufficientStat, Output = T>,
-        Self::BaseMeasure: crate::core::HasLogDensity<usize, T>,
+        Self::NaturalParam: measures_core::DotProduct<Self::SufficientStat, Output = T>,
+        Self::BaseMeasure: measures_core::HasLogDensity<usize, T>,
     {
         // Check if in support first
         if !self.in_support(*x) {
@@ -226,5 +226,16 @@ where
                 "Categorical distribution JIT compilation not yet implemented".to_string(),
             ),
         )
+    }
+}
+
+// Implementation of HasLogDensity for Categorical distribution
+impl<T: Float> measures_core::HasLogDensity<usize, T> for Categorical<T> {
+    fn log_density_wrt_root(&self, x: &usize) -> T {
+        if *x < self.probs.len() {
+            self.probs[*x].ln()
+        } else {
+            T::neg_infinity() // Outside support
+        }
     }
 }

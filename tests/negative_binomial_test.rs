@@ -1,6 +1,6 @@
 //! Test for negative binomial distribution with `NegativeBinomialCoefficientMeasure`
 
-use measures::core::HasLogDensity;
+use measures::HasLogDensity;
 use measures::distributions::discrete::negative_binomial::NegativeBinomial;
 use measures::exponential_family::traits::ExponentialFamily;
 

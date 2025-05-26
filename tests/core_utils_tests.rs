@@ -3,7 +3,7 @@
 //! These tests focus on safe numeric conversions and edge cases,
 //! using property-based testing to ensure robustness.
 
-use measures::core::utils::*;
+use measures::{float_constant, safe_convert, safe_convert_or, safe_float_convert};
 use proptest::prelude::*;
 
 /// Test `safe_convert` with various numeric types
@@ -14,8 +14,8 @@ fn test_safe_convert_basic() {
     assert_eq!(result, 42.0);
 
     // Test f32 to f64 conversion
-    let result: f64 = safe_convert(3.14f32);
-    assert!((result - 3.14).abs() < 1e-6);
+    let result: f64 = safe_convert(std::f32::consts::PI);
+    assert!((result - std::f64::consts::PI).abs() < 1e-6);
 
     // Test u64 to f32 conversion
     let result: f32 = safe_convert(100u64);
@@ -52,9 +52,9 @@ fn test_safe_convert_or_with_explicit_fallback() {
 #[test]
 fn test_safe_float_convert_success_cases() {
     // Test f32 to f64 conversion
-    let result: Result<f64, &'static str> = safe_float_convert(3.14f32);
+    let result: Result<f64, &'static str> = safe_float_convert(std::f64::consts::PI);
     assert!(result.is_ok());
-    assert!((result.unwrap() - 3.14).abs() < 1e-6);
+    assert!((result.unwrap() - std::f64::consts::PI).abs() < 1e-6);
 
     // Test f64 to f32 conversion
     let result: Result<f32, &'static str> = safe_float_convert(2.71f64);
@@ -215,13 +215,13 @@ fn test_safe_convert_or_fallback_semantics() {
 #[test]
 fn test_float_constant_type_consistency() {
     // Same input should produce consistent results for same type
-    let val1: f64 = float_constant(3.14);
-    let val2: f64 = float_constant(3.14);
+    let val1: f64 = float_constant(std::f64::consts::PI);
+    let val2: f64 = float_constant(std::f64::consts::PI);
     assert_eq!(val1, val2);
 
     // Different types should handle the same input appropriately
-    let val_f64: f64 = float_constant(3.14);
-    let val_f32: f32 = float_constant(3.14);
+    let val_f64: f64 = float_constant(std::f64::consts::PI);
+    let val_f32: f32 = float_constant(std::f64::consts::PI);
     assert!((val_f64 - f64::from(val_f32)).abs() < 1e-6);
 }
 
@@ -288,8 +288,8 @@ fn test_cross_type_conversions() {
     assert_eq!(medium_uint, 65535.0);
 
     // f32 to f64 (should be lossless for most values)
-    let float_val: f64 = safe_convert(3.14159f32);
-    assert!((float_val - 3.14159).abs() < 1e-5);
+    let float_val: f64 = safe_convert(std::f32::consts::PI);
+    assert!((float_val - std::f64::consts::PI).abs() < 1e-5);
 }
 
 #[test]
@@ -321,7 +321,7 @@ fn test_conversion_functions_dont_panic() {
         0.0,
         1.0,
         -1.0,
-        3.14,
+        std::f64::consts::PI,
         -2.71,
         f64::MIN,
         f64::MAX,

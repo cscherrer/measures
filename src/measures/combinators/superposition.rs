@@ -4,8 +4,8 @@
 //! with specified weights. This is fundamental for mixture models and hierarchical
 //! Bayesian modeling.
 
-use crate::core::types::False;
-use crate::core::{HasLogDensity, Measure, MeasureMarker};
+use measures_core::False;
+use measures_core::{HasLogDensity, Measure, MeasureMarker};
 use num_traits::Float;
 
 /// A superposition (mixture) measure that combines multiple measures with weights.
@@ -197,8 +197,8 @@ macro_rules! mixture {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::LogDensityBuilder;
     use crate::distributions::continuous::normal::Normal;
+    use measures_core::LogDensityBuilder;
 
     #[test]
     fn test_mixture_creation() {

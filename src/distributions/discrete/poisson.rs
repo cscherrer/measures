@@ -4,12 +4,12 @@
 //! distribution that expresses the probability of a given number of events occurring
 //! in a fixed interval of time or space.
 
-use crate::core::types::{False, True};
-use crate::core::utils::float_constant;
-use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::derived::factorial::FactorialMeasure;
 use crate::measures::primitive::counting::CountingMeasure;
+use measures_core::float_constant;
+use measures_core::{False, True};
+use measures_core::{Measure, MeasureMarker};
 use num_traits::{Float, FloatConst};
 
 /// Poisson distribution with rate parameter λ.
@@ -81,5 +81,17 @@ where
         let natural_params = [self.rate.ln()];
         let log_partition = self.rate;
         (natural_params, log_partition)
+    }
+}
+
+// Implementation of HasLogDensity for Poisson distribution
+impl<F: Float + FloatConst> measures_core::HasLogDensity<u64, F> for Poisson<F> {
+    fn log_density_wrt_root(&self, x: &u64) -> F {
+        // Poisson PMF: P(X = k) = (λ^k * e^(-λ)) / k!
+        // log P(X = k) = k * log(λ) - λ - log(k!)
+        let k_f = float_constant::<F>(*x as f64);
+        let log_factorial =
+            (1..=*x).fold(F::zero(), |acc, i| acc + float_constant::<F>(i as f64).ln());
+        k_f * self.rate.ln() - self.rate - log_factorial
     }
 }

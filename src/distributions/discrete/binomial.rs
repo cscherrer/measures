@@ -19,11 +19,11 @@
 //! let log_density_value: f64 = ld.at(&3);
 //! ```
 
-use crate::core::types::{False, True};
-use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::derived::binomial_coefficient::BinomialCoefficientMeasure;
 use crate::measures::primitive::counting::CountingMeasure;
+use measures_core::{False, True};
+use measures_core::{Measure, MeasureMarker};
 use num_traits::Float;
 
 /// Binomial distribution Binomial(n, p) with fixed n.
@@ -139,5 +139,22 @@ where
                 "Binomial distribution JIT compilation not yet implemented".to_string(),
             ),
         )
+    }
+}
+
+// Implementation of HasLogDensity for Binomial distribution
+impl<T: Float> measures_core::HasLogDensity<u64, T> for Binomial<T> {
+    fn log_density_wrt_root(&self, x: &u64) -> T {
+        if *x <= self.n {
+            // Binomial PMF: P(X = k) = C(n,k) * p^k * (1-p)^(n-k)
+            // log P(X = k) = log(C(n,k)) + k*log(p) + (n-k)*log(1-p)
+            let k = T::from(*x).unwrap();
+            let n = T::from(self.n).unwrap();
+
+            // Use log binomial coefficient (this is handled by the base measure)
+            k * self.prob.ln() + (n - k) * (T::one() - self.prob).ln()
+        } else {
+            T::neg_infinity() // Outside support
+        }
     }
 }

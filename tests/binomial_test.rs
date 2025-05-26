@@ -1,6 +1,6 @@
 //! Test for binomial distribution with `BinomialCoefficientMeasure`
 
-use measures::core::HasLogDensity;
+use measures::HasLogDensity;
 use measures::distributions::discrete::binomial::Binomial;
 use measures::exponential_family::traits::ExponentialFamily;
 

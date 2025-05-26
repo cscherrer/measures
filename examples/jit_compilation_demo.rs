@@ -3,7 +3,7 @@
 //! Demonstrates the JIT compilation system for exponential family distributions
 //! using custom symbolic IR and Cranelift.
 
-use measures::core::LogDensityBuilder;
+use measures::LogDensityBuilder;
 use measures::distributions::continuous::Normal;
 use measures::exponential_family::jit::{CustomJITOptimizer, ZeroOverheadOptimizer};
 use std::time::Instant;

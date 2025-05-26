@@ -1,9 +1,9 @@
 use criterion::{
     AxisScale, BenchmarkId, Criterion, PlotConfiguration, criterion_group, criterion_main,
 };
-use measures::core::{HasLogDensity, LogDensityBuilder};
+use measures::distributions::discrete::poisson::Poisson;
 use measures::exponential_family::ExponentialFamily;
-use measures::{Normal, distributions::discrete::poisson::Poisson};
+use measures::{HasLogDensity, LogDensityBuilder, Normal};
 use rand::{Rng, rng};
 use rv::dist::{Gaussian, Poisson as RvPoisson};
 use rv::prelude::*;

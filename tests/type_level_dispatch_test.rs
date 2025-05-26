@@ -5,8 +5,8 @@
 //! 2. Primitive measures get simple zero log-density implementation
 //! 3. The dispatch happens at compile time based on the `IsExponentialFamily` marker
 
-use measures::core::LogDensityBuilder;
-use measures::distributions::continuous::Cauchy;
+use measures::LogDensityBuilder;
+use measures::distributions::continuous::cauchy::Cauchy;
 use measures::distributions::continuous::normal::Normal;
 use measures::measures::primitive::lebesgue::LebesgueMeasure;
 

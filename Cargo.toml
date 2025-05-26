@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "symbolic-math"]
+members = [".", "symbolic-math", "measures-core"]
 resolver = "2"
 
 [package]
@@ -32,6 +32,8 @@ cranelift-codegen = { version = "0.120", optional = true }
 cranelift-jit = { version = "0.120", optional = true }
 cranelift-module = { version = "0.120", optional = true }
 cranelift-frontend = { version = "0.120", optional = true }
+# Add dependency on our new measures-core crate
+measures-core = { path = "measures-core", optional = false }
 
 [dev-dependencies]
 criterion = { version = "0.6", features = ["html_reports", "cargo_bench_support"] }
@@ -72,6 +74,6 @@ optimization = ["symbolic", "symbolic-math?/optimization"]
 profiling = ["dep:profiling"]
 autodiff = ["dep:ad_trait", "dep:simba"]
 
-[[bin]]
-name = "perf_test"
-path = "src/bin/perf_test.rs"
+# [[bin]]
+# name = "perf_test"
+# path = "src/bin/perf_test.rs"

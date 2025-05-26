@@ -13,13 +13,11 @@
 //! let log_density: f64 = t_dist.log_density().at(&0.0);
 //! ```
 
-use crate::core::log_density_decomposition::{
-    DecompositionBuilder, HasLogDensityDecomposition, LogDensityDecomposition,
-};
-use crate::core::types::False;
-use crate::core::utils::float_constant;
-use crate::core::{HasLogDensity, Measure, MeasureMarker};
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
+use measures_core::False;
+use measures_core::float_constant;
+use measures_core::{DecompositionBuilder, HasLogDensityDecomposition, LogDensityDecomposition};
+use measures_core::{HasLogDensity, Measure, MeasureMarker};
 use num_traits::{Float, FloatConst};
 use special::Gamma;
 
@@ -171,7 +169,7 @@ impl<T: Float> Default for StudentT<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::LogDensityBuilder;
+    use measures_core::LogDensityBuilder;
 
     #[test]
     fn test_student_t_creation() {

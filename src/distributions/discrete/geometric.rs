@@ -18,10 +18,10 @@
 //! let log_density_value: f64 = ld.at(&2);
 //! ```
 
-use crate::core::types::{False, True};
-use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::counting::CountingMeasure;
+use measures_core::{False, True};
+use measures_core::{Measure, MeasureMarker};
 use num_traits::Float;
 
 /// Geometric distribution Geometric(p).
@@ -146,5 +146,19 @@ where
                 "Geometric distribution JIT compilation not yet implemented".to_string(),
             ),
         )
+    }
+}
+
+// Implementation of HasLogDensity for Geometric distribution
+impl<T: Float> measures_core::HasLogDensity<u64, T> for Geometric<T> {
+    fn log_density_wrt_root(&self, x: &u64) -> T {
+        // Geometric PMF: P(X = k) = (1-p)^(k-1) * p for k = 1, 2, 3, ...
+        // log P(X = k) = (k-1)*log(1-p) + log(p)
+        if *x >= 1 {
+            let k = T::from(*x).unwrap();
+            (k - T::one()) * (T::one() - self.prob).ln() + self.prob.ln()
+        } else {
+            T::neg_infinity() // Outside support (k must be >= 1)
+        }
     }
 }

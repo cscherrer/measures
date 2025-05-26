@@ -119,22 +119,55 @@
 #![warn(missing_docs)]
 #![allow(unstable_name_collisions)]
 
-// Core abstractions
-pub mod core;
+// Core abstractions - now from measures-core crate
+// pub mod core;  // Commented out - now using measures-core crate
 pub mod distributions;
 pub mod exponential_family;
 pub mod measures;
 pub mod statistics;
-pub mod traits;
+// pub mod traits;  // Commented out - now in measures-core crate
 
 // Bayesian inference and modeling
 pub mod bayesian;
 
-// Re-export key types for convenient access
-pub use core::{
-    DecompositionBuilder, DotProduct, EvaluateAt, HasLogDensity, HasLogDensityDecomposition,
-    LogDensity, LogDensityDecomposition, LogDensityTrait, Measure, PrimitiveMeasure,
+// Re-export key types for convenient access - now from measures-core
+pub use measures_core::{
+    CachedLogDensity,
+    DecompositionBuilder,
+    Default,
+    DensityMeasure,
+    DotProduct,
+    EvaluateAt,
+    ExponentialFamily,
+    False,
+    HasLogDensity,
+    HasLogDensityDecomposition,
+    LogDensity,
+    LogDensityBuilder,
+    LogDensityCaching,
+    LogDensityDecomposition,
+    LogDensityMethod,
+    LogDensityTrait,
+    Measure,
+    MeasureMarker,
+    PrimitiveMeasure,
+    SharedRootMeasure,
+    Specialized,
+    True,
+    TypeLevelBool,
+    // Utility functions
+    float_constant,
+    // Density helper functions
+    log_density_at,
+    log_density_batch,
+    safe_convert,
+    safe_convert_or,
+    safe_float_convert,
 };
+
+// Re-export commonly used traits at the top level for convenience
+pub use measures_core::{HasLogDensity as _, LogDensityBuilder as _};
+
 pub use distributions::continuous::beta::Beta;
 pub use distributions::continuous::cauchy::Cauchy;
 pub use distributions::continuous::chi_squared::ChiSquared;
@@ -157,7 +190,7 @@ pub use measures::combinators::pushforward::{PushforwardExt, PushforwardMeasure}
 pub use measures::combinators::superposition::{MixtureExt, MixtureMeasure};
 
 // Re-export core traits that users need to import
-pub use core::LogDensityBuilder;
+// pub use core::LogDensityBuilder;  // Now included in measures_core re-export above
 
 // Re-export symbolic computation types from symbolic-math crate
 #[cfg(feature = "symbolic")]

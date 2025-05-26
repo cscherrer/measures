@@ -1,4 +1,4 @@
-use crate::core::{False, HasLogDensity, MeasureMarker, PrimitiveMeasure, True};
+use measures_core::{False, HasLogDensity, MeasureMarker, PrimitiveMeasure, True};
 use num_traits::Zero;
 
 #[derive(Clone, Default)]

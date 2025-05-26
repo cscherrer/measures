@@ -4,11 +4,11 @@
 //! distribution with mean 0 and standard deviation 1. It's a special case of the Normal
 //! distribution that is particularly optimized for computations.
 
-use crate::core::types::{False, True};
-use crate::core::utils::float_constant;
-use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
+use measures_core::float_constant;
+use measures_core::{False, True};
+use measures_core::{Measure, MeasureMarker};
 use num_traits::{Float, FloatConst};
 
 /// Standard normal distribution N(0, 1).

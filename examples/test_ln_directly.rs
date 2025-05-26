@@ -3,12 +3,11 @@
 //! Creates symbolic expressions that require runtime ln(x) computation
 //! to verify the accuracy of our JIT-compiled ln function.
 
-use measures::core::{HasLogDensity, LogDensity, Measure};
 use measures::distributions::continuous::Normal;
 use measures::exponential_family::jit::CustomSymbolicLogDensity;
 use measures::exponential_family::jit::JITCompiler;
 use measures::exponential_family::traits::ExponentialFamily;
-use measures::traits::DotProduct;
+use measures::{DotProduct, HasLogDensity, LogDensity, Measure};
 use std::collections::HashMap;
 use symbolic_math::Expr;
 

@@ -3,9 +3,10 @@
 //! This module tests that exponential family distributions can actually perform
 //! proper computations using their natural parameter representation.
 
-use measures::core::{HasLogDensity, LogDensityBuilder};
-use measures::exponential_family::ExponentialFamily;
-use measures::{Normal, distributions::discrete::poisson::Poisson};
+use measures::distributions::discrete::poisson::Poisson;
+use measures::exponential_family::traits::ExponentialFamily;
+use measures::{DotProduct, HasLogDensity, LogDensityBuilder, Normal};
+use num_traits::Float;
 
 #[test]
 fn test_normal_exponential_family_conversion() {
@@ -120,7 +121,6 @@ fn test_poisson_exponential_family_log_density() {
     }
 
     // Using DotProduct for [F; 1] arrays
-    use measures::traits::DotProduct;
     let exp_fam_log_density = natural_param.dot(&sufficient_stat) - log_partition - log_factorial;
 
     // Compare with direct computation

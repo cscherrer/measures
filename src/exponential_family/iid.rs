@@ -13,16 +13,16 @@
 //! - Sufficient statistic: sum of individual sufficient statistics ∑ᵢT(xᵢ)
 //! - Log partition function: n times the original A(η)
 
-use crate::core::types::{False, True};
-use crate::core::utils::float_constant;
-use crate::core::{HasLogDensity, Measure, MeasureMarker};
 use crate::exponential_family::traits::{ExponentialFamily, SumSufficientStats};
 use crate::measures::derived::binomial_coefficient::BinomialCoefficientMeasure;
 use crate::measures::derived::factorial::FactorialMeasure;
 use crate::measures::derived::negative_binomial_coefficient::NegativeBinomialCoefficientMeasure;
 use crate::measures::primitive::counting::CountingMeasure;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
-use crate::traits::DotProduct;
+use measures_core::DotProduct;
+use measures_core::float_constant;
+use measures_core::{False, True};
+use measures_core::{HasLogDensity, Measure, MeasureMarker};
 use num_traits::Float;
 
 /// An IID (Independent and Identically Distributed) wrapper for exponential families.
@@ -292,5 +292,20 @@ where
     {
         // Use the efficient IID exponential family computation
         crate::exponential_family::traits::compute_iid_exp_fam_log_density(&self.distribution, xs)
+    }
+}
+
+/// Implementation of `HasLogDensity` for IID distributions
+impl<D, X, F> HasLogDensity<Vec<X>, F> for IID<D>
+where
+    D: ExponentialFamily<X, F>,
+    X: Clone,
+    F: Float + std::iter::Sum,
+    D::NaturalParam: DotProduct<D::SufficientStat, Output = F>,
+    D::SufficientStat: SumSufficientStats<D::SufficientStat>,
+    D::BaseMeasure: HasLogDensity<X, F>,
+{
+    fn log_density_wrt_root(&self, xs: &Vec<X>) -> F {
+        self.iid_log_density(xs)
     }
 }

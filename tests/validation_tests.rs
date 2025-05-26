@@ -15,7 +15,7 @@
 //!    chain rule when base measure != root measure, eliminating the need for manual overrides
 
 use approx::assert_abs_diff_eq;
-use measures::core::HasLogDensity;
+use measures::HasLogDensity;
 use measures::exponential_family::ExponentialFamily;
 use measures::{Normal, distributions::discrete::poisson::Poisson};
 use rv::prelude::*;

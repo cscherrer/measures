@@ -52,7 +52,7 @@ fn benchmark_single_evaluation(c: &mut Criterion) {
     {
         if let Ok(auto_jit_fn) = normal.auto_jit() {
             group.bench_function("auto_jit", |b| {
-                b.iter(|| black_box(auto_jit_fn.call(black_box(test_x))));
+                b.iter(|| black_box(auto_jit_fn.call_single(black_box(test_x))));
             });
         }
     }
@@ -108,7 +108,7 @@ fn benchmark_batch_evaluation(c: &mut Criterion) {
             group.bench_function("auto_jit", |b| {
                 b.iter(|| {
                     for &x in &test_values {
-                        black_box(auto_jit_fn.call(black_box(x)));
+                        black_box(auto_jit_fn.call_single(black_box(x)));
                     }
                 });
             });
@@ -175,7 +175,7 @@ fn benchmark_amortization_analysis(c: &mut Criterion) {
                     let jit_fn = normal.auto_jit().expect("Auto-JIT should succeed");
                     // Then evaluate multiple times
                     for _ in 0..count {
-                        black_box(jit_fn.call(black_box(test_x)));
+                        black_box(jit_fn.call_single(black_box(test_x)));
                     }
                 });
             },
@@ -256,7 +256,7 @@ fn benchmark_accuracy_preservation(c: &mut Criterion) {
                 b.iter(|| {
                     let mut sum = 0.0;
                     for &x in &test_values {
-                        sum += auto_jit_fn.call(black_box(x));
+                        sum += auto_jit_fn.call_single(black_box(x));
                     }
                     black_box(sum)
                 });

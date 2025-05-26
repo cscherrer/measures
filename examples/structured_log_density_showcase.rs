@@ -4,9 +4,9 @@
 //! works for both exponential families and non-exponential families, enabling
 //! efficient computation for IID samples and parameter optimization.
 
-use measures::core::LogDensityBuilder;
-use measures::core::log_density_decomposition::HasLogDensityDecomposition;
-use measures::distributions::continuous::{cauchy::Cauchy, normal::Normal, student_t::StudentT};
+use measures::distributions::continuous::cauchy::Cauchy;
+use measures::distributions::continuous::student_t::StudentT;
+use measures::{HasLogDensityDecomposition, LogDensityBuilder, Normal};
 use std::time::Instant;
 
 fn main() {

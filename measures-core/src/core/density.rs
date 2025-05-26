@@ -1,5 +1,6 @@
+//! Log-density computation traits and implementations.
+
 use super::measure::Measure;
-use crate::core::types::True;
 use num_traits::Float;
 
 // Add AD support
@@ -310,8 +311,6 @@ where
     }
 }
 
-/// Base trait for measures that can compute their log-density with respect to their root measure.
-///
 /// This trait provides automatic specialization based on `IsExponentialFamily`:
 /// - Exponential families get optimized cached computation automatically  
 /// - Other measures implement the trait manually
@@ -320,27 +319,6 @@ where
 pub trait HasLogDensity<T, F> {
     /// Compute the log-density of this measure with respect to its root measure
     fn log_density_wrt_root(&self, x: &T) -> F;
-}
-
-/// Automatic implementation of `HasLogDensity` for exponential families.
-///
-/// This implementation automatically provides log-density computation for any
-/// exponential family using the simplified formula:
-/// log p(x|θ) = η·T(x) - A(η) + log h(x)
-impl<T: Clone, F, M> HasLogDensity<T, F> for M
-where
-    M: Measure<T, IsExponentialFamily = True>
-        + crate::exponential_family::ExponentialFamily<T, F>
-        + Clone,
-    F: Float,
-    M::NaturalParam: crate::traits::DotProduct<M::SufficientStat, Output = F> + Clone,
-    M::BaseMeasure: HasLogDensity<T, F>,
-{
-    #[inline]
-    fn log_density_wrt_root(&self, x: &T) -> F {
-        // Use the simplified exponential family computation
-        self.exp_fam_log_density(x)
-    }
 }
 
 /// Cached log-density for repeated evaluations with a specific numeric type

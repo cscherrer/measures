@@ -17,10 +17,10 @@
 //! let log_density_value: f64 = ld.at(&2.0);
 //! ```
 
-use crate::core::types::{False, True};
-use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
+use measures_core::{False, True};
+use measures_core::{Measure, MeasureMarker};
 use num_traits::Float;
 
 /// Exponential distribution Exp(λ)
@@ -105,8 +105,22 @@ where
     }
 }
 
+// Implementation of HasLogDensity for Exponential distribution
+impl<T: Float> measures_core::HasLogDensity<T, T> for Exponential<T> {
+    fn log_density_wrt_root(&self, x: &T) -> T {
+        if *x >= T::zero() {
+            // Exponential PDF: f(x|λ) = λ * exp(-λx)
+            // log f(x|λ) = log(λ) - λx
+            self.rate.ln() - self.rate * *x
+        } else {
+            // Outside support, return negative infinity
+            T::neg_infinity()
+        }
+    }
+}
+
 #[cfg(feature = "jit")]
-use crate::core::utils::safe_convert;
+use measures_core::safe_convert;
 
 // JIT optimization implementation
 #[cfg(feature = "jit")]

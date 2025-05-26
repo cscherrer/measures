@@ -50,7 +50,7 @@ fn benchmark_normal_distribution(c: &mut Criterion) {
         let jit_fn = normal.auto_jit().expect("JIT compilation should succeed");
         b.iter(|| {
             for &x in &test_values {
-                black_box(jit_fn.call(black_box(x)));
+                black_box(jit_fn.call_single(black_box(x)));
             }
         });
     });
@@ -65,7 +65,7 @@ fn benchmark_normal_distribution(c: &mut Criterion) {
             .expect("Manual JIT should succeed");
         b.iter(|| {
             for &x in &test_values {
-                black_box(jit_fn.call(black_box(x)));
+                black_box(jit_fn.call_single(black_box(x)));
             }
         });
     });
@@ -108,7 +108,7 @@ fn benchmark_exponential_distribution(c: &mut Criterion) {
             .expect("JIT compilation should succeed");
         b.iter(|| {
             for &x in &test_values {
-                black_box(jit_fn.call(black_box(x)));
+                black_box(jit_fn.call_single(black_box(x)));
             }
         });
     });
@@ -139,7 +139,7 @@ fn benchmark_single_evaluation(c: &mut Criterion) {
     #[cfg(feature = "jit")]
     group.bench_function("normal_auto_jit", |b| {
         let jit_fn = normal.auto_jit().expect("JIT compilation should succeed");
-        b.iter(|| black_box(jit_fn.call(black_box(test_x))));
+        b.iter(|| black_box(jit_fn.call_single(black_box(test_x))));
     });
 
     group.finish();
@@ -197,7 +197,7 @@ fn benchmark_parameter_variations(c: &mut Criterion) {
         #[cfg(feature = "jit")]
         group.bench_with_input(BenchmarkId::new("auto_jit", i), &normal, |b, normal| {
             let jit_fn = normal.auto_jit().expect("JIT compilation should succeed");
-            b.iter(|| black_box(jit_fn.call(black_box(test_x))));
+            b.iter(|| black_box(jit_fn.call_single(black_box(test_x))));
         });
     }
 
@@ -228,7 +228,7 @@ fn benchmark_accuracy_vs_performance(c: &mut Criterion) {
         b.iter(|| {
             let mut sum = 0.0;
             for &x in &test_values {
-                sum += jit_fn.call(black_box(x));
+                sum += jit_fn.call_single(black_box(x));
             }
             black_box(sum)
         });
@@ -289,7 +289,7 @@ fn benchmark_scalability(c: &mut Criterion) {
                 let jit_fn = normal.auto_jit().expect("JIT compilation should succeed");
                 b.iter(|| {
                     for &x in values {
-                        black_box(jit_fn.call(black_box(x)));
+                        black_box(jit_fn.call_single(black_box(x)));
                     }
                 });
             },

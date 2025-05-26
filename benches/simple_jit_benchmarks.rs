@@ -39,7 +39,7 @@ fn benchmark_normal_performance(c: &mut Criterion) {
     {
         if let Ok(jit_fn) = normal.auto_jit() {
             group.bench_function("auto_jit", |b| {
-                b.iter(|| black_box(jit_fn.call(black_box(test_x))));
+                b.iter(|| black_box(jit_fn.call_single(black_box(test_x))));
             });
         }
     }
@@ -71,7 +71,7 @@ fn benchmark_exponential_performance(c: &mut Criterion) {
     {
         if let Ok(jit_fn) = exponential.auto_jit() {
             group.bench_function("auto_jit", |b| {
-                b.iter(|| black_box(jit_fn.call(black_box(test_x))));
+                b.iter(|| black_box(jit_fn.call_single(black_box(test_x))));
             });
         }
     }
@@ -113,7 +113,7 @@ fn benchmark_batch_evaluation(c: &mut Criterion) {
             group.bench_function("auto_jit_batch", |b| {
                 b.iter(|| {
                     for &x in &test_values {
-                        black_box(jit_fn.call(black_box(x)));
+                        black_box(jit_fn.call_single(black_box(x)));
                     }
                 });
             });
@@ -147,7 +147,7 @@ fn benchmark_parameter_variations(c: &mut Criterion) {
         {
             if let Ok(jit_fn) = normal.auto_jit() {
                 group.bench_with_input(BenchmarkId::new("auto_jit", i), &jit_fn, |b, jit_fn| {
-                    b.iter(|| black_box(jit_fn.call(black_box(test_x))));
+                    b.iter(|| black_box(jit_fn.call_single(black_box(test_x))));
                 });
             }
         }
@@ -182,7 +182,7 @@ fn benchmark_accuracy_preservation(c: &mut Criterion) {
                 b.iter(|| {
                     let mut sum = 0.0;
                     for &x in &test_values {
-                        sum += jit_fn.call(black_box(x));
+                        sum += jit_fn.call_single(black_box(x));
                     }
                     black_box(sum)
                 });

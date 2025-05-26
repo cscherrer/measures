@@ -1,4 +1,4 @@
-use crate::core::{False, HasLogDensity, Measure, MeasureMarker};
+use measures_core::{False, HasLogDensity, Measure, MeasureMarker};
 use num_traits::Float;
 
 /// A measure constructed by integrating a log-density function against a base measure.

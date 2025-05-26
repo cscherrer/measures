@@ -15,10 +15,10 @@
 //! - The space X where the random variable lives (could be ints, vectors, etc.)
 //! - The field F for numerical computations (always some Float type)
 
-use crate::core::types::True;
-use crate::core::utils::float_constant;
-use crate::core::{HasLogDensity, Measure};
-use crate::traits::DotProduct;
+use measures_core::DotProduct;
+use measures_core::True;
+use measures_core::float_constant;
+use measures_core::{HasLogDensity, Measure};
 use num_traits::Float;
 
 /// The core trait for exponential family distributions.

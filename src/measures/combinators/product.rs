@@ -4,8 +4,8 @@
 //! measures into a joint measure. This is fundamental for modeling independence
 //! in probabilistic models.
 
-use crate::core::types::False;
-use crate::core::{HasLogDensity, Measure, MeasureMarker};
+use measures_core::False;
+use measures_core::{HasLogDensity, Measure, MeasureMarker};
 use num_traits::Float;
 
 /// A product measure representing the joint distribution of independent random variables.
@@ -95,9 +95,9 @@ macro_rules! product_measure {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::LogDensityBuilder;
     use crate::distributions::continuous::normal::Normal;
     use crate::distributions::discrete::poisson::Poisson;
+    use measures_core::LogDensityBuilder;
 
     #[test]
     fn test_product_measure_creation() {

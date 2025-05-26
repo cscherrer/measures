@@ -3,7 +3,7 @@
 //! probability mass functions, and statistical properties while using property-based testing
 //! for robustness.
 
-use measures::core::*;
+use measures::Measure;
 use measures::distributions::discrete::bernoulli::Bernoulli;
 use measures::distributions::discrete::binomial::Binomial;
 use measures::distributions::discrete::geometric::Geometric;

@@ -16,14 +16,13 @@
 //! let log_density_value: f64 = ld.at(&0.0);
 //! ```
 
-use crate::core::log_density_decomposition::{
-    DecompositionBuilder, HasLogDensityDecomposition, LogDensityDecomposition,
-};
-use crate::core::types::{False, True};
-use crate::core::utils::float_constant;
-use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
+use measures_core::core::utils::float_constant;
+use measures_core::{
+    DecompositionBuilder, False, HasLogDensityDecomposition, LogDensityDecomposition, Measure,
+    MeasureMarker, True,
+};
 use num_traits::{Float, FloatConst};
 
 /// Normal distribution N(μ, σ²)
@@ -172,6 +171,18 @@ where
             + float_constant::<T>(0.5) * mu2 * inv_sigma2;
 
         (natural_params, log_partition)
+    }
+}
+
+// Implementation of HasLogDensity for Normal distribution
+impl<T: Float + FloatConst> measures_core::HasLogDensity<T, T> for Normal<T> {
+    fn log_density_wrt_root(&self, x: &T) -> T {
+        let two_pi = float_constant::<T>(2.0) * T::PI();
+        let standardized = (*x - self.mean) / self.std_dev;
+
+        -float_constant::<T>(0.5) * two_pi.ln()
+            - self.std_dev.ln()
+            - float_constant::<T>(0.5) * standardized * standardized
     }
 }
 

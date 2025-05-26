@@ -4,9 +4,9 @@
 //! for handling transformations of random variables. If X ~ μ and Y = f(X), then
 //! Y ~ f₊μ (the pushforward of μ under f).
 
-use crate::core::types::False;
-use crate::core::{HasLogDensity, Measure, MeasureMarker};
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
+use measures_core::False;
+use measures_core::{HasLogDensity, Measure, MeasureMarker};
 
 /// A pushforward measure representing the distribution of a transformed random variable.
 ///
@@ -182,9 +182,9 @@ pub mod transforms {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::LogDensityBuilder;
     use crate::distributions::continuous::normal::Normal;
     use crate::measures::combinators::pushforward::transforms::*;
+    use measures_core::LogDensityBuilder;
 
     #[test]
     fn test_log_normal_via_pushforward() {

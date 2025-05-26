@@ -1475,6 +1475,7 @@ dependencies = [
  "egglog",
  "iai-callgrind",
  "inferno",
+ "measures-core",
  "nalgebra",
  "num-traits",
  "profiling",
@@ -1485,6 +1486,18 @@ dependencies = [
  "special",
  "symbolic-math",
  "tracy-client",
+]
+
+[[package]]
+name = "measures-core"
+version = "0.1.0"
+dependencies = [
+ "ad_trait",
+ "alga",
+ "approx 0.5.1",
+ "nalgebra",
+ "num-traits",
+ "simba",
 ]
 
 [[package]]

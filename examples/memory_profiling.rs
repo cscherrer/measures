@@ -7,8 +7,8 @@
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
 
-use measures::core::{HasLogDensity, LogDensityBuilder};
 use measures::exponential_family::ExponentialFamily;
+use measures::{HasLogDensity, LogDensityBuilder};
 use measures::{Normal, distributions::discrete::poisson::Poisson};
 
 fn main() {

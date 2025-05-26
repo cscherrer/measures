@@ -17,10 +17,10 @@
 //! let log_density_value: f64 = ld.at(&0.3);
 //! ```
 
-use crate::core::types::{False, True};
-use crate::core::{Measure, MeasureMarker};
 use crate::exponential_family::traits::ExponentialFamily;
 use crate::measures::primitive::lebesgue::LebesgueMeasure;
+use measures_core::{False, True};
+use measures_core::{Measure, MeasureMarker};
 use num_traits::Float;
 use special::Gamma;
 
@@ -127,8 +127,27 @@ where
     }
 }
 
-// Helper function for log gamma function
-fn gamma_ln<T: Float>(x: T) -> T {
+// Implementation of HasLogDensity for Beta distribution
+impl<T: Float> measures_core::HasLogDensity<T, T> for Beta<T> {
+    fn log_density_wrt_root(&self, x: &T) -> T {
+        if *x > T::zero() && *x < T::one() {
+            // Beta PDF: f(x|α,β) = (Γ(α+β) / (Γ(α)Γ(β))) * x^(α-1) * (1-x)^(β-1)
+            // log f(x|α,β) = log(Γ(α+β)) - log(Γ(α)) - log(Γ(β)) + (α-1)*log(x) + (β-1)*log(1-x)
+            let alpha = self.alpha;
+            let beta = self.beta;
+
+            beta_ln(alpha + beta) - beta_ln(alpha) - beta_ln(beta)
+                + (alpha - T::one()) * x.ln()
+                + (beta - T::one()) * (T::one() - *x).ln()
+        } else {
+            // Outside support, return negative infinity
+            T::neg_infinity()
+        }
+    }
+}
+
+// Helper function for log gamma function (same as in gamma.rs)
+fn beta_ln<T: Float>(x: T) -> T {
     if let Some(x_f64) = x.to_f64() {
         let (ln_gamma_val, _sign) = x_f64.ln_gamma();
         T::from(ln_gamma_val).unwrap()
