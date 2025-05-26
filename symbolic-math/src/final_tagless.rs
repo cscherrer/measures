@@ -17,32 +17,39 @@
 //!
 //! ```rust
 //! use symbolic_math::final_tagless::*;
+//! use symbolic_math::Expr;
 //!
-//! // Define an expression using the final tagless approach
-//! fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
+//! // Define a simple linear expression to avoid move issues
+//! fn linear<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
 //!     let two = E::constant(2.0);
 //!     let three = E::constant(3.0);
-//!     let one = E::constant(1.0);
 //!     
-//!     // 2*x^2 + 3*x + 1
-//!     E::add(
-//!         E::add(
-//!             E::mul(two, E::pow(x, E::constant(2.0))),
-//!             E::mul(three, x)
-//!         ),
-//!         one
-//!     )
+//!     // 2*x + 3
+//!     E::add(E::mul(two, x), three)
 //! }
 //!
 //! // Evaluate with different interpreters
-//! let result_f64: f64 = quadratic::<DirectEval>(DirectEval::var("x", 2.0));
-//! let expr_ast: Expr = quadratic::<ExprBuilder>(ExprBuilder::var("x"));
+//! let result_f64: f64 = linear::<DirectEval>(DirectEval::var("x", 2.0));
+//! let expr_ast: Expr = linear::<ExprBuilder>(ExprBuilder::var("x"));
 //! ```
 
 use crate::Expr;
-use std::collections::HashMap;
-use std::ops::{Add, Sub, Mul, Div, Neg};
 use num_traits::Float;
+use std::collections::HashMap;
+use std::ops::{Add, Div, Mul, Neg, Sub};
+
+/// Helper trait that bundles all the common trait bounds for numeric types
+/// This makes the main `MathExpr` trait much cleaner and easier to read
+pub trait NumericType:
+    Clone + Default + Send + Sync + 'static + std::fmt::Display + Into<f64>
+{
+}
+
+/// Blanket implementation for all types that satisfy the bounds
+impl<T> NumericType for T where
+    T: Clone + Default + Send + Sync + 'static + std::fmt::Display + Into<f64>
+{
+}
 
 /// Core trait for mathematical expressions using Generic Associated Types (GATs)
 /// This follows the final tagless approach where the representation type is parameterized
@@ -52,61 +59,57 @@ pub trait MathExpr {
     type Repr<T>;
 
     /// Create a constant value
-    fn constant<T>(value: T) -> Self::Repr<T>
-    where
-        T: Clone + Send + Sync + 'static + std::fmt::Display + Into<f64>;
-    /// Create a variable reference
-    fn var<T>(name: &str) -> Self::Repr<T>
-    where
-        T: Clone + Default + Send + Sync + 'static + std::fmt::Display + Into<f64>;
+    fn constant<T: NumericType>(value: T) -> Self::Repr<T>;
 
-    // Arithmetic operations (can now use operators directly)
+    /// Create a variable reference
+    fn var<T: NumericType>(name: &str) -> Self::Repr<T>;
+
+    // Arithmetic operations
     /// Addition operation
-    fn add<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Add<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>;
+    fn add<T: NumericType + Add<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T>;
+
     /// Subtraction operation
-    fn sub<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Sub<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>;
+    fn sub<T: NumericType + Sub<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T>;
+
     /// Multiplication operation
-    fn mul<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Mul<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>;
+    fn mul<T: NumericType + Mul<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T>;
+
     /// Division operation
-    fn div<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Div<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>;
+    fn div<T: NumericType + Div<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T>;
+
     /// Power operation
-    fn pow<T>(base: Self::Repr<T>, exp: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>;
+    fn pow<T: NumericType + Float>(base: Self::Repr<T>, exp: Self::Repr<T>) -> Self::Repr<T>;
+
     /// Negation operation
-    fn neg<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Neg<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>;
+    fn neg<T: NumericType + Neg<Output = T>>(expr: Self::Repr<T>) -> Self::Repr<T>;
 
     // Transcendental functions
     /// Natural logarithm
-    fn ln<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>;
+    fn ln<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T>;
+
     /// Exponential function
-    fn exp<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>;
+    fn exp<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T>;
+
     /// Square root
-    fn sqrt<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>;
+    fn sqrt<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T>;
+
     /// Sine function
-    fn sin<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>;
+    fn sin<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T>;
+
     /// Cosine function
-    fn cos<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>;
+    fn cos<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T>;
 }
 
 /// Direct evaluation interpreter - evaluates expressions immediately to numeric values
@@ -122,90 +125,69 @@ impl DirectEval {
 impl MathExpr for DirectEval {
     type Repr<T> = T;
 
-    fn constant<T>(value: T) -> Self::Repr<T> {
+    fn constant<T: NumericType>(value: T) -> Self::Repr<T> {
         value
     }
 
-    fn var<T>(_name: &str) -> Self::Repr<T> {
+    fn var<T: NumericType>(_name: &str) -> Self::Repr<T> {
         // For direct evaluation, we need the value to be provided separately
         // This is a limitation of the direct eval approach for variables
         panic!("Use DirectEval::var(name, value) instead for direct evaluation")
     }
 
-    fn add<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Add<Output = T>,
-    {
+    fn add<T: NumericType + Add<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         left + right
     }
 
-    fn sub<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Sub<Output = T>,
-    {
+    fn sub<T: NumericType + Sub<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         left - right
     }
 
-    fn mul<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Mul<Output = T>,
-    {
+    fn mul<T: NumericType + Mul<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         left * right
     }
 
-    fn div<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Div<Output = T>,
-    {
+    fn div<T: NumericType + Div<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         left / right
     }
 
-    fn pow<T>(base: Self::Repr<T>, exp: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float,
-    {
+    fn pow<T: NumericType + Float>(base: Self::Repr<T>, exp: Self::Repr<T>) -> Self::Repr<T> {
         base.powf(exp)
     }
 
-    fn neg<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Neg<Output = T>,
-    {
+    fn neg<T: NumericType + Neg<Output = T>>(expr: Self::Repr<T>) -> Self::Repr<T> {
         -expr
     }
 
-    fn ln<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float,
-    {
+    fn ln<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         expr.ln()
     }
 
-    fn exp<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float,
-    {
+    fn exp<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         expr.exp()
     }
 
-    fn sqrt<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float,
-    {
+    fn sqrt<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         expr.sqrt()
     }
 
-    fn sin<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float,
-    {
+    fn sin<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         expr.sin()
     }
 
-    fn cos<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float,
-    {
+    fn cos<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         expr.cos()
     }
 }
@@ -216,6 +198,7 @@ pub struct ExprBuilder;
 
 impl ExprBuilder {
     /// Create a variable expression
+    #[must_use]
     pub fn var(name: &str) -> Expr {
         Expr::Var(name.to_string())
     }
@@ -224,96 +207,69 @@ impl ExprBuilder {
 impl MathExpr for ExprBuilder {
     type Repr<T> = Expr;
 
-    fn constant<T>(value: T) -> Self::Repr<T>
-    where
-        T: Clone + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn constant<T: NumericType>(value: T) -> Self::Repr<T> {
         // For ExprBuilder, we need to convert to f64 since Expr only supports f64
         // This is a limitation of the existing Expr type
         Expr::Const(value.into())
     }
 
-    fn var<T>(name: &str) -> Self::Repr<T>
-    where
-        T: Clone + Default + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn var<T: NumericType>(name: &str) -> Self::Repr<T> {
         Expr::Var(name.to_string())
     }
 
-    fn add<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Add<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn add<T: NumericType + Add<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         Expr::Add(Box::new(left), Box::new(right))
     }
 
-    fn sub<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Sub<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn sub<T: NumericType + Sub<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         Expr::Sub(Box::new(left), Box::new(right))
     }
 
-    fn mul<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Mul<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn mul<T: NumericType + Mul<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         Expr::Mul(Box::new(left), Box::new(right))
     }
 
-    fn div<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Div<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn div<T: NumericType + Div<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         Expr::Div(Box::new(left), Box::new(right))
     }
 
-    fn pow<T>(base: Self::Repr<T>, exp: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn pow<T: NumericType + Float>(base: Self::Repr<T>, exp: Self::Repr<T>) -> Self::Repr<T> {
         Expr::Pow(Box::new(base), Box::new(exp))
     }
 
-    fn neg<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Neg<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn neg<T: NumericType + Neg<Output = T>>(expr: Self::Repr<T>) -> Self::Repr<T> {
         Expr::Neg(Box::new(expr))
     }
 
-    fn ln<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn ln<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         Expr::Ln(Box::new(expr))
     }
 
-    fn exp<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn exp<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         Expr::Exp(Box::new(expr))
     }
 
-    fn sqrt<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn sqrt<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         Expr::Sqrt(Box::new(expr))
     }
 
-    fn sin<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn sin<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         Expr::Sin(Box::new(expr))
     }
 
-    fn cos<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn cos<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         Expr::Cos(Box::new(expr))
     }
 }
@@ -326,7 +282,8 @@ pub type ContextualRepr<T> = Box<dyn Fn(&HashMap<String, T>) -> T + Send + Sync>
 
 impl ContextualEval {
     /// Create a variable that will be looked up in the context
-    pub fn var<T>(name: &str) -> ContextualRepr<T> 
+    #[must_use]
+    pub fn var<T>(name: &str) -> ContextualRepr<T>
     where
         T: Clone + Default,
     {
@@ -335,6 +292,7 @@ impl ContextualEval {
     }
 
     /// Evaluate a contextual expression with a specific context
+    #[must_use]
     pub fn eval_with<T>(expr: &ContextualRepr<T>, context: &HashMap<String, T>) -> T {
         expr(context)
     }
@@ -343,95 +301,68 @@ impl ContextualEval {
 impl MathExpr for ContextualEval {
     type Repr<T> = ContextualRepr<T>;
 
-    fn constant<T>(value: T) -> Self::Repr<T> 
-    where
-        T: Clone + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn constant<T: NumericType>(value: T) -> Self::Repr<T> {
         Box::new(move |_| value.clone())
     }
 
-    fn var<T>(name: &str) -> Self::Repr<T>
-    where
-        T: Clone + Default + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn var<T: NumericType>(name: &str) -> Self::Repr<T> {
         let var_name = name.to_string();
         Box::new(move |ctx| ctx.get(&var_name).cloned().unwrap_or_default())
     }
 
-    fn add<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Add<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn add<T: NumericType + Add<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         Box::new(move |ctx| left(ctx) + right(ctx))
     }
 
-    fn sub<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Sub<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn sub<T: NumericType + Sub<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         Box::new(move |ctx| left(ctx) - right(ctx))
     }
 
-    fn mul<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Mul<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn mul<T: NumericType + Mul<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         Box::new(move |ctx| left(ctx) * right(ctx))
     }
 
-    fn div<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Div<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn div<T: NumericType + Div<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         Box::new(move |ctx| left(ctx) / right(ctx))
     }
 
-    fn pow<T>(base: Self::Repr<T>, exp: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn pow<T: NumericType + Float>(base: Self::Repr<T>, exp: Self::Repr<T>) -> Self::Repr<T> {
         Box::new(move |ctx| base(ctx).powf(exp(ctx)))
     }
 
-    fn neg<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Neg<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn neg<T: NumericType + Neg<Output = T>>(expr: Self::Repr<T>) -> Self::Repr<T> {
         Box::new(move |ctx| -expr(ctx))
     }
 
-    fn ln<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn ln<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         Box::new(move |ctx| expr(ctx).ln())
     }
 
-    fn exp<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn exp<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         Box::new(move |ctx| expr(ctx).exp())
     }
 
-    fn sqrt<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn sqrt<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         Box::new(move |ctx| expr(ctx).sqrt())
     }
 
-    fn sin<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn sin<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         Box::new(move |ctx| expr(ctx).sin())
     }
 
-    fn cos<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn cos<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         Box::new(move |ctx| expr(ctx).cos())
     }
 }
@@ -442,6 +373,7 @@ pub struct PrettyPrint;
 
 impl PrettyPrint {
     /// Create a variable string
+    #[must_use]
     pub fn var(name: &str) -> String {
         name.to_string()
     }
@@ -450,94 +382,67 @@ impl PrettyPrint {
 impl MathExpr for PrettyPrint {
     type Repr<T> = String;
 
-    fn constant<T>(value: T) -> Self::Repr<T>
-    where
-        T: Clone + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn constant<T: NumericType>(value: T) -> Self::Repr<T> {
         format!("{value}")
     }
 
-    fn var<T>(name: &str) -> Self::Repr<T>
-    where
-        T: Clone + Default + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn var<T: NumericType>(name: &str) -> Self::Repr<T> {
         name.to_string()
     }
 
-    fn add<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Add<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn add<T: NumericType + Add<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         format!("({left} + {right})")
     }
 
-    fn sub<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Sub<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn sub<T: NumericType + Sub<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         format!("({left} - {right})")
     }
 
-    fn mul<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Mul<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn mul<T: NumericType + Mul<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         format!("({left} * {right})")
     }
 
-    fn div<T>(left: Self::Repr<T>, right: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Div<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn div<T: NumericType + Div<Output = T>>(
+        left: Self::Repr<T>,
+        right: Self::Repr<T>,
+    ) -> Self::Repr<T> {
         format!("({left} / {right})")
     }
 
-    fn pow<T>(base: Self::Repr<T>, exp: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn pow<T: NumericType + Float>(base: Self::Repr<T>, exp: Self::Repr<T>) -> Self::Repr<T> {
         format!("({base} ^ {exp})")
     }
 
-    fn neg<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Neg<Output = T> + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn neg<T: NumericType + Neg<Output = T>>(expr: Self::Repr<T>) -> Self::Repr<T> {
         format!("(-{expr})")
     }
 
-    fn ln<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn ln<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         format!("ln({expr})")
     }
 
-    fn exp<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn exp<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         format!("exp({expr})")
     }
 
-    fn sqrt<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn sqrt<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         format!("sqrt({expr})")
     }
 
-    fn sin<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn sin<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         format!("sin({expr})")
     }
 
-    fn cos<T>(expr: Self::Repr<T>) -> Self::Repr<T>
-    where
-        T: Float + Send + Sync + 'static + std::fmt::Display + Into<f64>,
-    {
+    fn cos<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
         format!("cos({expr})")
     }
 }
@@ -570,11 +475,13 @@ impl<E: MathExpr> FinalTaglessExpr<E> {
     }
 
     /// Create a constant expression
+    #[must_use]
     pub fn constant(value: f64) -> Self {
         Self::new(E::constant(value))
     }
 
     /// Create a variable expression
+    #[must_use]
     pub fn var(name: &str) -> Self {
         Self::new(E::var(name))
     }
@@ -648,14 +555,16 @@ impl<E: MathExpr> Neg for FinalTaglessExpr<E> {
 
 /// Convenience functions for building expressions in final tagless style
 pub mod dsl {
-    use super::*;
+    use super::{Add, Div, Float, MathExpr, Mul, Neg, Sub};
 
     /// Create a constant
+    #[must_use]
     pub fn constant<E: MathExpr>(value: f64) -> E::Repr<f64> {
         E::constant(value)
     }
 
     /// Create a variable
+    #[must_use]
     pub fn var<E: MathExpr>(name: &str) -> E::Repr<f64> {
         E::var(name)
     }
@@ -723,10 +632,10 @@ pub trait StatisticalExpr: MathExpr {
     fn logistic(x: Self::Repr<f64>) -> Self::Repr<f64> {
         Self::div(
             Self::constant(1.0),
-            Self::add(Self::constant(1.0), Self::exp(Self::neg(x)))
+            Self::add(Self::constant(1.0), Self::exp(Self::neg(x))),
         )
     }
-    
+
     /// Softplus function: ln(1 + exp(x))
     fn softplus(x: Self::Repr<f64>) -> Self::Repr<f64> {
         Self::ln(Self::add(Self::constant(1.0), Self::exp(x)))
@@ -759,9 +668,7 @@ impl FinalTaglessConversion for Expr {
             Expr::Div(left, right) => {
                 E::div(Self::from_expr::<E>(left), Self::from_expr::<E>(right))
             }
-            Expr::Pow(base, exp) => {
-                E::pow(Self::from_expr::<E>(base), Self::from_expr::<E>(exp))
-            }
+            Expr::Pow(base, exp) => E::pow(Self::from_expr::<E>(base), Self::from_expr::<E>(exp)),
             Expr::Ln(inner) => E::ln(Self::from_expr::<E>(inner)),
             Expr::Exp(inner) => E::exp(Self::from_expr::<E>(inner)),
             Expr::Sqrt(inner) => E::sqrt(Self::from_expr::<E>(inner)),
@@ -802,16 +709,14 @@ mod tests {
 
         // Verify the structure
         match result {
-            Expr::Add(left, right) => {
-                match (*left, *right) {
-                    (Expr::Pow(ref base, ref exp), Expr::Const(c)) => {
-                        assert!(matches!(**base, Expr::Var(_)));
-                        assert!(matches!(**exp, Expr::Const(2.0)));
-                        assert_eq!(c, 1.0);
-                    }
-                    _ => panic!("Unexpected expression structure"),
+            Expr::Add(left, right) => match (*left, *right) {
+                (Expr::Pow(ref base, ref exp), Expr::Const(c)) => {
+                    assert!(matches!(**base, Expr::Var(_)));
+                    assert!(matches!(**exp, Expr::Const(2.0)));
+                    assert_eq!(c, 1.0);
                 }
-            }
+                _ => panic!("Unexpected expression structure"),
+            },
             _ => panic!("Expected Add expression"),
         }
     }
@@ -824,10 +729,8 @@ mod tests {
             E::add(E::pow(x, two), y)
         }
 
-        let result = test_expr::<ContextualEval>(
-            ContextualEval::var("x"),
-            ContextualEval::var("y")
-        );
+        let result =
+            test_expr::<ContextualEval>(ContextualEval::var("x"), ContextualEval::var("y"));
 
         let mut context = HashMap::new();
         context.insert("x".to_string(), 3.0);
@@ -856,7 +759,7 @@ mod tests {
         fn linear<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
             let two = E::constant(2.0);
             let three = E::constant(3.0);
-            
+
             // 2*x + 3
             E::add(E::mul(two, x), three)
         }
@@ -872,7 +775,7 @@ mod tests {
 
         // Test with pretty print
         let pretty_result = linear::<PrettyPrint>(PrettyPrint::var("x"));
-        assert!(pretty_result.contains("x"));
+        assert!(pretty_result.contains('x'));
     }
 
     #[test]
@@ -894,9 +797,9 @@ mod tests {
         let expr = Expr::Add(
             Box::new(Expr::Mul(
                 Box::new(Expr::Const(2.0)),
-                Box::new(Expr::Var("x".to_string()))
+                Box::new(Expr::Var("x".to_string())),
             )),
-            Box::new(Expr::Const(3.0))
+            Box::new(Expr::Const(3.0)),
         );
 
         // Convert to ExprBuilder (should produce equivalent expression)
@@ -905,4 +808,4 @@ mod tests {
         // The expressions should be structurally equivalent
         assert!(matches!(converted, Expr::Add(_, _)));
     }
-} 
+}
