@@ -11,7 +11,7 @@ pub mod multivariate;
 pub mod final_tagless;
 
 // Re-export common distributions for convenience
-pub use continuous::{Beta, Cauchy, ChiSquared, Exponential, Gamma, Normal, StdNormal};
+pub use continuous::{Beta, Cauchy, ChiSquared, Exponential, Gamma, Normal, StdNormal, StudentT};
 
 pub use discrete::{Bernoulli, Binomial, Categorical, Geometric, NegativeBinomial, Poisson};
 

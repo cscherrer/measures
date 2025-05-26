@@ -26,7 +26,10 @@
 //! use symbolic_math::final_tagless::*;
 //!
 //! // Define a polymorphic mathematical function
-//! fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
+//! fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
+//! where
+//!     E::Repr<f64>: Clone,
+//! {
 //!     let two = E::constant(2.0);
 //!     let three = E::constant(3.0);
 //!     let one = E::constant(1.0);
@@ -34,7 +37,7 @@
 //!     // 2*x^2 + 3*x + 1
 //!     E::add(
 //!         E::add(
-//!             E::mul(two, E::pow(x, E::constant(2.0))),
+//!             E::mul(two, E::pow(x.clone(), E::constant(2.0))),
 //!             E::mul(three, x)
 //!         ),
 //!         one
@@ -247,6 +250,120 @@ pub trait StatisticalExpr: MathExpr {
 // Implement StatisticalExpr for DirectEval
 impl StatisticalExpr for DirectEval {}
 
+/// Pretty printing interpreter - generates human-readable string representations
+///
+/// This interpreter converts final tagless expressions into readable mathematical notation.
+/// It's useful for debugging, documentation, and displaying expressions to users.
+///
+/// # Usage Examples
+///
+/// ```rust
+/// use symbolic_math::final_tagless::{PrettyPrint, MathExpr};
+///
+/// // Define expression using final tagless
+/// fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
+/// where
+///     E::Repr<f64>: Clone,
+/// {
+///     let a = E::constant(2.0);
+///     let b = E::constant(3.0);
+///     let c = E::constant(1.0);
+///     E::add(E::add(E::mul(a, E::pow(x.clone(), E::constant(2.0))), E::mul(b, x)), c)
+/// }
+///
+/// // Generate pretty printed representation
+/// let pretty = quadratic::<PrettyPrint>(PrettyPrint::var("x"));
+/// println!("Expression: {}", pretty); // "((2 * (x ^ 2)) + (3 * x)) + 1"
+/// ```
+pub struct PrettyPrint;
+
+impl PrettyPrint {
+    /// Create a variable for pretty printing
+    #[must_use]
+    pub fn var(name: &str) -> String {
+        name.to_string()
+    }
+}
+
+impl MathExpr for PrettyPrint {
+    type Repr<T> = String;
+
+    fn constant<T: NumericType>(value: T) -> Self::Repr<T> {
+        format!("{value}")
+    }
+
+    fn var<T: NumericType>(name: &str) -> Self::Repr<T> {
+        name.to_string()
+    }
+
+    fn add<L, R, Output>(left: Self::Repr<L>, right: Self::Repr<R>) -> Self::Repr<Output>
+    where
+        L: NumericType + Add<R, Output = Output>,
+        R: NumericType,
+        Output: NumericType,
+    {
+        format!("({left} + {right})")
+    }
+
+    fn sub<L, R, Output>(left: Self::Repr<L>, right: Self::Repr<R>) -> Self::Repr<Output>
+    where
+        L: NumericType + Sub<R, Output = Output>,
+        R: NumericType,
+        Output: NumericType,
+    {
+        format!("({left} - {right})")
+    }
+
+    fn mul<L, R, Output>(left: Self::Repr<L>, right: Self::Repr<R>) -> Self::Repr<Output>
+    where
+        L: NumericType + Mul<R, Output = Output>,
+        R: NumericType,
+        Output: NumericType,
+    {
+        format!("({left} * {right})")
+    }
+
+    fn div<L, R, Output>(left: Self::Repr<L>, right: Self::Repr<R>) -> Self::Repr<Output>
+    where
+        L: NumericType + Div<R, Output = Output>,
+        R: NumericType,
+        Output: NumericType,
+    {
+        format!("({left} / {right})")
+    }
+
+    fn pow<T: NumericType + Float>(base: Self::Repr<T>, exp: Self::Repr<T>) -> Self::Repr<T> {
+        format!("({base} ^ {exp})")
+    }
+
+    fn neg<T: NumericType + Neg<Output = T>>(expr: Self::Repr<T>) -> Self::Repr<T> {
+        format!("(-{expr})")
+    }
+
+    fn ln<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
+        format!("ln({expr})")
+    }
+
+    fn exp<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
+        format!("exp({expr})")
+    }
+
+    fn sqrt<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
+        format!("sqrt({expr})")
+    }
+
+    fn sin<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
+        format!("sin({expr})")
+    }
+
+    fn cos<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
+        format!("cos({expr})")
+    }
+}
+
+// Implement StatisticalExpr for PrettyPrint
+impl StatisticalExpr for PrettyPrint {}
+
 /// JIT evaluation interpreter - directly compiles final tagless expressions to native code
 ///
 /// This interpreter provides the ultimate performance for symbolic mathematics by:
@@ -268,11 +385,14 @@ impl StatisticalExpr for DirectEval {}
 /// use symbolic_math::final_tagless::{JITEval, MathExpr};
 ///
 /// // Define expression using final tagless
-/// fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
+/// fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
+/// where
+///     E::Repr<f64>: Clone,
+/// {
 ///     let a = E::constant(2.0);
 ///     let b = E::constant(3.0);
 ///     let c = E::constant(1.0);
-///     E::add(E::add(E::mul(a, E::pow(x, E::constant(2.0))), E::mul(b, x)), c)
+///     E::add(E::add(E::mul(a, E::pow(x.clone(), E::constant(2.0))), E::mul(b, x)), c)
 /// }
 ///
 /// // Compile to native code
@@ -855,5 +975,43 @@ mod tests {
 
         // The compilation should have succeeded without errors
         // Additional stats testing would require access to internal compilation metrics
+    }
+
+    #[test]
+    fn test_pretty_print() {
+        // Test pretty printing of expressions
+        fn quadratic<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64>
+        where
+            E::Repr<f64>: Clone,
+        {
+            let a = E::constant(2.0);
+            let b = E::constant(3.0);
+            let c = E::constant(1.0);
+            E::add(
+                E::add(E::mul(a, E::pow(x.clone(), E::constant(2.0))), E::mul(b, x)),
+                c,
+            )
+        }
+
+        let pretty = quadratic::<PrettyPrint>(PrettyPrint::var("x"));
+
+        // Should contain the key components
+        assert!(pretty.contains("x"));
+        assert!(pretty.contains("2"));
+        assert!(pretty.contains("3"));
+        assert!(pretty.contains("1"));
+        assert!(pretty.contains("^"));
+        assert!(pretty.contains("*"));
+        assert!(pretty.contains("+"));
+
+        // Test transcendental functions
+        fn transcendental<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
+            E::exp(E::ln(x))
+        }
+
+        let pretty_trans = transcendental::<PrettyPrint>(PrettyPrint::var("x"));
+        assert!(pretty_trans.contains("exp"));
+        assert!(pretty_trans.contains("ln"));
+        assert!(pretty_trans.contains("x"));
     }
 }

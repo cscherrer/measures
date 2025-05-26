@@ -20,3 +20,4 @@ pub use exponential::Exponential;
 pub use gamma::Gamma;
 pub use normal::Normal;
 pub use stdnormal::StdNormal;
+pub use student_t::StudentT;

@@ -81,6 +81,7 @@ pub use distributions::{
     Normal,
     Poisson,
     StdNormal,
+    StudentT,
     patterns,
 };
 
