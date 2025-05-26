@@ -270,7 +270,3 @@ This library follows mathematical rigor and type safety principles. When contrib
 2. Maintain type safety guarantees
 3. Include comprehensive tests for new features
 4. Document mathematical foundations in code comments
-
-## License
-
-Licensed under either of Apache License, Version 2.0 or MIT license at your option. 
