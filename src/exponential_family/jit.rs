@@ -71,7 +71,9 @@ pub use crate::symbolic_ir::jit::{
 pub use crate::symbolic_ir::Expr;
 
 use crate::core::HasLogDensity;
+use crate::exponential_family::traits::ExponentialFamily as ExponentialFamilyTrait;
 use crate::traits::DotProduct;
+use num_traits::Float;
 
 /// Errors that can occur during JIT compilation
 #[derive(Debug)]

@@ -7,6 +7,7 @@
 //! Primitive measures serve as the foundation for probability distributions,
 //! while derived measures provide specialized functionality.
 
+pub mod combinators;
 pub mod derived;
 pub mod primitive;
 

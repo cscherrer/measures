@@ -2,6 +2,8 @@
 
 /// Log-density computation traits and implementations
 pub mod density;
+/// Log-density decomposition framework for structured computation
+pub mod log_density_decomposition;
 /// Core measure trait and implementations
 pub mod measure;
 /// Type-level programming utilities
@@ -12,6 +14,9 @@ pub mod utils;
 pub use density::{
     CachedLogDensity, DensityMeasure, EvaluateAt, HasLogDensity, LogDensity, LogDensityCaching,
     LogDensityTrait, SharedRootMeasure,
+};
+pub use log_density_decomposition::{
+    DecompositionBuilder, HasLogDensityDecomposition, LogDensityDecomposition,
 };
 pub use measure::{LogDensityBuilder, Measure, MeasureMarker, PrimitiveMeasure};
 pub use types::{

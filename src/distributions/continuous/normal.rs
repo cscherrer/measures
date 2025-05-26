@@ -16,6 +16,9 @@
 //! let log_density_value: f64 = ld.at(&0.0);
 //! ```
 
+use crate::core::log_density_decomposition::{
+    DecompositionBuilder, HasLogDensityDecomposition, LogDensityDecomposition,
+};
 use crate::core::types::{False, True};
 use crate::core::utils::float_constant;
 use crate::core::{Measure, MeasureMarker};
@@ -27,6 +30,15 @@ use num_traits::{Float, FloatConst};
 ///
 /// The normal distribution is a continuous probability distribution characterized by
 /// its bell-shaped curve. It's parameterized by mean μ and standard deviation σ.
+///
+/// Log-density decomposition:
+/// log f(x|μ,σ) = -0.5*log(2π) - log(σ) - 0.5*(x-μ)²/σ²
+///              = `f_const` + `f_param(σ)` + `f_mixed(x,μ,σ)`
+///
+/// Where:
+/// - `f_const` = -0.5*log(2π) (constant)
+/// - `f_param(σ)` = -log(σ) (parameter-only)
+/// - `f_mixed(x,μ,σ)` = -0.5*(x-μ)²/σ² (mixed data-parameter)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Normal<T> {
     /// Mean parameter μ
@@ -34,6 +46,9 @@ pub struct Normal<T> {
     /// Standard deviation parameter σ
     pub std_dev: T,
 }
+
+/// Parameters for Normal distribution: (mean, `std_dev`)
+pub type NormalParams<T> = (T, T);
 
 impl<T: Float> Default for Normal<T> {
     fn default() -> Self {
@@ -60,6 +75,22 @@ impl<T: Float + FloatConst> Normal<T> {
     pub fn variance(&self) -> T {
         self.std_dev * self.std_dev
     }
+
+    /// Get parameters as a tuple (mean, `std_dev`).
+    pub fn params(&self) -> NormalParams<T> {
+        (self.mean, self.std_dev)
+    }
+
+    /// Compute log-density for IID samples efficiently using decomposition.
+    ///
+    /// For n IID samples, this is much more efficient than computing individual densities.
+    pub fn log_density_iid(&self, samples: &[T]) -> T
+    where
+        T: std::iter::Sum,
+    {
+        let decomp = self.log_density_decomposition();
+        decomp.evaluate_iid(samples, &self.params())
+    }
 }
 
 impl<T: Float> Measure<T> for Normal<T> {
@@ -71,6 +102,34 @@ impl<T: Float> Measure<T> for Normal<T> {
 
     fn root_measure(&self) -> Self::RootMeasure {
         LebesgueMeasure::<T>::new()
+    }
+}
+
+/// Implementation of structured log-density decomposition for Normal distribution.
+///
+/// This shows how exponential families can also benefit from the structured approach,
+/// even though they have their own specialized implementations.
+impl<T: Float + FloatConst> HasLogDensityDecomposition<T, NormalParams<T>, T> for Normal<T> {
+    fn log_density_decomposition(&self) -> LogDensityDecomposition<T, NormalParams<T>, T> {
+        let two_pi = float_constant::<T>(2.0) * T::PI();
+
+        DecompositionBuilder::new()
+            // Constant term: -0.5*log(2π)
+            .constant(-float_constant::<T>(0.5) * two_pi.ln())
+            // Parameter-only term: -log(σ)
+            .param_term(
+                |(_mean, std_dev): &NormalParams<T>| -std_dev.ln(),
+                "negative log standard deviation",
+            )
+            // Mixed term: -0.5*(x-μ)²/σ²
+            .mixed_term(
+                |x: &T, (mean, std_dev): &NormalParams<T>| {
+                    let standardized = (*x - *mean) / *std_dev;
+                    -float_constant::<T>(0.5) * standardized * standardized
+                },
+                "negative half squared standardized residual",
+            )
+            .build()
     }
 }
 

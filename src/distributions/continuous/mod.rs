@@ -10,6 +10,7 @@ pub mod exponential;
 pub mod gamma;
 pub mod normal;
 pub mod stdnormal;
+pub mod student_t;
 
 // Re-export for convenience
 pub use beta::Beta;

@@ -10,29 +10,54 @@
 //! 5. **Exponential family support**: Specialized implementations for exponential families
 //! 6. **Symbolic computation**: General mathematical expression system with JIT compilation
 //! 7. **Bayesian inference**: Specialized tools for Bayesian statistical modeling
+//! 8. **Measure combinators**: Compositional framework for building complex measures
 //!
 //! # Quick Start
 //!
 //! ```rust
-//! use measures::{Normal, LogDensityBuilder};
+//! use measures::{Normal, Cauchy, LogDensityBuilder};
 //!
 //! let normal = Normal::new(0.0, 1.0);
+//! let cauchy = Cauchy::new(0.0, 1.0);
 //! let x = 0.5;
 //!
-//! // Compute log-density with respect to root measure (Lebesgue)
-//! let ld = normal.log_density();
-//! let log_density_value: f64 = ld.at(&x);
+//! // Both exponential families and non-exponential families work seamlessly
+//! let normal_density: f64 = normal.log_density().at(&x);
+//! let cauchy_density: f64 = cauchy.log_density().at(&x);
 //!
-//! // Compute log-density with respect to different base measure
-//! let other_normal = Normal::new(1.0, 2.0);
-//! let ld_wrt = normal.log_density().wrt(other_normal);
-//! let relative_log_density: f64 = ld_wrt.at(&x);
+//! // Compute relative densities
+//! let relative_density: f64 = normal.log_density().wrt(cauchy).at(&x);
+//! ```
 //!
-//! // Same log-density, different numeric types (autodiff ready!)
-//! let normal_f32 = Normal::new(0.0_f32, 1.0_f32);
-//! let f32_x = 0.5_f32;
-//! let f32_result: f32 = normal_f32.log_density().at(&f32_x);
-//! // let dual_result: Dual64 = normal.log_density().at(&dual_x);  // With autodiff library
+//! # Measure Combinators
+//!
+//! Build complex measures from simpler ones using combinators:
+//!
+//! ```rust
+//! use measures::{Normal, Poisson, LogDensityBuilder};
+//! use measures::measures::combinators::{
+//!     product::ProductMeasureExt,
+//!     pushforward::{PushforwardExt, transforms::exp_transform},
+//!     superposition::MixtureExt,
+//! };
+//! use measures::mixture;
+//!
+//! // Product measures for independence
+//! let normal = Normal::new(0.0, 1.0);
+//! let poisson = Poisson::new(2.0);
+//! let joint = normal.clone().product(poisson);
+//! let joint_density: f64 = joint.log_density().at(&(0.5, 3u64));
+//!
+//! // Pushforward measures for transformations (log-normal from normal)
+//! let (forward, inverse, log_jacobian) = exp_transform();
+//! let log_normal = normal.pushforward(forward, inverse, log_jacobian);
+//! let log_normal_density: f64 = log_normal.log_density().at(&1.0);
+//!
+//! // Mixture measures
+//! let component1 = Normal::new(-1.0, 1.0);
+//! let component2 = Normal::new(1.0, 1.0);
+//! let mixture = mixture![(0.3, component1), (0.7, component2)];
+//! let mixture_density: f64 = mixture.log_density().at(&0.0);
 //! ```
 //!
 //! # Symbolic Computation and JIT
@@ -107,7 +132,8 @@ pub mod bayesian;
 
 // Re-export key types for convenient access
 pub use core::{
-    DotProduct, EvaluateAt, HasLogDensity, LogDensity, LogDensityTrait, Measure, PrimitiveMeasure,
+    DecompositionBuilder, DotProduct, EvaluateAt, HasLogDensity, HasLogDensityDecomposition,
+    LogDensity, LogDensityDecomposition, LogDensityTrait, Measure, PrimitiveMeasure,
 };
 pub use distributions::continuous::beta::Beta;
 pub use distributions::continuous::cauchy::Cauchy;
@@ -116,6 +142,7 @@ pub use distributions::continuous::exponential::Exponential;
 pub use distributions::continuous::gamma::Gamma;
 pub use distributions::continuous::normal::Normal;
 pub use distributions::continuous::stdnormal::StdNormal;
+pub use distributions::continuous::student_t::StudentT;
 pub use distributions::discrete::bernoulli::Bernoulli;
 pub use distributions::discrete::binomial::Binomial;
 pub use distributions::discrete::categorical::Categorical;
@@ -123,6 +150,11 @@ pub use distributions::discrete::geometric::Geometric;
 pub use distributions::discrete::negative_binomial::NegativeBinomial;
 pub use distributions::discrete::poisson::Poisson;
 pub use exponential_family::IIDExtension;
+
+// Re-export measure combinators
+pub use measures::combinators::product::{ProductMeasure, ProductMeasureExt};
+pub use measures::combinators::pushforward::{PushforwardExt, PushforwardMeasure};
+pub use measures::combinators::superposition::{MixtureExt, MixtureMeasure};
 
 // Re-export core traits that users need to import
 pub use core::LogDensityBuilder;

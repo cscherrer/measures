@@ -12,6 +12,9 @@
 //! let log_density: f64 = cauchy.log_density().at(&0.0);
 //! ```
 
+use crate::core::log_density_decomposition::{
+    DecompositionBuilder, HasLogDensityDecomposition, LogDensityDecomposition,
+};
 use crate::core::types::False;
 use crate::core::utils::float_constant;
 use crate::core::{HasLogDensity, Measure, MeasureMarker};
@@ -24,12 +27,24 @@ use std::f64::consts::PI;
 /// The Cauchy distribution has probability density function:
 /// f(x|x₀,γ) = 1/(πγ[1 + ((x-x₀)/γ)²])
 ///
+/// Log-density decomposition:
+/// log f(x|x₀,γ) = -log(π) - log(γ) - log(1 + ((x-x₀)/γ)²)
+///                = `f_const` + `f_param(γ)` + `f_mixed(x,x₀,γ)`
+///
+/// Where:
+/// - `f_const` = -log(π) (constant)
+/// - `f_param(γ)` = -log(γ) (parameter-only)
+/// - `f_mixed(x,x₀,γ)` = -log(1 + ((x-x₀)/γ)²) (mixed data-parameter)
+///
 /// This is NOT an exponential family distribution.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Cauchy<T> {
     location: T,
     scale: T,
 }
+
+/// Parameters for Cauchy distribution: (location, scale)
+pub type CauchyParams<T> = (T, T);
 
 impl<T: Float> Cauchy<T> {
     /// Create a new Cauchy distribution with given location and scale parameters.
@@ -64,6 +79,11 @@ impl<T: Float> Cauchy<T> {
         self.scale
     }
 
+    /// Get parameters as a tuple (location, scale).
+    pub fn params(&self) -> CauchyParams<T> {
+        (self.location, self.scale)
+    }
+
     /// Compute the log probability density function at point x.
     ///
     /// log f(x) = -log(π) - log(γ) - log(1 + ((x-x₀)/γ)²)
@@ -75,6 +95,17 @@ impl<T: Float> Cauchy<T> {
         let pi = T::from(PI).unwrap();
 
         -pi.ln() - self.scale.ln() - (T::one() + standardized * standardized).ln()
+    }
+
+    /// Compute log-density for IID samples efficiently using decomposition.
+    ///
+    /// For n IID samples, this is much more efficient than computing individual densities.
+    pub fn log_density_iid(&self, samples: &[T]) -> T
+    where
+        T: NumCast + FloatConst + std::iter::Sum,
+    {
+        let decomp = self.log_density_decomposition();
+        decomp.evaluate_iid(samples, &self.params())
     }
 }
 
@@ -103,6 +134,35 @@ impl<T: Float + FloatConst> HasLogDensity<T, T> for Cauchy<T> {
         let pi = float_constant::<T>(PI);
         let standardized = (*x - self.location) / self.scale;
         -(T::one() + standardized * standardized).ln() - self.scale.ln() - pi.ln()
+    }
+}
+
+/// Implementation of structured log-density decomposition for Cauchy.
+///
+/// This shows how non-exponential families can still benefit from the structured approach.
+impl<T: Float + FloatConst + NumCast> HasLogDensityDecomposition<T, CauchyParams<T>, T>
+    for Cauchy<T>
+{
+    fn log_density_decomposition(&self) -> LogDensityDecomposition<T, CauchyParams<T>, T> {
+        let pi = T::from(PI).unwrap();
+
+        DecompositionBuilder::new()
+            // Constant term: -log(π)
+            .constant(-pi.ln())
+            // Parameter-only term: -log(γ)
+            .param_term(
+                |(_location, scale): &CauchyParams<T>| -scale.ln(),
+                "negative log scale parameter",
+            )
+            // Mixed term: -log(1 + ((x-x₀)/γ)²)
+            .mixed_term(
+                |x: &T, (location, scale): &CauchyParams<T>| {
+                    let standardized = (*x - *location) / *scale;
+                    -(T::one() + standardized * standardized).ln()
+                },
+                "negative log of standardized squared plus one",
+            )
+            .build()
     }
 }
 
@@ -155,6 +215,57 @@ mod tests {
         let log_density: f64 = cauchy.log_density().at(&0.0);
         let expected = -PI.ln();
         assert!((log_density - expected).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_log_density_decomposition() {
+        let cauchy = Cauchy::new(1.0, 2.0);
+        let decomp = cauchy.log_density_decomposition();
+
+        let x = 0.5;
+        let params = cauchy.params();
+
+        // Test that decomposition matches direct computation
+        let decomp_result = decomp.evaluate(&x, &params);
+        let direct_result = cauchy.log_pdf(x);
+
+        assert!((decomp_result - direct_result).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_iid_log_density() {
+        let cauchy = Cauchy::new(0.0, 1.0);
+        let samples = vec![0.0, 1.0, -1.0, 2.0];
+
+        // Test IID computation
+        let iid_result = cauchy.log_density_iid(&samples);
+
+        // Manual computation
+        let manual_result: f64 = samples.iter().map(|&x| cauchy.log_pdf(x)).sum();
+
+        assert!((iid_result - manual_result).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_decomposition_efficiency() {
+        let cauchy = Cauchy::new(2.0, 1.5);
+        let decomp = cauchy.log_density_decomposition();
+        let params = cauchy.params();
+
+        // Test that we can evaluate parameter terms separately
+        let param_terms = decomp.evaluate_param_terms(&params);
+        let constants = decomp.constant_sum();
+
+        // These should be independent of data
+        assert!(param_terms.is_finite());
+        assert!(constants.is_finite());
+
+        // For Cauchy: param_terms = -log(scale), constants = -log(π)
+        let expected_param = -1.5f64.ln();
+        let expected_const = -PI.ln();
+
+        assert!((param_terms - expected_param).abs() < 1e-10);
+        assert!((constants - expected_const).abs() < 1e-10);
     }
 
     #[test]
