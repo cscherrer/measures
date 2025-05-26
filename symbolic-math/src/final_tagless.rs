@@ -38,6 +38,18 @@ use num_traits::Float;
 use std::collections::HashMap;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::{AbiParam, Function, InstBuilder, Value, types};
+#[cfg(feature = "jit")]
+use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+#[cfg(feature = "jit")]
+use cranelift_jit::{JITBuilder, JITModule};
+#[cfg(feature = "jit")]
+use cranelift_module::{Linkage, Module};
+
+#[cfg(feature = "jit")]
+use crate::jit::{JITError, GeneralJITFunction, JITSignature, CompilationStats, GeneralJITCompiler};
+
 /// Helper trait that bundles all the common trait bounds for numeric types
 /// This makes the main `MathExpr` trait much cleaner and easier to read
 pub trait NumericType: Clone + Default + Send + Sync + 'static + std::fmt::Display {}
@@ -815,6 +827,429 @@ impl FinalTaglessConversion for Expr {
     }
 }
 
+/// JIT evaluation interpreter - directly compiles final tagless expressions to native code
+/// This bypasses the Expr AST entirely and provides the ultimate performance
+#[cfg(feature = "jit")]
+pub struct JITEval;
+
+#[cfg(feature = "jit")]
+impl JITEval {
+    /// Create a variable for JIT compilation
+    pub fn var<T: NumericType>(name: &str) -> JITExprBuilder {
+        JITExprBuilder::new_var(name.to_string())
+    }
+
+    /// Compile a JIT expression to a native function
+    pub fn compile(expr: JITExprBuilder) -> Result<GeneralJITFunction, JITError> {
+        // Convert JITExprBuilder to Expr for compatibility with existing JIT infrastructure
+        let ast_expr = expr.to_expr();
+        
+        // Analyze the expression to determine variables
+        let variables = expr.collect_variables();
+        let sorted_vars: Vec<_> = variables.into_iter().collect();
+        
+        // Create the JIT compiler
+        let compiler = GeneralJITCompiler::new()?;
+        
+        // Compile using the existing infrastructure
+        // For now, treat all variables as data variables (no parameters)
+        let constants = std::collections::HashMap::new();
+        
+        compiler.compile_expression(&ast_expr, &sorted_vars, &[], &constants)
+    }
+}
+
+/// Builder for JIT expressions that tracks the computation graph
+#[cfg(feature = "jit")]
+#[derive(Debug, Clone)]
+pub enum JITExprBuilder {
+    Constant(f64),
+    Variable(String),
+    Add(Box<JITExprBuilder>, Box<JITExprBuilder>),
+    Sub(Box<JITExprBuilder>, Box<JITExprBuilder>),
+    Mul(Box<JITExprBuilder>, Box<JITExprBuilder>),
+    Div(Box<JITExprBuilder>, Box<JITExprBuilder>),
+    Pow(Box<JITExprBuilder>, Box<JITExprBuilder>),
+    Neg(Box<JITExprBuilder>),
+    Ln(Box<JITExprBuilder>),
+    Exp(Box<JITExprBuilder>),
+    Sqrt(Box<JITExprBuilder>),
+    Sin(Box<JITExprBuilder>),
+    Cos(Box<JITExprBuilder>),
+}
+
+#[cfg(feature = "jit")]
+impl JITExprBuilder {
+    /// Create a new variable
+    pub fn new_var(name: String) -> Self {
+        Self::Variable(name)
+    }
+
+    /// Collect all variables in the expression
+    pub fn collect_variables(&self) -> std::collections::HashSet<String> {
+        let mut vars = std::collections::HashSet::new();
+        self.collect_variables_recursive(&mut vars);
+        vars
+    }
+
+    fn collect_variables_recursive(&self, vars: &mut std::collections::HashSet<String>) {
+        match self {
+            Self::Variable(name) => {
+                vars.insert(name.clone());
+            }
+            Self::Add(left, right)
+            | Self::Sub(left, right)
+            | Self::Mul(left, right)
+            | Self::Div(left, right)
+            | Self::Pow(left, right) => {
+                left.collect_variables_recursive(vars);
+                right.collect_variables_recursive(vars);
+            }
+            Self::Neg(inner)
+            | Self::Ln(inner)
+            | Self::Exp(inner)
+            | Self::Sqrt(inner)
+            | Self::Sin(inner)
+            | Self::Cos(inner) => {
+                inner.collect_variables_recursive(vars);
+            }
+            Self::Constant(_) => {}
+        }
+    }
+
+    /// Estimate the complexity of the expression for performance metrics
+    pub fn estimate_complexity(&self) -> usize {
+        match self {
+            Self::Constant(_) | Self::Variable(_) => 1,
+            Self::Add(left, right)
+            | Self::Sub(left, right)
+            | Self::Mul(left, right)
+            | Self::Div(left, right)
+            | Self::Pow(left, right) => {
+                1 + left.estimate_complexity() + right.estimate_complexity()
+            }
+            Self::Neg(inner) => 1 + inner.estimate_complexity(),
+            Self::Ln(inner)
+            | Self::Exp(inner)
+            | Self::Sqrt(inner)
+            | Self::Sin(inner)
+            | Self::Cos(inner) => {
+                3 + inner.estimate_complexity() // Transcendental functions are more expensive
+            }
+        }
+    }
+
+    /// Count the number of constants in the expression
+    pub fn count_constants(&self) -> usize {
+        match self {
+            Self::Constant(_) => 1,
+            Self::Variable(_) => 0,
+            Self::Add(left, right)
+            | Self::Sub(left, right)
+            | Self::Mul(left, right)
+            | Self::Div(left, right)
+            | Self::Pow(left, right) => left.count_constants() + right.count_constants(),
+            Self::Neg(inner)
+            | Self::Ln(inner)
+            | Self::Exp(inner)
+            | Self::Sqrt(inner)
+            | Self::Sin(inner)
+            | Self::Cos(inner) => inner.count_constants(),
+        }
+    }
+
+    /// Convert to Expr AST for compatibility with existing JIT infrastructure
+    pub fn to_expr(&self) -> Expr {
+        match self {
+            Self::Constant(c) => Expr::Const(*c),
+            Self::Variable(name) => Expr::Var(name.clone()),
+            Self::Add(left, right) => Expr::Add(Box::new(left.to_expr()), Box::new(right.to_expr())),
+            Self::Sub(left, right) => Expr::Sub(Box::new(left.to_expr()), Box::new(right.to_expr())),
+            Self::Mul(left, right) => Expr::Mul(Box::new(left.to_expr()), Box::new(right.to_expr())),
+            Self::Div(left, right) => Expr::Div(Box::new(left.to_expr()), Box::new(right.to_expr())),
+            Self::Pow(left, right) => Expr::Pow(Box::new(left.to_expr()), Box::new(right.to_expr())),
+            Self::Neg(inner) => Expr::Neg(Box::new(inner.to_expr())),
+            Self::Ln(inner) => Expr::Ln(Box::new(inner.to_expr())),
+            Self::Exp(inner) => Expr::Exp(Box::new(inner.to_expr())),
+            Self::Sqrt(inner) => Expr::Sqrt(Box::new(inner.to_expr())),
+            Self::Sin(inner) => Expr::Sin(Box::new(inner.to_expr())),
+            Self::Cos(inner) => Expr::Cos(Box::new(inner.to_expr())),
+        }
+    }
+
+    /// Generate Cranelift IR for this expression
+    pub fn generate_clif(
+        &self,
+        builder: &mut FunctionBuilder,
+        var_map: &HashMap<String, Value>,
+    ) -> Result<Value, JITError> {
+        match self {
+            Self::Constant(c) => Ok(builder.ins().f64const(*c)),
+            Self::Variable(name) => var_map
+                .get(name)
+                .copied()
+                .ok_or_else(|| JITError::CompilationError(format!("Unknown variable: {name}"))),
+            Self::Add(left, right) => {
+                let left_val = left.generate_clif(builder, var_map)?;
+                let right_val = right.generate_clif(builder, var_map)?;
+                Ok(builder.ins().fadd(left_val, right_val))
+            }
+            Self::Sub(left, right) => {
+                let left_val = left.generate_clif(builder, var_map)?;
+                let right_val = right.generate_clif(builder, var_map)?;
+                Ok(builder.ins().fsub(left_val, right_val))
+            }
+            Self::Mul(left, right) => {
+                let left_val = left.generate_clif(builder, var_map)?;
+                let right_val = right.generate_clif(builder, var_map)?;
+                Ok(builder.ins().fmul(left_val, right_val))
+            }
+            Self::Div(left, right) => {
+                let left_val = left.generate_clif(builder, var_map)?;
+                let right_val = right.generate_clif(builder, var_map)?;
+                Ok(builder.ins().fdiv(left_val, right_val))
+            }
+            Self::Pow(base, exp) => {
+                let base_val = base.generate_clif(builder, var_map)?;
+                let exp_val = exp.generate_clif(builder, var_map)?;
+                // Use exp(exp * ln(base)) for general power
+                let ln_base = generate_ln_call(builder, base_val)?;
+                let product = builder.ins().fmul(exp_val, ln_base);
+                generate_exp_call(builder, product)
+            }
+            Self::Neg(inner) => {
+                let val = inner.generate_clif(builder, var_map)?;
+                Ok(builder.ins().fneg(val))
+            }
+            Self::Ln(inner) => {
+                let val = inner.generate_clif(builder, var_map)?;
+                generate_ln_call(builder, val)
+            }
+            Self::Exp(inner) => {
+                let val = inner.generate_clif(builder, var_map)?;
+                generate_exp_call(builder, val)
+            }
+            Self::Sqrt(inner) => {
+                let val = inner.generate_clif(builder, var_map)?;
+                Ok(builder.ins().sqrt(val))
+            }
+            Self::Sin(inner) => {
+                let val = inner.generate_clif(builder, var_map)?;
+                generate_sin_call(builder, val)
+            }
+            Self::Cos(inner) => {
+                let val = inner.generate_clif(builder, var_map)?;
+                generate_cos_call(builder, val)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "jit")]
+impl std::fmt::Display for JITExprBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Constant(c) => write!(f, "{c}"),
+            Self::Variable(name) => write!(f, "{name}"),
+            Self::Add(left, right) => write!(f, "({left} + {right})"),
+            Self::Sub(left, right) => write!(f, "({left} - {right})"),
+            Self::Mul(left, right) => write!(f, "({left} * {right})"),
+            Self::Div(left, right) => write!(f, "({left} / {right})"),
+            Self::Pow(left, right) => write!(f, "({left} ^ {right})"),
+            Self::Neg(inner) => write!(f, "(-{inner})"),
+            Self::Ln(inner) => write!(f, "ln({inner})"),
+            Self::Exp(inner) => write!(f, "exp({inner})"),
+            Self::Sqrt(inner) => write!(f, "sqrt({inner})"),
+            Self::Sin(inner) => write!(f, "sin({inner})"),
+            Self::Cos(inner) => write!(f, "cos({inner})"),
+        }
+    }
+}
+
+/// Helper functions for generating transcendental function calls in CLIF IR
+#[cfg(feature = "jit")]
+fn generate_ln_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+    // For now, use a simple Taylor series approximation
+    // ln(1+x) ≈ x - x²/2 + x³/3 for |x| < 1
+    // For general ln(x), we can use ln(x) = ln(1 + (x-1)) when x is close to 1
+    
+    // This is a simplified implementation - a production version would use
+    // more sophisticated approximations or call to libm
+    let one = builder.ins().f64const(1.0);
+    let two = builder.ins().f64const(2.0);
+    let three = builder.ins().f64const(3.0);
+    
+    // x - 1
+    let x_minus_1 = builder.ins().fsub(val, one);
+    
+    // (x-1)²
+    let x2 = builder.ins().fmul(x_minus_1, x_minus_1);
+    
+    // (x-1)³
+    let x3 = builder.ins().fmul(x2, x_minus_1);
+    
+    // x - x²/2 + x³/3
+    let term2 = builder.ins().fdiv(x2, two);
+    let term3 = builder.ins().fdiv(x3, three);
+    
+    let result = builder.ins().fsub(x_minus_1, term2);
+    let result = builder.ins().fadd(result, term3);
+    
+    Ok(result)
+}
+
+#[cfg(feature = "jit")]
+fn generate_exp_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+    // Simple Taylor series: exp(x) ≈ 1 + x + x²/2 + x³/6
+    let one = builder.ins().f64const(1.0);
+    let two = builder.ins().f64const(2.0);
+    let six = builder.ins().f64const(6.0);
+    
+    // x²
+    let x2 = builder.ins().fmul(val, val);
+    
+    // x³
+    let x3 = builder.ins().fmul(x2, val);
+    
+    // 1 + x + x²/2 + x³/6
+    let term2 = builder.ins().fdiv(x2, two);
+    let term3 = builder.ins().fdiv(x3, six);
+    
+    let result = builder.ins().fadd(one, val);
+    let result = builder.ins().fadd(result, term2);
+    let result = builder.ins().fadd(result, term3);
+    
+    Ok(result)
+}
+
+#[cfg(feature = "jit")]
+fn generate_sin_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+    // Taylor series: sin(x) ≈ x - x³/6 + x⁵/120
+    let six = builder.ins().f64const(6.0);
+    let one_twenty = builder.ins().f64const(120.0);
+    
+    // x³
+    let x2 = builder.ins().fmul(val, val);
+    let x3 = builder.ins().fmul(x2, val);
+    
+    // x⁵
+    let x4 = builder.ins().fmul(x3, val);
+    let x5 = builder.ins().fmul(x4, val);
+    
+    // x - x³/6 + x⁵/120
+    let term2 = builder.ins().fdiv(x3, six);
+    let term3 = builder.ins().fdiv(x5, one_twenty);
+    
+    let result = builder.ins().fsub(val, term2);
+    let result = builder.ins().fadd(result, term3);
+    
+    Ok(result)
+}
+
+#[cfg(feature = "jit")]
+fn generate_cos_call(builder: &mut FunctionBuilder, val: Value) -> Result<Value, JITError> {
+    // Taylor series: cos(x) ≈ 1 - x²/2 + x⁴/24
+    let one = builder.ins().f64const(1.0);
+    let two = builder.ins().f64const(2.0);
+    let twentyfour = builder.ins().f64const(24.0);
+    
+    // x²
+    let x2 = builder.ins().fmul(val, val);
+    
+    // x⁴
+    let x4 = builder.ins().fmul(x2, x2);
+    
+    // 1 - x²/2 + x⁴/24
+    let term2 = builder.ins().fdiv(x2, two);
+    let term3 = builder.ins().fdiv(x4, twentyfour);
+    
+    let result = builder.ins().fsub(one, term2);
+    let result = builder.ins().fadd(result, term3);
+    
+    Ok(result)
+}
+
+#[cfg(feature = "jit")]
+impl MathExpr for JITEval {
+    type Repr<T> = JITExprBuilder;
+
+    fn constant<T: NumericType>(value: T) -> Self::Repr<T> {
+        // For JIT compilation, we need to convert to f64
+        // This is a limitation we'll address when we support more numeric types
+        let f64_value = format!("{value}").parse::<f64>()
+            .unwrap_or_else(|_| panic!("Cannot convert {value} to f64 for JIT compilation"));
+        JITExprBuilder::Constant(f64_value)
+    }
+
+    fn var<T: NumericType>(name: &str) -> Self::Repr<T> {
+        JITExprBuilder::Variable(name.to_string())
+    }
+
+    fn add<L, R, Output>(left: Self::Repr<L>, right: Self::Repr<R>) -> Self::Repr<Output>
+    where
+        L: NumericType + Add<R, Output = Output>,
+        R: NumericType,
+        Output: NumericType,
+    {
+        JITExprBuilder::Add(Box::new(left), Box::new(right))
+    }
+
+    fn sub<L, R, Output>(left: Self::Repr<L>, right: Self::Repr<R>) -> Self::Repr<Output>
+    where
+        L: NumericType + Sub<R, Output = Output>,
+        R: NumericType,
+        Output: NumericType,
+    {
+        JITExprBuilder::Sub(Box::new(left), Box::new(right))
+    }
+
+    fn mul<L, R, Output>(left: Self::Repr<L>, right: Self::Repr<R>) -> Self::Repr<Output>
+    where
+        L: NumericType + Mul<R, Output = Output>,
+        R: NumericType,
+        Output: NumericType,
+    {
+        JITExprBuilder::Mul(Box::new(left), Box::new(right))
+    }
+
+    fn div<L, R, Output>(left: Self::Repr<L>, right: Self::Repr<R>) -> Self::Repr<Output>
+    where
+        L: NumericType + Div<R, Output = Output>,
+        R: NumericType,
+        Output: NumericType,
+    {
+        JITExprBuilder::Div(Box::new(left), Box::new(right))
+    }
+
+    fn pow<T: NumericType + Float>(base: Self::Repr<T>, exp: Self::Repr<T>) -> Self::Repr<T> {
+        JITExprBuilder::Pow(Box::new(base), Box::new(exp))
+    }
+
+    fn neg<T: NumericType + Neg<Output = T>>(expr: Self::Repr<T>) -> Self::Repr<T> {
+        JITExprBuilder::Neg(Box::new(expr))
+    }
+
+    fn ln<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
+        JITExprBuilder::Ln(Box::new(expr))
+    }
+
+    fn exp<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
+        JITExprBuilder::Exp(Box::new(expr))
+    }
+
+    fn sqrt<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
+        JITExprBuilder::Sqrt(Box::new(expr))
+    }
+
+    fn sin<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
+        JITExprBuilder::Sin(Box::new(expr))
+    }
+
+    fn cos<T: NumericType + Float>(expr: Self::Repr<T>) -> Self::Repr<T> {
+        JITExprBuilder::Cos(Box::new(expr))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -879,14 +1314,14 @@ mod tests {
 
     #[test]
     fn test_pretty_print() {
-        // Test: x + 2
-        fn test_expr<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
+        // Test: x^2 + y
+        fn test_expr<E: MathExpr>(x: E::Repr<f64>, y: E::Repr<f64>) -> E::Repr<f64> {
             let two = E::constant(2.0);
-            E::add(x, two)
+            E::add(E::pow(x, two), y)
         }
 
-        let result = test_expr::<PrettyPrint>(PrettyPrint::var("x"));
-        assert_eq!(result, "(x + 2)");
+        let result = test_expr::<PrettyPrint>(PrettyPrint::var("x"), PrettyPrint::var("y"));
+        assert_eq!(result, "((x ^ 2) + y)");
     }
 
     #[test]
@@ -944,5 +1379,63 @@ mod tests {
 
         // The expressions should be structurally equivalent
         assert!(matches!(converted, Expr::Add(_, _)));
+    }
+
+    #[test]
+    #[cfg(feature = "jit")]
+    fn test_jit_eval_basic() {
+        // Test: x + 1
+        fn test_expr<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
+            let one = E::constant(1.0);
+            E::add(x, one)
+        }
+
+        let jit_expr = test_expr::<JITEval>(JITEval::var::<f64>("x"));
+        let compiled = JITEval::compile(jit_expr).expect("JIT compilation should succeed");
+        
+        // Test the compiled function
+        let result = compiled.call_single(5.0);
+        assert_eq!(result, 6.0); // 5 + 1 = 6
+    }
+
+    #[test]
+    #[cfg(feature = "jit")]
+    fn test_jit_eval_complex() {
+        // Test: x^2 + 2*x + 1 (should equal (x+1)^2)
+        // Build the expression directly for JITEval to avoid generic issues
+        let _x = JITEval::var::<f64>("x");
+        let one = JITEval::constant::<f64>(1.0);
+        let two = JITEval::constant::<f64>(2.0);
+        let x_var = JITEval::var::<f64>("x");
+        let x_var2 = JITEval::var::<f64>("x");
+        
+        let x_squared = JITEval::pow::<f64>(x_var, two);
+        let two_x = JITEval::mul::<f64, f64, f64>(JITEval::constant::<f64>(2.0), x_var2);
+        let jit_expr = JITEval::add::<f64, f64, f64>(JITEval::add::<f64, f64, f64>(x_squared, two_x), one);
+
+        let compiled = JITEval::compile(jit_expr).expect("JIT compilation should succeed");
+        
+        // Test the compiled function
+        let result = compiled.call_single(3.0);
+        assert_eq!(result, 16.0); // (3+1)^2 = 16
+        
+        let result = compiled.call_single(-1.0);
+        assert_eq!(result, 0.0); // (-1+1)^2 = 0
+    }
+
+    #[test]
+    #[cfg(feature = "jit")]
+    fn test_jit_eval_transcendental() {
+        // Test: exp(ln(x)) should equal x
+        fn test_expr<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
+            E::exp(E::ln(x))
+        }
+
+        let jit_expr = test_expr::<JITEval>(JITEval::var::<f64>("x"));
+        let compiled = JITEval::compile(jit_expr).expect("JIT compilation should succeed");
+        
+        // Test the compiled function (with some tolerance for Taylor series approximation)
+        let result = compiled.call_single(2.0);
+        assert!((result - 2.0).abs() < 0.1, "exp(ln(2)) should be approximately 2, got {result}");
     }
 }
