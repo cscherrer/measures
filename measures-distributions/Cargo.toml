@@ -13,8 +13,10 @@ categories = ["mathematics", "science"]
 measures-core = { path = "../measures-core" }
 # Measure combinators for derived measures
 measures-combinators = { path = "../measures-combinators" }
-# Exponential family support for JIT compilation
-measures-exponential-family = { path = "../measures-exponential-family", optional = true }
+# Exponential family support (required for distributions)
+measures-exponential-family = { path = "../measures-exponential-family" }
+# Symbolic math for final tagless approach
+symbolic-math = { path = "../symbolic-math" }
 
 # Core numeric traits
 num-traits = "0.2"
@@ -32,6 +34,7 @@ ad_trait = { version = "0.1.6", optional = true }
 simba = { version = "0.9", optional = true }
 
 [features]
-default = []
-jit = ["dep:measures-exponential-family", "measures-exponential-family?/jit"]
+default = ["final-tagless"]
+final-tagless = []
+jit = ["measures-exponential-family/jit", "symbolic-math/jit"]
 autodiff = ["dep:ad_trait", "dep:simba", "measures-core/autodiff"] 

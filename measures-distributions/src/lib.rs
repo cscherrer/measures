@@ -1,26 +1,58 @@
 //! Probability distributions for the measures library.
 //!
-//! This crate provides a comprehensive collection of probability distributions
-//! built on top of the measures-core framework. It includes:
+//! This crate provides implementations of common probability distributions,
+//! including:
 //!
-//! - **Continuous distributions**: Normal, Gamma, Beta, Cauchy, etc.
-//! - **Discrete distributions**: Poisson, Binomial, Categorical, etc.
-//! - **Multivariate distributions**: Multivariate Normal, etc.
-//!
-//! All distributions implement the core measure theory traits from measures-core,
-//! providing type-safe and efficient log-density computation.
+//! - **Continuous distributions**: Normal, Exponential, Gamma, Beta, etc.
+//! - **Discrete distributions**: Bernoulli, Binomial, Poisson, etc.
+//! - **Multivariate distributions**: (planned)
+//! - **Final tagless approach**: Zero-cost symbolic computation with compile-time type safety
+//! - **JIT compilation**: Runtime optimization for distribution computations
 //!
 //! # Quick Start
 //!
 //! ```rust
-//! use measures_distributions::{Normal, Poisson};
-//! use measures_core::{LogDensityBuilder, HasLogDensity};
+//! use measures_distributions::{Normal, distributions::final_tagless::*};
+//! use measures_core::{HasLogDensity};
 //!
+//! // Traditional approach
 //! let normal = Normal::new(0.0, 1.0);
-//! let poisson = Poisson::new(2.0);
+//! let log_density = normal.log_density_wrt_root(&1.0);
 //!
-//! let normal_density: f64 = normal.log_density().at(&0.5);
-//! let poisson_density: f64 = poisson.log_density().at(&3u64);
+//! // Final tagless approach for ultimate performance
+//! use symbolic_math::final_tagless::DirectEval;
+//! let x = DirectEval::constant(1.0);
+//! let mu = DirectEval::constant(0.0);
+//! let sigma = DirectEval::constant(1.0);
+//! let result = patterns::normal_log_density::<DirectEval>(x, mu, sigma);
+//! ```
+//!
+//! # Final Tagless Approach
+//!
+//! For ultimate performance, use the final tagless approach:
+//!
+//! ```rust
+//! use measures_distributions::distributions::final_tagless::*;
+//! use symbolic_math::final_tagless::{DirectEval, JITEval};
+//!
+//! // Define normal log-density using final tagless
+//! let x = DirectEval::constant(1.0);
+//! let mu = DirectEval::constant(0.0);
+//! let sigma = DirectEval::constant(1.0);
+//! let result = patterns::normal_log_density::<DirectEval>(x, mu, sigma);
+//!
+//! // Compile to native code for ultimate performance (with JIT feature)
+//! # #[cfg(feature = "jit")]
+//! # {
+//! let jit_expr = patterns::normal_log_density::<JITEval>(
+//!     JITEval::var("x"),
+//!     JITEval::var("mu"),
+//!     JITEval::var("sigma")
+//! );
+//! let compiled = JITEval::compile_data_params(jit_expr, "x", &["mu".to_string(), "sigma".to_string()])?;
+//! let result = compiled.call_data_params(1.0, &[0.0, 1.0]);
+//! # }
+//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 #![warn(missing_docs)]
@@ -28,27 +60,37 @@
 
 pub mod distributions;
 
-// Re-export all distributions for convenience
-pub use distributions::continuous::beta::Beta;
-pub use distributions::continuous::cauchy::Cauchy;
-pub use distributions::continuous::chi_squared::ChiSquared;
-pub use distributions::continuous::exponential::Exponential;
-pub use distributions::continuous::gamma::Gamma;
-pub use distributions::continuous::normal::Normal;
-pub use distributions::continuous::stdnormal::StdNormal;
-pub use distributions::continuous::student_t::StudentT;
-
-pub use distributions::discrete::bernoulli::Bernoulli;
-pub use distributions::discrete::binomial::Binomial;
-pub use distributions::discrete::categorical::Categorical;
-pub use distributions::discrete::geometric::Geometric;
-pub use distributions::discrete::negative_binomial::NegativeBinomial;
-pub use distributions::discrete::poisson::Poisson;
-
-// Re-export multivariate distributions when available
-// pub use distributions::multivariate::multinormal::MultivariateNormal;
+// Re-export core distributions for convenience
+pub use distributions::{
+    // Continuous distributions
+    Beta, Cauchy, ChiSquared, Exponential, Gamma, Normal, StdNormal,
+    // Discrete distributions
+    Bernoulli, Binomial, Categorical, Geometric, NegativeBinomial, Poisson,
+    // Final tagless functionality
+    DistributionExpr, DistributionEval, DistributionMathExpr, patterns,
+};
 
 // Re-export core traits for convenience
 pub use measures_core::{
-    HasLogDensity, LogDensityBuilder, LogDensityTrait, Measure, PrimitiveMeasure,
+    HasLogDensity, Measure, PrimitiveMeasure,
 };
+
+// Re-export exponential family traits when available
+#[cfg(feature = "jit")]
+pub use measures_exponential_family::{
+    ExponentialFamily, IIDExtension,
+};
+
+/// Convenience module for final tagless distribution operations
+pub mod final_tagless {
+    pub use super::distributions::final_tagless::*;
+    pub use symbolic_math::final_tagless::{MathExpr, DirectEval, PrettyPrint};
+    
+    // JITEval is only available with the jit feature
+    #[cfg(feature = "jit")]
+    pub use symbolic_math::final_tagless::JITEval;
+    
+    // Exponential family operations when available
+    #[cfg(feature = "jit")]
+    pub use measures_exponential_family::final_tagless::*;
+}

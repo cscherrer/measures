@@ -1,31 +1,33 @@
-//! Probability distributions module.
+//! Probability distributions for the measures library.
 //!
-//! This module contains various probability distributions, organized by:
-//! - Continuous distributions (using Lebesgue measure)
-//! - Discrete distributions (using counting measure)
-//! - Multivariate distributions (using Lebesgue measure on vector spaces)
+//! This module provides implementations of common probability distributions,
+//! organized by type (continuous, discrete, multivariate).
 
 pub mod continuous;
 pub mod discrete;
 pub mod multivariate;
 
-// Re-export common distributions
+// Final tagless approach for distributions
+pub mod final_tagless;
 
-// Continuous distributions
-pub use continuous::Beta;
-pub use continuous::ChiSquared;
-pub use continuous::Exponential;
-pub use continuous::Gamma;
-pub use continuous::Normal;
-pub use continuous::StdNormal;
+// Re-export common distributions for convenience
+pub use continuous::{
+    Beta, Cauchy, ChiSquared, Exponential, Gamma, Normal, StdNormal,
+};
 
-// Discrete distributions
-pub use discrete::Bernoulli;
-pub use discrete::Binomial;
-pub use discrete::Categorical;
-pub use discrete::Geometric;
-pub use discrete::NegativeBinomial;
-pub use discrete::Poisson;
+pub use discrete::{
+    Bernoulli, Binomial, Categorical, Geometric, NegativeBinomial, Poisson,
+};
+
+// Note: Multivariate distributions are not yet implemented
+// pub use multivariate::{
+//     MultivariateNormal, Dirichlet, Wishart,
+// };
+
+// Re-export final tagless functionality
+pub use final_tagless::{
+    DistributionExpr, DistributionEval, DistributionMathExpr, patterns,
+};
 
 // pub use multivariate::multinormal::MultivariateNormal;
 // pub use nalgebra::{DMatrix, DVector};

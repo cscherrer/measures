@@ -1601,6 +1601,7 @@ dependencies = [
  "num-traits",
  "simba",
  "special 0.11.4",
+ "symbolic-math",
 ]
 
 [[package]]
