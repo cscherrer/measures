@@ -1,42 +1,34 @@
 //! Exponential family distributions and optimization.
 //!
-//! This module provides the core infrastructure for working with exponential family
-//! distributions, including:
-//!
-//! - Core traits for exponential families
-//! - JIT compilation for runtime optimization
-//! - Automatic derivation of optimized implementations
-//! - IID (independent and identically distributed) extensions
+//! This module provides the core functionality for working with exponential family
+//! distributions, including traits, implementations, and optimization features.
 
-pub mod iid;
-pub mod implementations;
 pub mod traits;
+pub mod implementations;
+pub mod iid;
+pub mod array_utils;
 
+// Final tagless approach for zero-cost symbolic computation
+pub mod final_tagless;
+
+// JIT compilation features
 #[cfg(feature = "jit")]
 pub mod jit;
 
 #[cfg(feature = "jit")]
 pub mod auto_jit;
 
-// Re-export core traits
-pub use traits::{
-    ExponentialFamily, ExponentialFamilyMeasure, SumSufficientStats, compute_exp_fam_log_density,
-    compute_iid_exp_fam_log_density,
-};
+// Re-export key items for convenience
+pub use traits::*;
+pub use implementations::*;
+pub use iid::*;
 
-// Re-export IID functionality
-pub use iid::{IID, IIDExtension};
+// Re-export final tagless functionality
+pub use final_tagless::{ExponentialFamilyExpr, ExpFamEval, patterns};
 
-// Re-export implementations
-pub use implementations::ExpFam;
-
-// Re-export JIT compilation (if enabled) - now using symbolic-math crate
+// Re-export JIT functionality when available
 #[cfg(feature = "jit")]
-pub use jit::{CompilationStats, CustomJITOptimizer, JITError, JITFunction, JITOptimizer};
+pub use jit::*;
 
 #[cfg(feature = "jit")]
-pub use auto_jit::{AutoJITExt, AutoJITOptimizer, AutoJITPattern, AutoJITRegistry};
-
-// Re-export the auto_jit_impl macro
-#[cfg(feature = "jit")]
-pub use crate::auto_jit_impl;
+pub use auto_jit::*;

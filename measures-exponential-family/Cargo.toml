@@ -13,8 +13,8 @@ categories = ["mathematics", "science"]
 measures-core = { path = "../measures-core" }
 # Measure combinators for derived measures
 measures-combinators = { path = "../measures-combinators" }
-# Symbolic computation and JIT
-symbolic-math = { path = "../symbolic-math", optional = true }
+# Symbolic computation and JIT - now required for final tagless
+symbolic-math = { path = "../symbolic-math" }
 
 # Core numeric traits
 num-traits = "0.2"
@@ -36,6 +36,7 @@ ad_trait = { version = "0.1.6", optional = true }
 simba = { version = "0.9", optional = true }
 
 [features]
-default = []
-jit = ["dep:symbolic-math", "symbolic-math?/jit", "dep:cranelift-codegen", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-frontend"]
+default = ["final-tagless"]
+final-tagless = []  # Final tagless is now always available
+jit = ["final-tagless", "symbolic-math/jit", "dep:cranelift-codegen", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-frontend"]
 autodiff = ["dep:ad_trait", "dep:simba", "measures-core/autodiff"] 

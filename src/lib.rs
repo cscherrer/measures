@@ -275,3 +275,13 @@ pub use measures_combinators::mixture;
 
 // Re-export utility functions
 pub use measures_core::{log_density_at, log_density_batch, safe_convert_or, safe_float_convert};
+
+/// Convenience module for final tagless exponential family operations
+pub mod final_tagless {
+    pub use super::exponential_family::final_tagless::*;
+    pub use symbolic_math::final_tagless::{MathExpr, DirectEval, PrettyPrint};
+    
+    // JITEval is only available with the jit feature
+    #[cfg(feature = "jit")]
+    pub use symbolic_math::final_tagless::JITEval;
+}

@@ -4,6 +4,7 @@
 //! including:
 //!
 //! - **Core exponential family traits**: Type-safe exponential family abstractions
+//! - **Final tagless approach**: Zero-cost symbolic computation with compile-time type safety
 //! - **JIT compilation**: Runtime optimization for exponential family computations
 //! - **IID extensions**: Efficient handling of independent and identically distributed data
 //! - **Automatic optimization**: Automatic derivation of optimized implementations
@@ -42,6 +43,21 @@
 //! let iid_dist = dist.iid(data.len());
 //! let batch_density: f64 = iid_dist.log_density().at(&data);
 //! ```
+//!
+//! # Final Tagless Approach
+//!
+//! For ultimate performance, use the final tagless approach:
+//!
+//! ```rust
+//! use measures_exponential_family::final_tagless::*;
+//! use symbolic_math::final_tagless::{DirectEval, JITEval};
+//!
+//! // Define normal log-density using final tagless
+//! let x = DirectEval::var("x", 1.0);
+//! let mu = DirectEval::var("mu", 0.0);
+//! let sigma = DirectEval::var("sigma", 1.0);
+//! let result = patterns::normal_log_density::<DirectEval>(x, mu, sigma);
+//! ```
 
 #![warn(missing_docs)]
 #![allow(unstable_name_collisions)]
@@ -60,6 +76,11 @@ pub use exponential_family::iid::{IID, IIDExtension};
 // Re-export implementations
 pub use exponential_family::implementations::ExpFam;
 
+// Re-export final tagless functionality
+pub use exponential_family::final_tagless::{
+    ExponentialFamilyExpr, ExpFamEval, patterns, ExpFamFinalTaglessConversion
+};
+
 // Re-export JIT functionality when available
 #[cfg(feature = "jit")]
 pub use exponential_family::jit::{
@@ -75,3 +96,13 @@ pub use exponential_family::auto_jit::{
 pub use measures_core::{
     HasLogDensity, LogDensityBuilder, LogDensityTrait, Measure, PrimitiveMeasure,
 };
+
+/// Convenience module for final tagless exponential family operations
+pub mod final_tagless {
+    pub use super::exponential_family::final_tagless::*;
+    pub use symbolic_math::final_tagless::{MathExpr, DirectEval, PrettyPrint};
+    
+    // JITEval is only available with the jit feature
+    #[cfg(feature = "jit")]
+    pub use symbolic_math::final_tagless::JITEval;
+}
