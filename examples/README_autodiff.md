@@ -181,7 +181,7 @@ The automatic differentiation capabilities integrate seamlessly with the measure
 
 ## Dependencies
 
-- `ad-trait = "0.7"`: The automatic differentiation library
+- `ad_trait = "0.1.6"`: The automatic differentiation library
 - Standard Rust mathematical libraries for special functions
 
 ## Performance

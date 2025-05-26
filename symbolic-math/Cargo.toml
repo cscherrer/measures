@@ -9,6 +9,11 @@ keywords = ["symbolic", "mathematics", "jit", "expressions", "compilation"]
 categories = ["mathematics", "science"]
 
 [dependencies]
+# Core numeric traits for generic operations
+num-traits = "0.2"
+# Automatic differentiation trait support
+ad_trait = "0.1.6"
+
 # JIT compilation with Cranelift
 cranelift-codegen = { version = "0.120", optional = true }
 cranelift-jit = { version = "0.120", optional = true }

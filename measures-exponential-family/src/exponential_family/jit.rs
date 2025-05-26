@@ -58,7 +58,7 @@ use measures_core::HasLogDensity;
 #[cfg(feature = "jit")]
 pub use symbolic_math::{
     CompilationStats, CustomSymbolicLogDensity, GeneralJITCompiler as JITCompiler,
-    GeneralJITFunction as JITFunction, JITError, JITSignature, JITType,
+    GeneralJITFunction as JITFunction, JITError, JITSignature, jit::JITType,
 };
 
 // Re-export general expression types from symbolic-math

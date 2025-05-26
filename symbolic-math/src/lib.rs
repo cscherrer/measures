@@ -76,6 +76,8 @@ pub mod jit;
 #[cfg(feature = "optimization")]
 pub mod optimization;
 
+pub mod final_tagless;
+
 // Re-export commonly used types
 pub use expr::{
     CacheStats, ConstantPool, EvalError, Expr, SymbolicLogDensity, clear_caches, get_cache_stats,
@@ -89,6 +91,12 @@ pub use jit::{
 
 #[cfg(feature = "optimization")]
 pub use optimization::EgglogOptimize;
+
+// Re-export final tagless types
+pub use final_tagless::{
+    ContextualEval, DirectEval, ExprBuilder, FinalTaglessConversion, MathExpr, PrettyPrint,
+    StatisticalExpr, dsl,
+};
 
 /// Ergonomic macros for building expressions with natural Rust syntax
 pub mod macros {
