@@ -2,6 +2,8 @@ use super::measure::Measure;
 use crate::core::types::True;
 use num_traits::Float;
 
+// Add AD support
+
 /// A trait representing the log-density between two measures. Goals for the
 /// design:
 /// - for a log-density `l` we should be able to say `l.wrt(new_base_measure)`
@@ -39,6 +41,7 @@ use num_traits::Float;
 /// - **Algebraic operations**: Can be implemented as type-level combinators
 /// - **Ergonomic API**: Fluent interface feels natural to use
 /// - **Generic evaluation**: Same log-density can be evaluated with f64, f32, dual numbers, etc.
+/// - **Automatic differentiation**: Seamless integration with AD types for gradient computation
 ///
 /// # Usage Examples
 ///
@@ -53,6 +56,11 @@ use num_traits::Float;
 /// let f64_result: f64 = ld.at(&x);           // Regular evaluation
 /// let f32_result: f32 = ld.at(&(x as f32));  // Lower precision
 /// let dual_result: Dual64 = ld.at(&dual_x);  // Autodiff with dual numbers
+///
+/// // With automatic differentiation (when autodiff feature is enabled)
+/// use ad_trait::reverse_ad::adr::adr;
+/// let ad_x = adr::constant(x);
+/// let ad_result: adr = ld.at(&ad_x);         // AD evaluation for gradients
 ///
 /// // With different base measure  
 /// let lebesgue = LebesgueMeasure::new();
@@ -109,6 +117,8 @@ pub trait LogDensityTrait<T> {
 /// - `f64` for regular computation
 /// - `f32` for lower precision  
 /// - `Dual64` for forward-mode autodiff
+/// - `adr` for reverse-mode autodiff (when autodiff feature is enabled)
+/// - `adfn<N>` for forward-mode autodiff (when autodiff feature is enabled)
 /// - Custom number types for other specialized computation
 pub trait EvaluateAt<T, F> {
     /// Evaluate the log-density at point x, returning type F

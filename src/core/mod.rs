@@ -10,6 +10,10 @@ pub mod measure;
 pub mod types;
 pub mod utils;
 
+/// Automatic differentiation support (when autodiff feature is enabled)
+#[cfg(feature = "autodiff")]
+pub mod autodiff;
+
 // Re-export key types for convenient use
 pub use density::{
     CachedLogDensity, DensityMeasure, EvaluateAt, HasLogDensity, LogDensity, LogDensityCaching,
@@ -25,3 +29,7 @@ pub use types::{
 
 // Re-export DotProduct as it's a fundamental computational trait
 pub use crate::traits::DotProduct;
+
+// Re-export autodiff support when available
+#[cfg(feature = "autodiff")]
+pub use autodiff::{AutoDiffMeasure, LogDensityAD};

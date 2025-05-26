@@ -23,6 +23,9 @@ cranelift-frontend = { version = "0.120", optional = true }
 # Special mathematical functions (pure Rust implementation)
 special = "0.11.4"
 egglog = "0.4"
+# Automatic differentiation
+ad_trait = { version = "0.1.6", optional = true }
+simba = { version = "0.9", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.6", features = ["html_reports", "cargo_bench_support"] }
@@ -63,3 +66,4 @@ callgrind = ["dep:iai-callgrind"]
 dhat-heap = []    # Simple feature flag for heap profiling as per dhat docs
 symbolic = []     # Now just enables symbolic optimization with our custom IR
 jit = ["symbolic", "dep:cranelift-codegen", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-frontend"]
+autodiff = ["dep:ad_trait", "dep:simba"]  # Enable automatic differentiation support
