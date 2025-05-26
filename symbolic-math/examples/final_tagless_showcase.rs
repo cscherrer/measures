@@ -11,13 +11,15 @@
 
 use std::collections::HashMap;
 use std::time::Instant;
-use symbolic_math::final_tagless::*;
+use symbolic_math::final_tagless::{
+    ContextualEval, ContextualRepr, ExprBuilder, MathExpr, PrettyPrint, StatisticalExpr,
+};
 
 /// A simple linear function for performance testing
 fn linear<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
     let two = E::constant(2.0);
     let three = E::constant(3.0);
-    
+
     // 2*x + 3
     E::add::<f64, f64, f64>(E::mul::<f64, f64, f64>(two, x), three)
 }
@@ -26,11 +28,14 @@ fn linear<E: MathExpr>(x: E::Repr<f64>) -> E::Repr<f64> {
 fn complex_expr<E: MathExpr>() -> E::Repr<f64> {
     let x: E::Repr<f64> = E::var("x");
     let x2: E::Repr<f64> = E::var("x");
-    
+
     // ln(exp(x) + sqrt(x^2 + 1))
     E::ln(E::add::<f64, f64, f64>(
         E::exp(x),
-        E::sqrt(E::add::<f64, f64, f64>(E::pow(x2, E::constant(2.0)), E::constant(1.0))),
+        E::sqrt(E::add::<f64, f64, f64>(
+            E::pow(x2, E::constant(2.0)),
+            E::constant(1.0),
+        )),
     ))
 }
 
@@ -60,7 +65,7 @@ fn main() {
     let build_time = start.elapsed();
     println!("AST: {expr_ast:?}");
     println!("Build time: {build_time:?}");
-    
+
     // Evaluate the AST
     let mut vars = HashMap::new();
     vars.insert("x".to_string(), 2.0);
@@ -86,7 +91,7 @@ fn main() {
     let mut context = HashMap::new();
     context.insert("x".to_string(), 1.0);
     let complex_result = ContextualEval::eval_with(&complex_expr_contextual, &context);
-    
+
     let complex_pretty = complex_expr::<PrettyPrint>();
     println!("complex_expr(1.0) = {complex_result}");
     println!("Complex pretty: {complex_pretty}");
@@ -97,23 +102,23 @@ fn main() {
     let mut context = HashMap::new();
     context.insert("x".to_string(), 0.0);
     let stat_result = ContextualEval::eval_with(&stat_expr_contextual, &context);
-    
+
     let stat_pretty = statistical_example::<PrettyPrint>();
     println!("statistical_example(0.0) = {stat_result}");
     println!("Statistical pretty: {stat_pretty}");
 
     // 7. Performance Comparison
     println!("\n=== 7. Performance Comparison ===");
-    
+
     // Benchmark DirectEval (should be very fast)
     let start = Instant::now();
     let mut sum = 0.0;
     for i in 0..10000 {
-        sum += linear_direct_eval(i as f64);
+        sum += linear_direct_eval(f64::from(i));
     }
     let direct_time = start.elapsed();
     println!("DirectEval (10k iterations): {direct_time:?}, sum: {sum}");
-    
+
     println!("\nFinal tagless approach demonstrates:");
     println!("✅ Zero-cost abstractions with DirectEval");
     println!("✅ AST building with ExprBuilder");
@@ -142,7 +147,7 @@ fn linear_contextual() -> ContextualRepr<f64> {
     let x = ContextualEval::var("x");
     let two = ContextualEval::constant(2.0);
     let three = ContextualEval::constant(3.0);
-    
+
     // 2*x + 3
     ContextualEval::add_same(ContextualEval::mul_same(two, x), three)
 }
@@ -153,7 +158,7 @@ fn complex_expr_contextual() -> ContextualRepr<f64> {
     let x2 = ContextualEval::var("x");
     let one = ContextualEval::constant(1.0);
     let two = ContextualEval::constant(2.0);
-    
+
     // ln(exp(x) + sqrt(x^2 + 1))
     ContextualEval::ln(ContextualEval::add_same(
         ContextualEval::exp(x),
@@ -164,16 +169,19 @@ fn complex_expr_contextual() -> ContextualRepr<f64> {
 /// Contextual evaluation version of statistical example
 fn statistical_example_contextual() -> ContextualRepr<f64> {
     let x = ContextualEval::var("x");
-    
+
     // ln(1 + exp(logistic(x)))
     let logistic_x = ContextualEval::div_same(
         ContextualEval::constant(1.0),
-        ContextualEval::add_same(ContextualEval::constant(1.0), ContextualEval::exp(ContextualEval::neg(x)))
+        ContextualEval::add_same(
+            ContextualEval::constant(1.0),
+            ContextualEval::exp(ContextualEval::neg(x)),
+        ),
     );
-    
+
     ContextualEval::ln(ContextualEval::add_same(
         ContextualEval::constant(1.0),
-        ContextualEval::exp(logistic_x)
+        ContextualEval::exp(logistic_x),
     ))
 }
 
