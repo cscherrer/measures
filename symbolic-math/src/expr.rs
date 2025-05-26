@@ -13,6 +13,66 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::sync::{Arc, Mutex};
+
+/// Global cache for expression simplification results
+static SIMPLIFICATION_CACHE: std::sync::LazyLock<Arc<Mutex<HashMap<String, Expr>>>> =
+    std::sync::LazyLock::new(|| Arc::new(Mutex::new(HashMap::new())));
+
+/// Global cache for evaluation results
+static EVALUATION_CACHE: std::sync::LazyLock<Arc<Mutex<HashMap<(String, String), f64>>>> =
+    std::sync::LazyLock::new(|| Arc::new(Mutex::new(HashMap::new())));
+
+/// Cache statistics for monitoring performance
+#[derive(Debug, Clone, Default)]
+pub struct CacheStats {
+    /// Number of cache hits for simplification operations
+    pub simplification_hits: usize,
+    /// Number of cache misses for simplification operations
+    pub simplification_misses: usize,
+    /// Number of cache hits for evaluation operations
+    pub evaluation_hits: usize,
+    /// Number of cache misses for evaluation operations
+    pub evaluation_misses: usize,
+}
+
+impl CacheStats {
+    /// Get the hit rate for simplification cache
+    pub fn simplification_hit_rate(&self) -> f64 {
+        let total = self.simplification_hits + self.simplification_misses;
+        if total == 0 {
+            0.0
+        } else {
+            self.simplification_hits as f64 / total as f64
+        }
+    }
+
+    /// Get the hit rate for evaluation cache
+    pub fn evaluation_hit_rate(&self) -> f64 {
+        let total = self.evaluation_hits + self.evaluation_misses;
+        if total == 0 {
+            0.0
+        } else {
+            self.evaluation_hits as f64 / total as f64
+        }
+    }
+}
+
+/// Global cache statistics
+static CACHE_STATS: std::sync::LazyLock<Arc<Mutex<CacheStats>>> =
+    std::sync::LazyLock::new(|| Arc::new(Mutex::new(CacheStats::default())));
+
+/// Get current cache statistics
+pub fn get_cache_stats() -> CacheStats {
+    CACHE_STATS.lock().unwrap().clone()
+}
+
+/// Clear all caches (useful for testing or memory management)
+pub fn clear_caches() {
+    SIMPLIFICATION_CACHE.lock().unwrap().clear();
+    EVALUATION_CACHE.lock().unwrap().clear();
+    *CACHE_STATS.lock().unwrap() = CacheStats::default();
+}
 
 /// A symbolic expression in our custom IR
 #[derive(Debug, Clone, PartialEq)]
@@ -162,45 +222,90 @@ impl Expr {
             Expr::Add(left, right) => match (left.simplify(), right.simplify()) {
                 (Expr::Const(a), Expr::Const(b)) => Expr::Const(a + b),
                 (Expr::Const(0.0), expr) | (expr, Expr::Const(0.0)) => expr,
+                // x + x = 2x
+                (ref left, ref right) if left == right => {
+                    Expr::Mul(Box::new(Expr::Const(2.0)), Box::new(left.clone()))
+                }
                 (left, right) => Expr::Add(Box::new(left), Box::new(right)),
             },
             Expr::Sub(left, right) => match (left.simplify(), right.simplify()) {
                 (Expr::Const(a), Expr::Const(b)) => Expr::Const(a - b),
                 (expr, Expr::Const(0.0)) => expr,
                 (Expr::Const(0.0), expr) => Expr::Neg(Box::new(expr)),
+                // x - x = 0
+                (ref left, ref right) if left == right => Expr::Const(0.0),
                 (left, right) => Expr::Sub(Box::new(left), Box::new(right)),
             },
             Expr::Mul(left, right) => match (left.simplify(), right.simplify()) {
                 (Expr::Const(a), Expr::Const(b)) => Expr::Const(a * b),
                 (Expr::Const(0.0), _) | (_, Expr::Const(0.0)) => Expr::Const(0.0),
                 (Expr::Const(1.0), expr) | (expr, Expr::Const(1.0)) => expr,
+                (Expr::Const(-1.0), expr) | (expr, Expr::Const(-1.0)) => Expr::Neg(Box::new(expr)),
+                // x * x = x^2
+                (ref left, ref right) if left == right => {
+                    Expr::Pow(Box::new(left.clone()), Box::new(Expr::Const(2.0)))
+                }
                 (left, right) => Expr::Mul(Box::new(left), Box::new(right)),
             },
             Expr::Div(left, right) => match (left.simplify(), right.simplify()) {
                 (Expr::Const(a), Expr::Const(b)) if b != 0.0 => Expr::Const(a / b),
                 (expr, Expr::Const(1.0)) => expr,
                 (Expr::Const(0.0), _) => Expr::Const(0.0),
+                // x / x = 1
+                (ref left, ref right) if left == right => Expr::Const(1.0),
                 (left, right) => Expr::Div(Box::new(left), Box::new(right)),
             },
             Expr::Pow(base, exponent) => match (base.simplify(), exponent.simplify()) {
                 (Expr::Const(a), Expr::Const(b)) => Expr::Const(a.powf(b)),
                 (_, Expr::Const(0.0)) => Expr::Const(1.0),
                 (expr, Expr::Const(1.0)) => expr,
+                (Expr::Const(1.0), _) => Expr::Const(1.0),
+                // (x^a)^b = x^(a*b)
+                (Expr::Pow(inner_base, inner_exp), outer_exp) => {
+                    let combined_exp = Expr::Mul(inner_exp, Box::new(outer_exp));
+                    Expr::Pow(inner_base, Box::new(combined_exp.simplify()))
+                }
                 (base, exponent) => Expr::Pow(Box::new(base), Box::new(exponent)),
             },
             Expr::Ln(expr) => match expr.simplify() {
                 Expr::Const(a) if a > 0.0 => Expr::Const(a.ln()),
+                Expr::Const(1.0) => Expr::Const(0.0),
                 Expr::Exp(inner) => *inner,
+                // ln(x^a) = a * ln(x)
+                Expr::Pow(base, exp) => Expr::Mul(exp, Box::new(Expr::Ln(base))),
                 expr => Expr::Ln(Box::new(expr)),
             },
             Expr::Exp(expr) => match expr.simplify() {
+                Expr::Const(0.0) => Expr::Const(1.0),
                 Expr::Const(a) => Expr::Const(a.exp()),
                 Expr::Ln(inner) => *inner,
+                // exp(a * ln(x)) = x^a
+                Expr::Mul(coeff, ln_expr) => match ln_expr.as_ref() {
+                    Expr::Ln(base) => Expr::Pow(base.clone(), coeff),
+                    _ => Expr::Exp(Box::new(Expr::Mul(coeff, ln_expr))),
+                },
                 expr => Expr::Exp(Box::new(expr)),
             },
             Expr::Sqrt(expr) => match expr.simplify() {
                 Expr::Const(a) if a >= 0.0 => Expr::Const(a.sqrt()),
+                Expr::Const(0.0) => Expr::Const(0.0),
+                Expr::Const(1.0) => Expr::Const(1.0),
+                // sqrt(x^2) = |x| (simplified to x for positive domains)
+                Expr::Pow(base, exp) => match exp.as_ref() {
+                    Expr::Const(2.0) => *base,
+                    _ => Expr::Sqrt(Box::new(Expr::Pow(base, exp))),
+                },
                 expr => Expr::Sqrt(Box::new(expr)),
+            },
+            Expr::Sin(expr) => match expr.simplify() {
+                Expr::Const(0.0) => Expr::Const(0.0),
+                Expr::Const(a) => Expr::Const(a.sin()),
+                expr => Expr::Sin(Box::new(expr)),
+            },
+            Expr::Cos(expr) => match expr.simplify() {
+                Expr::Const(0.0) => Expr::Const(1.0),
+                Expr::Const(a) => Expr::Const(a.cos()),
+                expr => Expr::Cos(Box::new(expr)),
             },
             Expr::Neg(expr) => match expr.simplify() {
                 Expr::Const(a) => Expr::Const(-a),
@@ -209,6 +314,67 @@ impl Expr {
             },
             other => other,
         }
+    }
+
+    /// Simplify the expression using algebraic rules with caching
+    #[must_use]
+    pub fn simplify_cached(self) -> Self {
+        let expr_str = format!("{self}");
+
+        // Check cache first
+        if let Ok(cache) = SIMPLIFICATION_CACHE.lock() {
+            if let Some(cached_result) = cache.get(&expr_str) {
+                if let Ok(mut stats) = CACHE_STATS.lock() {
+                    stats.simplification_hits += 1;
+                }
+                return cached_result.clone();
+            }
+        }
+
+        // Cache miss - compute simplification
+        if let Ok(mut stats) = CACHE_STATS.lock() {
+            stats.simplification_misses += 1;
+        }
+
+        let simplified = self.simplify();
+
+        // Store in cache
+        if let Ok(mut cache) = SIMPLIFICATION_CACHE.lock() {
+            cache.insert(expr_str, simplified.clone());
+        }
+
+        simplified
+    }
+
+    /// Evaluate the expression with caching for repeated evaluations
+    pub fn evaluate_cached(&self, vars: &HashMap<String, f64>) -> Result<f64, EvalError> {
+        let expr_str = format!("{self}");
+        let vars_str = format!("{vars:?}");
+        let cache_key = (expr_str.clone(), vars_str);
+
+        // Check cache first
+        if let Ok(cache) = EVALUATION_CACHE.lock() {
+            if let Some(&cached_result) = cache.get(&cache_key) {
+                if let Ok(mut stats) = CACHE_STATS.lock() {
+                    stats.evaluation_hits += 1;
+                }
+                return Ok(cached_result);
+            }
+        }
+
+        // Cache miss - compute evaluation
+        if let Ok(mut stats) = CACHE_STATS.lock() {
+            stats.evaluation_misses += 1;
+        }
+
+        let result = self.evaluate(vars)?;
+
+        // Store in cache
+        if let Ok(mut cache) = EVALUATION_CACHE.lock() {
+            cache.insert(cache_key, result);
+        }
+
+        Ok(result)
     }
 
     /// Extract all variables used in this expression
@@ -259,6 +425,60 @@ impl Expr {
             | Expr::Cos(expr)
             | Expr::Neg(expr) => 1 + expr.complexity(),
         }
+    }
+
+    /// Evaluate the expression for multiple data points (vectorized)
+    /// This is more efficient than calling evaluate multiple times
+    pub fn evaluate_batch(&self, var_name: &str, values: &[f64]) -> Result<Vec<f64>, EvalError> {
+        let mut results = Vec::with_capacity(values.len());
+        let mut vars = HashMap::new();
+
+        for &value in values {
+            vars.insert(var_name.to_string(), value);
+            results.push(self.evaluate(&vars)?);
+        }
+
+        Ok(results)
+    }
+
+    /// Evaluate the expression for multiple variable sets (batch evaluation)
+    pub fn evaluate_batch_vars(
+        &self,
+        var_sets: &[HashMap<String, f64>],
+    ) -> Result<Vec<f64>, EvalError> {
+        let mut results = Vec::with_capacity(var_sets.len());
+
+        for vars in var_sets {
+            results.push(self.evaluate(vars)?);
+        }
+
+        Ok(results)
+    }
+
+    /// Evaluate the expression for a grid of two variables
+    pub fn evaluate_grid(
+        &self,
+        x_name: &str,
+        x_values: &[f64],
+        y_name: &str,
+        y_values: &[f64],
+    ) -> Result<Vec<Vec<f64>>, EvalError> {
+        let mut results = Vec::with_capacity(y_values.len());
+        let mut vars = HashMap::new();
+
+        for &y in y_values {
+            let mut row = Vec::with_capacity(x_values.len());
+            vars.insert(y_name.to_string(), y);
+
+            for &x in x_values {
+                vars.insert(x_name.to_string(), x);
+                row.push(self.evaluate(&vars)?);
+            }
+
+            results.push(row);
+        }
+
+        Ok(results)
     }
 }
 

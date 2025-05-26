@@ -77,16 +77,18 @@ pub mod jit;
 pub mod optimization;
 
 // Re-export commonly used types
-pub use expr::Expr;
+pub use expr::{
+    CacheStats, ConstantPool, EvalError, Expr, SymbolicLogDensity, clear_caches, get_cache_stats,
+};
 
 #[cfg(feature = "jit")]
 pub use jit::{
     CompilationStats, CustomSymbolicLogDensity, GeneralJITCompiler, GeneralJITFunction, JITError,
-    JITSignature, JITType,
+    JITSignature,
 };
 
 #[cfg(feature = "optimization")]
-pub use optimization::{EgglogOptimize, EgglogOptimizer};
+pub use optimization::EgglogOptimize;
 
 /// Ergonomic macros for building expressions with natural Rust syntax
 pub mod macros {
