@@ -65,11 +65,6 @@ use cranelift_module::{Linkage, Module};
 
 #[cfg(feature = "symbolic")]
 use symbolic_math::expr::{ConstantPool, SymbolicLogDensity};
-#[cfg(feature = "symbolic")]
-use symbolic_math::Expr;
-
-use std::collections::HashMap;
-use std::time::Instant;
 
 // Re-export general JIT functionality from symbolic-math
 #[cfg(feature = "jit")]
@@ -99,7 +94,11 @@ pub struct CustomSymbolicLogDensity {
 #[cfg(feature = "symbolic")]
 impl CustomSymbolicLogDensity {
     /// Create a new custom symbolic log-density
-    pub fn new(expression: symbolic_math::Expr, parameters: std::collections::HashMap<String, f64>) -> Self {
+    #[must_use]
+    pub fn new(
+        expression: symbolic_math::Expr,
+        parameters: std::collections::HashMap<String, f64>,
+    ) -> Self {
         let variables = expression.variables();
         Self {
             expression,
@@ -109,20 +108,28 @@ impl CustomSymbolicLogDensity {
     }
 
     /// Evaluate the expression at a given point
-    pub fn evaluate(&self, vars: &std::collections::HashMap<String, f64>) -> Result<f64, symbolic_math::expr::EvalError> {
+    pub fn evaluate(
+        &self,
+        vars: &std::collections::HashMap<String, f64>,
+    ) -> Result<f64, symbolic_math::expr::EvalError> {
         let mut env = self.parameters.clone();
         env.extend(vars.iter().map(|(k, v)| (k.clone(), *v)));
         self.expression.evaluate(&env)
     }
 
     /// Evaluate for a single variable (common case)
-    pub fn evaluate_single(&self, var_name: &str, value: f64) -> Result<f64, symbolic_math::expr::EvalError> {
+    pub fn evaluate_single(
+        &self,
+        var_name: &str,
+        value: f64,
+    ) -> Result<f64, symbolic_math::expr::EvalError> {
         let mut env = self.parameters.clone();
         env.insert(var_name.to_string(), value);
         self.expression.evaluate(&env)
     }
 
     /// Simplify the expression
+    #[must_use]
     pub fn simplify(mut self) -> Self {
         self.expression = self.expression.simplify();
         self
@@ -1070,13 +1077,13 @@ impl CustomJITOptimizer<f64, f64> for crate::distributions::continuous::Normal<f
         let expr = symbolic_math::builders::normal_log_pdf(
             symbolic_math::Expr::variable("x"),
             symbolic_math::Expr::variable("mu"),
-            symbolic_math::Expr::variable("sigma")
+            symbolic_math::Expr::variable("sigma"),
         );
-        
+
         let mut parameters = std::collections::HashMap::new();
         parameters.insert("mu".to_string(), self.mean);
         parameters.insert("sigma".to_string(), self.std_dev);
-        
+
         CustomSymbolicLogDensity::new(expr, parameters)
     }
 }
@@ -1111,8 +1118,8 @@ mod tests {
     #[cfg(feature = "jit")]
     fn test_custom_symbolic_ir_basic() {
         use crate::exponential_family::jit::CustomSymbolicLogDensity;
-        use symbolic_math::Expr;
         use std::collections::HashMap;
+        use symbolic_math::Expr;
 
         // Create a simple quadratic expression: -0.5 * (x - 2)^2
         let expr = Expr::mul(
@@ -1140,8 +1147,8 @@ mod tests {
     #[cfg(feature = "jit")]
     fn test_custom_jit_compilation() {
         use crate::exponential_family::jit::CustomSymbolicLogDensity;
-        use symbolic_math::Expr;
         use std::collections::HashMap;
+        use symbolic_math::Expr;
 
         // Create a simple linear expression: 2*x + 3
         let expr = Expr::add(
@@ -1223,23 +1230,20 @@ mod tests {
         use symbolic_math::Expr;
 
         // Test basic expression construction (symbolic-math doesn't have simplify method)
-        let expr = Expr::Add(
-            Box::new(Expr::Const(2.0)),
-            Box::new(Expr::Const(3.0))
-        );
+        let expr = Expr::Add(Box::new(Expr::Const(2.0)), Box::new(Expr::Const(3.0)));
         assert!(matches!(expr, Expr::Add(_, _)));
 
         // Test multiplication construction
         let expr = Expr::Mul(
             Box::new(Expr::Var("x".to_string())),
-            Box::new(Expr::Const(0.0))
+            Box::new(Expr::Const(0.0)),
         );
         assert!(matches!(expr, Expr::Mul(_, _)));
 
         // Test multiplication by one construction
         let expr = Expr::Mul(
             Box::new(Expr::Var("x".to_string())),
-            Box::new(Expr::Const(1.0))
+            Box::new(Expr::Const(1.0)),
         );
         assert!(matches!(expr, Expr::Mul(_, _)));
     }
@@ -1257,21 +1261,18 @@ mod tests {
         assert!(matches!(expr, Expr::Var(_)));
 
         // Addition
-        let expr = Expr::Add(
-            Box::new(Expr::Const(2.0)),
-            Box::new(Expr::Const(3.0))
-        );
+        let expr = Expr::Add(Box::new(Expr::Const(2.0)), Box::new(Expr::Const(3.0)));
         assert!(matches!(expr, Expr::Add(_, _)));
 
         // Nested expression
         let expr = Expr::Mul(
             Box::new(Expr::Add(
                 Box::new(Expr::Var("x".to_string())),
-                Box::new(Expr::Const(1.0))
+                Box::new(Expr::Const(1.0)),
             )),
             Box::new(Expr::Sub(
                 Box::new(Expr::Var("y".to_string())),
-                Box::new(Expr::Const(2.0))
+                Box::new(Expr::Const(2.0)),
             )),
         );
         assert!(matches!(expr, Expr::Mul(_, _)));

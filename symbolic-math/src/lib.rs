@@ -215,13 +215,14 @@ pub mod builders {
         let x = x.into();
         let mu = mu.into();
         let sigma = sigma.into();
-        
+
         let two_pi = Expr::constant(2.0 * std::f64::consts::PI);
         let half = Expr::constant(0.5);
-        
+
         let normalization = -(half.clone() * Expr::ln(two_pi) + Expr::ln(sigma.clone()));
-        let quadratic = -half * Expr::pow(x - mu, Expr::constant(2.0)) / Expr::pow(sigma, Expr::constant(2.0));
-        
+        let quadratic =
+            -half * Expr::pow(x - mu, Expr::constant(2.0)) / Expr::pow(sigma, Expr::constant(2.0));
+
         normalization + quadratic
     }
 
@@ -229,7 +230,7 @@ pub mod builders {
     pub fn polynomial(x: impl Into<Expr>, coefficients: &[f64]) -> Expr {
         let x = x.into();
         let mut result = Expr::constant(0.0);
-        
+
         for (i, &coeff) in coefficients.iter().enumerate() {
             let term = if i == 0 {
                 Expr::constant(coeff)
@@ -240,7 +241,7 @@ pub mod builders {
             };
             result = result + term;
         }
-        
+
         result
     }
 
@@ -253,9 +254,10 @@ pub mod builders {
         let x = x.into();
         let mu = mu.into();
         let sigma = sigma.into();
-        
+
         let half = Expr::constant(0.5);
-        let exponent = -half * Expr::pow(x - mu, Expr::constant(2.0)) / Expr::pow(sigma, Expr::constant(2.0));
+        let exponent =
+            -half * Expr::pow(x - mu, Expr::constant(2.0)) / Expr::pow(sigma, Expr::constant(2.0));
         Expr::exp(exponent)
     }
 

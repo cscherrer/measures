@@ -3,19 +3,6 @@
 //! This example demonstrates how automatic differentiation works seamlessly
 //! with the existing measures framework. No rewrites needed - just use AD types!
 
-#[cfg(feature = "autodiff")]
-use ad_trait::AD;
-#[cfg(feature = "autodiff")]
-use ad_trait::differentiable_function::{DifferentiableFunctionTrait, ReverseAD};
-#[cfg(feature = "autodiff")]
-use ad_trait::forward_ad::adfn::adfn;
-#[cfg(feature = "autodiff")]
-use ad_trait::function_engine::FunctionEngine;
-#[cfg(feature = "autodiff")]
-use ad_trait::reverse_ad::adr::adr;
-#[cfg(feature = "autodiff")]
-use num_traits::{Float, FloatConst};
-
 use measures::{LogDensityBuilder, Normal};
 
 fn main() {
@@ -25,12 +12,12 @@ fn main() {
     // The AD types (adr, adfn) don't implement the required traits (Float, FloatConst)
     // that our framework expects. This is the "trait bridge implementation" task
     // identified as high priority in the roadmap.
-    
+
     println!("=== Automatic Differentiation Integration Status ===");
     println!("This example is currently disabled due to missing trait implementations.");
     println!("The AD types need to implement num_traits::Float and FloatConst traits.");
     println!("This is tracked as a high-priority item in the roadmap.\n");
-    
+
     println!("=== What Should Work (After Trait Bridge Implementation) ===");
     println!("1. Normal distribution with reverse-mode AD");
     println!("2. Normal distribution with forward-mode AD");
@@ -51,16 +38,16 @@ fn main() {
     let normal = Normal::new(0.0, 1.0);
     let x = 1.5;
     let log_density: f64 = normal.log_density().at(&x);
-    println!("   x = {}: log_density = {:.6}", x, log_density);
-    
+    println!("   x = {x}: log_density = {log_density:.6}");
+
     println!("\n=== Next Steps ===");
     println!("1. Implement trait bridge between num_traits::Float and AD types");
     println!("2. Implement trait bridge between FloatConst and AD types");
     println!("3. Test integration with existing distributions");
     println!("4. Add comprehensive AD examples");
-    
+
     /* TODO: Uncomment when trait bridge is implemented
-    
+
     #[cfg(feature = "autodiff")]
     {
         // Example 1: Normal distribution with reverse-mode AD

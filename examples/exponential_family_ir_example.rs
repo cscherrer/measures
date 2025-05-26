@@ -4,13 +4,8 @@
 //! are represented in symbolic IR and how they are simplified using egglog
 //! optimization. We'll show several distributions and their optimization.
 
-use measures::core::{HasLogDensity, LogDensity, Measure};
-use measures::distributions::continuous::Normal;
-use measures::exponential_family::jit::CustomSymbolicLogDensity;
-use measures::exponential_family::traits::ExponentialFamily;
-use measures::traits::DotProduct;
-use symbolic_math::{Expr, EgglogOptimize};
 use std::collections::HashMap;
+use symbolic_math::{EgglogOptimize, Expr};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Exponential Family Log-Density IR Optimization Example ===\n");

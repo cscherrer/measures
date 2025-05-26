@@ -3,17 +3,13 @@
 //! This module provides automatic JIT compilation that analyzes usage patterns
 //! and decides when to compile distributions to native code for optimal performance.
 
-use crate::core::{HasLogDensity, LogDensity, Measure};
-use crate::exponential_family::traits::ExponentialFamily;
 use crate::exponential_family::jit::CustomSymbolicLogDensity;
+use crate::exponential_family::jit::{JITError, JITFunction};
+use num_traits::Float;
+use std::any::TypeId;
+use std::collections::HashMap;
 #[cfg(feature = "symbolic")]
 use symbolic_math::expr::{Expr, SymbolicLogDensity};
-use crate::traits::DotProduct;
-use num_traits::Float;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use crate::exponential_family::jit::{JITError, JITFunction};
-use std::any::TypeId;
 
 /// Registry of automatic JIT compilation patterns for different distribution types
 pub struct AutoJITRegistry {
@@ -182,14 +178,14 @@ impl AutoJITOptimizer {
     {
         let symbolic = self.generate_symbolic(distribution)?;
         let compiler = crate::exponential_family::jit::JITCompiler::new()?;
-        
+
         // Convert symbolic-math SymbolicLogDensity to CustomSymbolicLogDensity
         let custom_symbolic = CustomSymbolicLogDensity {
             expression: symbolic.expression,
             variables: symbolic.variables,
             parameters: symbolic.parameters,
         };
-        
+
         compiler.compile_custom_expression(&custom_symbolic)
     }
 }

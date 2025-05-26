@@ -4,13 +4,9 @@
 //! to ensure robustness across a wide range of inputs.
 
 use measures::bayesian::{
-    hierarchical_normal, mixture_likelihood, normal_likelihood, normal_prior, posterior_log_density, Expr,
+    Expr, hierarchical_normal, mixture_likelihood, normal_likelihood, normal_prior,
+    posterior_log_density,
 };
-use measures::core::{HasLogDensity, LogDensity, Measure};
-use measures::distributions::continuous::Normal;
-use measures::exponential_family::traits::ExponentialFamily;
-use measures::traits::DotProduct;
-use symbolic_math::Expr as SymbolicExpr;
 use proptest::prelude::*;
 
 /// Test that normal likelihood expressions have the expected structure

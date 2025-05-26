@@ -6,11 +6,11 @@
 use measures::core::{HasLogDensity, LogDensity, Measure};
 use measures::distributions::continuous::Normal;
 use measures::exponential_family::jit::CustomSymbolicLogDensity;
+use measures::exponential_family::jit::JITCompiler;
 use measures::exponential_family::traits::ExponentialFamily;
 use measures::traits::DotProduct;
-use measures::exponential_family::jit::JITCompiler;
-use symbolic_math::Expr;
 use std::collections::HashMap;
+use symbolic_math::Expr;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Test expression: ln(x) - x

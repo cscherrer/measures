@@ -3,13 +3,11 @@
 //! This module provides the `TransformMeasure` type for applying differentiable
 //! transformations to measures, automatically handling Jacobian determinants.
 
+use crate::core::Measure;
 #[cfg(feature = "autodiff")]
 use ad_trait::AD;
-use std::marker::PhantomData;
-use crate::core::{HasLogDensity, LogDensity, Measure, PrimitiveMeasure};
-use crate::traits::DotProduct;
-use nalgebra::{DMatrix, DVector};
 use num_traits::Float;
+use std::marker::PhantomData;
 
 /// A differentiable transformation that can be used with automatic differentiation
 #[cfg(feature = "autodiff")]
@@ -45,6 +43,7 @@ pub struct LinearTransform<T: AD> {
 #[cfg(feature = "autodiff")]
 impl<T: AD> LinearTransform<T> {
     /// Create a new linear transformation
+    #[must_use]
     pub fn new(matrix: Vec<f64>, offset: Vec<f64>, input_dim: usize, output_dim: usize) -> Self {
         assert_eq!(matrix.len(), input_dim * output_dim);
         assert_eq!(offset.len(), output_dim);
@@ -67,10 +66,10 @@ impl<T: AD> DifferentiableTransform<T> for LinearTransform<T> {
         let mut output = Vec::with_capacity(self.output_dim);
 
         for i in 0..self.output_dim {
-            let mut sum = self.offset[i].clone();
+            let mut sum = self.offset[i];
             for j in 0..self.input_dim {
-                let matrix_element = self.matrix[i * self.input_dim + j].clone();
-                sum = sum + matrix_element * input[j].clone();
+                let matrix_element = self.matrix[i * self.input_dim + j];
+                sum += matrix_element * input[j];
             }
             output.push(sum);
         }
@@ -124,7 +123,7 @@ where
 {
     fn transform(&self, input: &[T]) -> Vec<T> {
         assert_eq!(input.len(), self.dim);
-        input.iter().map(|x| (self.transform_fn)(x.clone())).collect()
+        input.iter().map(|x| (self.transform_fn)(*x)).collect()
     }
 
     fn input_dim(&self) -> usize {
@@ -196,14 +195,14 @@ mod tests {
         // TODO: Implement LinearTransform type
         // This test is disabled until the transform types are properly implemented
         println!("Linear transform test: PENDING implementation");
-        
+
         /* TODO: Uncomment when LinearTransform is implemented
         use nalgebra::{DMatrix, DVector};
-        
+
         let matrix = DMatrix::from_row_slice(2, 2, &[2.0, 0.0, 0.0, 3.0]);
         let offset = DVector::from_vec(vec![1.0, -1.0]);
         let transform = LinearTransform::<f64>::new(matrix, offset, 2, 2);
-        
+
         let input = vec![1.0, 2.0];
         let output = transform.apply(&input);
         assert_eq!(output, vec![3.0, 5.0]); // [2*1+1, 3*2-1]
@@ -215,11 +214,11 @@ mod tests {
         // TODO: Implement ComponentwiseTransform type
         // This test is disabled until the transform types are properly implemented
         println!("Componentwise transform test: PENDING implementation");
-        
+
         /* TODO: Uncomment when ComponentwiseTransform is implemented
         let square_fn = |x: f64| x * x;
         let transform = ComponentwiseTransform::new(square_fn, 3);
-        
+
         let input = vec![1.0, 2.0, 3.0];
         let output = transform.apply(&input);
         assert_eq!(output, vec![1.0, 4.0, 9.0]);
@@ -231,20 +230,20 @@ mod tests {
         // TODO: Implement AD integration for transforms
         // This test is disabled until AD trait bridge is implemented
         println!("Autodiff linear transform test: PENDING AD trait bridge implementation");
-        
+
         /* TODO: Uncomment when AD trait bridge is implemented
         use ad_trait::forward_ad::adfn::adfn;
         use nalgebra::{DMatrix, DVector};
-        
+
         let matrix = DMatrix::from_row_slice(2, 2, &[2.0, 0.0, 0.0, 3.0]);
         let offset = DVector::from_vec(vec![1.0, -1.0]);
         let transform = LinearTransform::<adfn<2>>::new(matrix, offset, 2, 2);
-        
+
         let x1 = adfn::new(1.0, [1.0, 0.0]);
         let x2 = adfn::new(2.0, [0.0, 1.0]);
         let input = vec![x1, x2];
         let output = transform.apply(&input);
-        
+
         assert_eq!(output[0].value(), 3.0);
         assert_eq!(output[1].value(), 5.0);
         assert_eq!(output[0].tangent(), [2.0, 0.0]);

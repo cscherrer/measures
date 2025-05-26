@@ -40,38 +40,42 @@ use std::collections::HashMap;
 pub mod expressions {
     #[cfg(feature = "symbolic")]
     use symbolic_math::Expr;
-    
+
     /// Create a normal likelihood expression: -0.5 * ln(2π) - ln(σ) - 0.5 * (x - μ)² / σ²
     #[cfg(feature = "symbolic")]
+    #[must_use]
     pub fn normal_likelihood(x_var: &str, mu_var: &str, sigma_var: &str) -> Expr {
         symbolic_math::builders::normal_log_pdf(
             Expr::variable(x_var),
-            Expr::variable(mu_var), 
-            Expr::variable(sigma_var)
+            Expr::variable(mu_var),
+            Expr::variable(sigma_var),
         )
     }
 
     /// Create a normal prior expression: -0.5 * ln(2π) - ln(σ₀) - 0.5 * (μ - μ₀)² / σ₀²
     #[cfg(feature = "symbolic")]
+    #[must_use]
     pub fn normal_prior(param_var: &str, prior_mean: f64, prior_std: f64) -> Expr {
         symbolic_math::builders::normal_log_pdf(
             Expr::variable(param_var),
             Expr::constant(prior_mean),
-            Expr::constant(prior_std)
+            Expr::constant(prior_std),
         )
     }
 
     /// Combine likelihood and prior into posterior log-density
     #[cfg(feature = "symbolic")]
+    #[must_use]
     pub fn posterior_log_density(likelihood: Expr, prior: Expr) -> Expr {
         Expr::add(likelihood, prior)
     }
 
     /// Create a hierarchical normal model
     #[cfg(feature = "symbolic")]
+    #[must_use]
     pub fn hierarchical_normal(
         x_var: &str,
-        mu_var: &str, 
+        mu_var: &str,
         sigma_var: &str,
         tau_var: &str,
         mu_prior_mean: f64,
@@ -85,6 +89,7 @@ pub mod expressions {
 
     /// Create a mixture model likelihood (legacy API for backward compatibility)
     #[cfg(feature = "symbolic")]
+    #[must_use]
     pub fn mixture_likelihood_old(components: &[(f64, Expr)]) -> Expr {
         if components.is_empty() {
             return Expr::constant(f64::NEG_INFINITY);
@@ -96,21 +101,17 @@ pub mod expressions {
             let weighted_component = log_weight + component.clone();
             log_sum_exp = log_sum_exp + Expr::exp(weighted_component);
         }
-        
+
         Expr::ln(log_sum_exp)
     }
 
     /// Create a mixture model likelihood with separate arrays (for test compatibility)
     #[cfg(feature = "symbolic")]
-    pub fn mixture_likelihood(
-        x_var: &str,
-        weights: &[f64],
-        means: &[f64], 
-        stds: &[f64],
-    ) -> Expr {
+    #[must_use]
+    pub fn mixture_likelihood(x_var: &str, weights: &[f64], means: &[f64], stds: &[f64]) -> Expr {
         assert_eq!(weights.len(), means.len());
         assert_eq!(means.len(), stds.len());
-        
+
         if weights.is_empty() {
             return Expr::constant(f64::NEG_INFINITY);
         }
@@ -121,12 +122,12 @@ pub mod expressions {
             let component = symbolic_math::builders::normal_log_pdf(
                 Expr::variable(x_var),
                 Expr::constant(means[i]),
-                Expr::constant(stds[i])
+                Expr::constant(stds[i]),
             );
             let weighted_component = log_weight + component;
             log_sum_exp = log_sum_exp + Expr::exp(weighted_component);
         }
-        
+
         Expr::ln(log_sum_exp)
     }
 }
@@ -145,6 +146,7 @@ pub struct BayesianJITOptimizer {
 #[cfg(feature = "jit")]
 impl BayesianJITOptimizer {
     /// Create a new Bayesian JIT optimizer
+    #[must_use]
     pub fn new() -> Self {
         Self {
             posterior_fn: None,
@@ -162,7 +164,8 @@ impl BayesianJITOptimizer {
         constants: &HashMap<String, f64>,
     ) -> Result<(), symbolic_math::JITError> {
         let compiler = symbolic_math::GeneralJITCompiler::new()?;
-        let jit_fn = compiler.compile_expression(posterior_expr, data_vars, param_vars, constants)?;
+        let jit_fn =
+            compiler.compile_expression(posterior_expr, data_vars, param_vars, constants)?;
         self.posterior_fn = Some(jit_fn);
         Ok(())
     }
@@ -171,12 +174,13 @@ impl BayesianJITOptimizer {
     pub fn compile_likelihood_jit(
         &mut self,
         likelihood_expr: &symbolic_math::Expr,
-        data_vars: &[String], 
+        data_vars: &[String],
         param_vars: &[String],
         constants: &HashMap<String, f64>,
     ) -> Result<(), symbolic_math::JITError> {
         let compiler = symbolic_math::GeneralJITCompiler::new()?;
-        let jit_fn = compiler.compile_expression(likelihood_expr, data_vars, param_vars, constants)?;
+        let jit_fn =
+            compiler.compile_expression(likelihood_expr, data_vars, param_vars, constants)?;
         self.likelihood_fn = Some(jit_fn);
         Ok(())
     }
@@ -196,12 +200,16 @@ impl BayesianJITOptimizer {
 
     /// Evaluate the compiled posterior function
     pub fn evaluate_posterior(&self, data: &[f64], params: &[f64]) -> Option<f64> {
-        self.posterior_fn.as_ref().map(|f| f.call_batch(data, params))
+        self.posterior_fn
+            .as_ref()
+            .map(|f| f.call_batch(data, params))
     }
 
     /// Evaluate the compiled likelihood function
     pub fn evaluate_likelihood(&self, data: &[f64], params: &[f64]) -> Option<f64> {
-        self.likelihood_fn.as_ref().map(|f| f.call_batch(data, params))
+        self.likelihood_fn
+            .as_ref()
+            .map(|f| f.call_batch(data, params))
     }
 
     /// Evaluate the compiled prior function
@@ -225,10 +233,7 @@ mod tests {
     fn test_normal_likelihood_expression() {
         let likelihood = normal_likelihood("x", "mu", "sigma");
         // normal_log_pdf returns normalization + quadratic, which is an Add expression
-        assert!(matches!(
-            likelihood,
-            symbolic_math::expr::Expr::Add(_, _)
-        ));
+        assert!(matches!(likelihood, symbolic_math::expr::Expr::Add(_, _)));
     }
 
     #[test]
@@ -243,10 +248,7 @@ mod tests {
         let likelihood = normal_likelihood("x", "mu", "sigma");
         let prior = normal_prior("mu", 0.0, 1.0);
         let posterior = posterior_log_density(likelihood, prior);
-        assert!(matches!(
-            posterior,
-            symbolic_math::expr::Expr::Add(_, _)
-        ));
+        assert!(matches!(posterior, symbolic_math::expr::Expr::Add(_, _)));
     }
 }
 
@@ -262,24 +264,28 @@ pub use symbolic_math::Expr;
 
 /// Create a variable expression
 #[cfg(feature = "symbolic")]
+#[must_use]
 pub fn variable(name: &str) -> Expr {
     Expr::variable(name)
 }
 
-/// Create a likelihood expression (alias for normal_likelihood)
+/// Create a likelihood expression (alias for `normal_likelihood`)
 #[cfg(feature = "symbolic")]
+#[must_use]
 pub fn likelihood(x_var: &str, mu_var: &str, sigma_var: &str) -> Expr {
     normal_likelihood(x_var, mu_var, sigma_var)
 }
 
-/// Create a prior expression (alias for normal_prior)
+/// Create a prior expression (alias for `normal_prior`)
 #[cfg(feature = "symbolic")]
+#[must_use]
 pub fn prior(param_var: &str, prior_mean: f64, prior_std: f64) -> Expr {
     normal_prior(param_var, prior_mean, prior_std)
 }
 
-/// Create a posterior expression (alias for posterior_log_density)
+/// Create a posterior expression (alias for `posterior_log_density`)
 #[cfg(feature = "symbolic")]
+#[must_use]
 pub fn posterior(likelihood: Expr, prior: Expr) -> Expr {
     posterior_log_density(likelihood, prior)
 }

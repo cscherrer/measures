@@ -444,4 +444,4 @@ mod tests {
         // The optimizer should simplify x + 0 to x
         assert_eq!(optimized, Expr::Var("x".to_string()));
     }
-} 
+}
