@@ -1,5 +1,13 @@
 [workspace]
-members = [".", "symbolic-math", "measures-core"]
+members = [
+    ".", 
+    "symbolic-math", 
+    "measures-core",
+    "measures-distributions",
+    "measures-exponential-family", 
+    "measures-combinators",
+    "measures-bayesian"
+]
 resolver = "2"
 
 [package]
@@ -34,6 +42,11 @@ cranelift-module = { version = "0.120", optional = true }
 cranelift-frontend = { version = "0.120", optional = true }
 # Add dependency on our new measures-core crate
 measures-core = { path = "measures-core", optional = false }
+# Add dependencies on our new subcrates
+measures-distributions = { path = "measures-distributions", optional = false }
+measures-exponential-family = { path = "measures-exponential-family", optional = false }
+measures-combinators = { path = "measures-combinators", optional = false }
+measures-bayesian = { path = "measures-bayesian", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.6", features = ["html_reports", "cargo_bench_support"] }
@@ -68,11 +81,11 @@ harness = false
 
 [features]
 default = []
-symbolic = ["dep:symbolic-math"]
-jit = ["symbolic", "symbolic-math?/jit", "dep:cranelift-codegen", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-frontend"]
+symbolic = ["dep:symbolic-math", "measures-bayesian"]
+jit = ["symbolic", "symbolic-math?/jit", "measures-distributions/jit", "measures-exponential-family/jit", "measures-bayesian?/jit", "dep:cranelift-codegen", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-frontend"]
 optimization = ["symbolic", "symbolic-math?/optimization"]
 profiling = ["dep:profiling"]
-autodiff = ["dep:ad_trait", "dep:simba"]
+autodiff = ["dep:ad_trait", "dep:simba", "measures-core/autodiff", "measures-distributions/autodiff", "measures-exponential-family/autodiff", "measures-combinators/autodiff", "measures-bayesian?/autodiff"]
 
 # [[bin]]
 # name = "perf_test"

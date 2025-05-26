@@ -1475,7 +1475,11 @@ dependencies = [
  "egglog",
  "iai-callgrind",
  "inferno",
+ "measures-bayesian",
+ "measures-combinators",
  "measures-core",
+ "measures-distributions",
+ "measures-exponential-family",
  "nalgebra",
  "num-traits",
  "profiling",
@@ -1483,9 +1487,34 @@ dependencies = [
  "rand 0.9.1",
  "rv",
  "simba",
- "special",
+ "special 0.11.4",
  "symbolic-math",
  "tracy-client",
+]
+
+[[package]]
+name = "measures-bayesian"
+version = "0.1.0"
+dependencies = [
+ "ad_trait",
+ "measures-core",
+ "num-traits",
+ "simba",
+ "symbolic-math",
+]
+
+[[package]]
+name = "measures-combinators"
+version = "0.1.0"
+dependencies = [
+ "ad_trait",
+ "alga",
+ "approx 0.5.1",
+ "measures-core",
+ "nalgebra",
+ "num-traits",
+ "simba",
+ "special 0.10.3",
 ]
 
 [[package]]
@@ -1498,6 +1527,41 @@ dependencies = [
  "nalgebra",
  "num-traits",
  "simba",
+]
+
+[[package]]
+name = "measures-distributions"
+version = "0.1.0"
+dependencies = [
+ "ad_trait",
+ "alga",
+ "approx 0.5.1",
+ "measures-combinators",
+ "measures-core",
+ "measures-exponential-family",
+ "nalgebra",
+ "num-traits",
+ "simba",
+ "special 0.11.4",
+]
+
+[[package]]
+name = "measures-exponential-family"
+version = "0.1.0"
+dependencies = [
+ "ad_trait",
+ "alga",
+ "approx 0.5.1",
+ "cranelift-codegen",
+ "cranelift-frontend",
+ "cranelift-jit",
+ "cranelift-module",
+ "measures-combinators",
+ "measures-core",
+ "nalgebra",
+ "num-traits",
+ "simba",
+ "symbolic-math",
 ]
 
 [[package]]
@@ -2226,7 +2290,7 @@ dependencies = [
  "rand 0.8.5",
  "rand_distr",
  "rand_xoshiro",
- "special",
+ "special 0.11.4",
 ]
 
 [[package]]
@@ -2382,6 +2446,15 @@ name = "smallvec"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8917285742e9f3e1683f0a9c4e6b57960b7314d0b08d30d1ecd426713ee2eee9"
+
+[[package]]
+name = "special"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b89cf0d71ae639fdd8097350bfac415a41aabf1d5ddd356295fdc95f09760382"
+dependencies = [
+ "libm",
+]
 
 [[package]]
 name = "special"

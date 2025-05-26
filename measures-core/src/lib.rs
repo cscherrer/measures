@@ -44,12 +44,16 @@
 
 // Core abstractions
 pub mod core;
+pub mod primitive;
 pub mod traits;
 
 // Re-export commonly used submodules for easier access
 pub use core::log_density_decomposition;
 pub use core::types;
 pub use core::utils;
+
+// Re-export primitive measures
+pub use primitive::{CountingMeasure, LebesgueMeasure};
 
 // Re-export commonly used utility functions
 pub use core::utils::{float_constant, safe_convert, safe_convert_or, safe_float_convert};

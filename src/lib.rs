@@ -119,86 +119,159 @@
 #![warn(missing_docs)]
 #![allow(unstable_name_collisions)]
 
-// Core abstractions - now from measures-core crate
-// pub mod core;  // Commented out - now using measures-core crate
-pub mod distributions;
-pub mod exponential_family;
-pub mod measures;
-pub mod statistics;
-// pub mod traits;  // Commented out - now in measures-core crate
+// Re-export subcrates
+pub mod measures {
+    pub use measures_combinators::*;
+    
+    pub mod primitive {
+        pub use measures_combinators::{CountingMeasure, LebesgueMeasure};
+        
+        // Re-export individual modules for compatibility
+        pub mod counting {
+            pub use measures_combinators::CountingMeasure;
+        }
+        pub mod lebesgue {
+            pub use measures_combinators::LebesgueMeasure;
+        }
+    }
+    
+    pub mod derived {
+        pub use measures_combinators::{Dirac, WeightedMeasure, FactorialMeasure};
+        
+        // Re-export individual modules for compatibility
+        pub mod factorial {
+            pub use measures_combinators::FactorialMeasure;
+        }
+    }
+    
+    pub mod combinators {
+        pub use measures_combinators::measures::combinators::*;
+    }
+}
 
-// Bayesian inference and modeling
-pub mod bayesian;
+// Re-export distributions with proper module structure
+pub mod distributions {
+    pub use measures_distributions::*;
+    
+    pub mod continuous {
+        pub use measures_distributions::{
+            Beta, Cauchy, ChiSquared, Exponential, Gamma, Normal, StdNormal, StudentT
+        };
+        
+        // Re-export individual modules for compatibility
+        pub mod beta {
+            pub use measures_distributions::Beta;
+        }
+        pub mod cauchy {
+            pub use measures_distributions::Cauchy;
+        }
+        pub mod chi_squared {
+            pub use measures_distributions::ChiSquared;
+        }
+        pub mod exponential {
+            pub use measures_distributions::Exponential;
+        }
+        pub mod gamma {
+            pub use measures_distributions::Gamma;
+        }
+        pub mod normal {
+            pub use measures_distributions::Normal;
+        }
+        pub mod student_t {
+            pub use measures_distributions::StudentT;
+        }
+    }
+    
+    pub mod discrete {
+        pub use measures_distributions::{
+            Bernoulli, Binomial, Categorical, Geometric, NegativeBinomial, Poisson
+        };
+        
+        // Re-export individual modules for compatibility
+        pub mod bernoulli {
+            pub use measures_distributions::Bernoulli;
+        }
+        pub mod binomial {
+            pub use measures_distributions::Binomial;
+        }
+        pub mod categorical {
+            pub use measures_distributions::Categorical;
+        }
+        pub mod geometric {
+            pub use measures_distributions::Geometric;
+        }
+        pub mod negative_binomial {
+            pub use measures_distributions::NegativeBinomial;
+        }
+        pub mod poisson {
+            pub use measures_distributions::Poisson;
+        }
+    }
+}
 
-// Re-export key types for convenient access - now from measures-core
+// Re-export exponential family with proper module structure
+pub mod exponential_family {
+    pub use measures_exponential_family::*;
+    
+    pub mod traits {
+        pub use measures_exponential_family::ExponentialFamily;
+    }
+    
+    #[cfg(feature = "jit")]
+    pub mod jit {
+        pub use measures_exponential_family::exponential_family::jit::*;
+    }
+}
+
+// Bayesian inference and modeling (optional)
+#[cfg(feature = "measures-bayesian")]
+pub use measures_bayesian as bayesian;
+
+// Re-export core traits and types
 pub use measures_core::{
-    CachedLogDensity,
-    DecompositionBuilder,
-    Default,
-    DensityMeasure,
-    DotProduct,
-    EvaluateAt,
-    ExponentialFamily,
-    False,
-    HasLogDensity,
-    HasLogDensityDecomposition,
-    LogDensity,
-    LogDensityBuilder,
-    LogDensityCaching,
-    LogDensityDecomposition,
-    LogDensityMethod,
-    LogDensityTrait,
-    Measure,
-    MeasureMarker,
-    PrimitiveMeasure,
-    SharedRootMeasure,
-    Specialized,
-    True,
-    TypeLevelBool,
-    // Utility functions
-    float_constant,
-    // Density helper functions
-    log_density_at,
-    log_density_batch,
-    safe_convert,
-    safe_convert_or,
-    safe_float_convert,
+    HasLogDensity, LogDensity, LogDensityBuilder, LogDensityTrait, Measure, MeasureMarker,
+    PrimitiveMeasure, False, True, TypeLevelBool, float_constant, safe_convert,
+    DotProduct, HasLogDensityDecomposition,
 };
 
-// Re-export commonly used traits at the top level for convenience
-pub use measures_core::{HasLogDensity as _, LogDensityBuilder as _};
+// Re-export commonly used distributions
+pub use measures_distributions::{
+    Beta, Cauchy, ChiSquared, Exponential, Gamma, Normal, StdNormal, StudentT,
+    Bernoulli, Binomial, Categorical, Geometric, NegativeBinomial, Poisson,
+};
 
-pub use distributions::continuous::beta::Beta;
-pub use distributions::continuous::cauchy::Cauchy;
-pub use distributions::continuous::chi_squared::ChiSquared;
-pub use distributions::continuous::exponential::Exponential;
-pub use distributions::continuous::gamma::Gamma;
-pub use distributions::continuous::normal::Normal;
-pub use distributions::continuous::stdnormal::StdNormal;
-pub use distributions::continuous::student_t::StudentT;
-pub use distributions::discrete::bernoulli::Bernoulli;
-pub use distributions::discrete::binomial::Binomial;
-pub use distributions::discrete::categorical::Categorical;
-pub use distributions::discrete::geometric::Geometric;
-pub use distributions::discrete::negative_binomial::NegativeBinomial;
-pub use distributions::discrete::poisson::Poisson;
-pub use exponential_family::IIDExtension;
+// Re-export exponential family functionality
+pub use measures_exponential_family::{ExponentialFamily, IIDExtension};
+
+// Re-export JIT functionality
+#[cfg(feature = "jit")]
+pub use measures_exponential_family::{JITOptimizer, JITFunction, CustomJITOptimizer, JITError};
+
+#[cfg(feature = "jit")]
+pub use measures_exponential_family::exponential_family::jit::ZeroOverheadOptimizer;
+
+// Re-export JIT module for direct access
+#[cfg(feature = "jit")]
+pub use measures_exponential_family::exponential_family::jit;
 
 // Re-export measure combinators
-pub use measures::combinators::product::{ProductMeasure, ProductMeasureExt};
-pub use measures::combinators::pushforward::{PushforwardExt, PushforwardMeasure};
-pub use measures::combinators::superposition::{MixtureExt, MixtureMeasure};
+pub use measures_combinators::{
+    ProductMeasure, ProductMeasureExt, PushforwardExt, PushforwardMeasure,
+    MixtureExt, MixtureMeasure,
+};
 
-// Re-export core traits that users need to import
-// pub use core::LogDensityBuilder;  // Now included in measures_core re-export above
-
-// Re-export symbolic computation types from symbolic-math crate
+// Re-export symbolic computation types
 #[cfg(feature = "symbolic")]
 pub use symbolic_math::Expr;
 
 #[cfg(feature = "jit")]
-pub use symbolic_math::{GeneralJITCompiler, GeneralJITFunction, JITError, JITSignature};
+pub use symbolic_math::jit::{GeneralJITCompiler, GeneralJITFunction};
 
-// Re-export Bayesian functionality
-#[cfg(feature = "jit")]
-pub use bayesian::BayesianJITOptimizer;
+// Statistics module (local)
+pub mod statistics;
+
+// Re-export mixture macro
+pub use measures_combinators::mixture;
+
+// Re-export utility functions
+pub use measures_core::{log_density_at, log_density_batch, safe_convert_or, safe_float_convert};

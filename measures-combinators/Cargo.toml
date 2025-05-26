@@ -1,0 +1,32 @@
+[package]
+name = "measures-combinators"
+version = "0.1.0"
+edition = "2024"
+description = "Measure combinators for building complex measures from simpler ones"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/chad-measures/measures"
+keywords = ["measure-theory", "combinators", "composition", "probability"]
+categories = ["mathematics", "science"]
+
+[dependencies]
+# Core measure theory abstractions
+measures-core = { path = "../measures-core" }
+
+# Core numeric traits
+num-traits = "0.2"
+# Special mathematical functions
+special = "0.10"
+# Linear algebra
+nalgebra = "0.33.2"
+# Algebraic structures
+alga = "0.9.3"
+# Approximate equality for testing
+approx = "0.5.1"
+
+# Optional automatic differentiation support
+ad_trait = { version = "0.1.6", optional = true }
+simba = { version = "0.9", optional = true }
+
+[features]
+default = []
+autodiff = ["dep:ad_trait", "dep:simba", "measures-core/autodiff"] 

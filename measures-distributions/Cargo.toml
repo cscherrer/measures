@@ -1,0 +1,37 @@
+[package]
+name = "measures-distributions"
+version = "0.1.0"
+edition = "2024"
+description = "Probability distributions for the measures library"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/chad-measures/measures"
+keywords = ["probability", "distributions", "statistics", "measure-theory"]
+categories = ["mathematics", "science"]
+
+[dependencies]
+# Core measure theory abstractions
+measures-core = { path = "../measures-core" }
+# Measure combinators for derived measures
+measures-combinators = { path = "../measures-combinators" }
+# Exponential family support for JIT compilation
+measures-exponential-family = { path = "../measures-exponential-family", optional = true }
+
+# Core numeric traits
+num-traits = "0.2"
+# Linear algebra for multivariate support
+nalgebra = "0.33.2"
+# Algebraic structures
+alga = "0.9.3"
+# Approximate equality for testing
+approx = "0.5.1"
+# Special mathematical functions
+special = "0.11.4"
+
+# Optional automatic differentiation support
+ad_trait = { version = "0.1.6", optional = true }
+simba = { version = "0.9", optional = true }
+
+[features]
+default = []
+jit = ["dep:measures-exponential-family", "measures-exponential-family?/jit"]
+autodiff = ["dep:ad_trait", "dep:simba", "measures-core/autodiff"] 

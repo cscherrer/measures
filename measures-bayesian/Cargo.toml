@@ -1,0 +1,28 @@
+[package]
+name = "measures-bayesian"
+version = "0.1.0"
+edition = "2024"
+description = "Bayesian inference and modeling for the measures library"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/chad-measures/measures"
+keywords = ["bayesian", "inference", "modeling", "statistics"]
+categories = ["mathematics", "science"]
+
+[dependencies]
+# Core measure theory abstractions
+measures-core = { path = "../measures-core" }
+# Symbolic computation and JIT
+symbolic-math = { path = "../symbolic-math", optional = true }
+
+# Core numeric traits
+num-traits = "0.2"
+
+# Optional automatic differentiation support
+ad_trait = { version = "0.1.6", optional = true }
+simba = { version = "0.9", optional = true }
+
+[features]
+default = []
+symbolic = ["dep:symbolic-math"]
+jit = ["symbolic", "symbolic-math?/jit"]
+autodiff = ["dep:ad_trait", "dep:simba", "measures-core/autodiff"] 
