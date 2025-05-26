@@ -292,16 +292,19 @@ pub mod display {
     }
 
     /// Generate LaTeX representation of an expression
+    #[must_use]
     pub fn latex(expr: &Expr) -> String {
         format!("${expr}$")
     }
 
     /// Generate Python code representation of an expression
+    #[must_use]
     pub fn python(expr: &Expr) -> String {
         format!("lambda vars: {expr}")
     }
 
     /// Generate a mathematical equation string
+    #[must_use]
     pub fn equation(lhs: &str, expr: &Expr) -> String {
         format!("{lhs} = {expr}")
     }

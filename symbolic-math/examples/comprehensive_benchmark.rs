@@ -7,14 +7,14 @@
 //! - Advanced optimization with egglog
 //! - Performance comparison across different approaches
 //!
-//! Run with: cargo run --example comprehensive_benchmark --features "jit optimization"
+//! Run with: cargo run --example `comprehensive_benchmark` --features "jit optimization"
 
 use std::collections::HashMap;
 use std::time::Instant;
 use symbolic_math::{Expr, clear_caches, get_cache_stats};
 
 #[cfg(feature = "jit")]
-use symbolic_math::{GeneralJITCompiler, JITSignature};
+use symbolic_math::GeneralJITCompiler;
 
 #[cfg(feature = "optimization")]
 use symbolic_math::EgglogOptimize;
@@ -43,9 +43,9 @@ fn test_polynomial_performance() {
 
     // Create polynomial: 3x^4 - 2x^3 + x^2 - 5x + 7
     let expr = create_polynomial();
-    println!("Expression: {}", expr);
+    println!("Expression: {expr}");
 
-    let values: Vec<f64> = (0..1000).map(|i| i as f64 * 0.01).collect();
+    let values: Vec<f64> = (0..1000).map(|i| f64::from(i) * 0.01).collect();
 
     // Test different evaluation methods
     benchmark_evaluation_methods(&expr, "x", &values);
@@ -61,13 +61,13 @@ fn test_trigonometric_performance() {
         Expr::pow(Expr::sin(Expr::variable("x")), Expr::constant(2.0)),
         Expr::pow(Expr::cos(Expr::variable("x")), Expr::constant(2.0)),
     );
-    println!("Expression: {}", expr);
+    println!("Expression: {expr}");
 
-    let values: Vec<f64> = (0..500).map(|i| i as f64 * 0.01).collect();
+    let values: Vec<f64> = (0..500).map(|i| f64::from(i) * 0.01).collect();
 
     // Test simplification impact
     let simplified = expr.clone().simplify();
-    println!("Simplified: {}", simplified);
+    println!("Simplified: {simplified}");
 
     benchmark_evaluation_methods(&expr, "x", &values);
     benchmark_evaluation_methods(&simplified, "x", &values);
@@ -80,10 +80,10 @@ fn test_complex_expression_performance() {
 
     // Create complex expression: (x^2 + y^2) * ln(x + 1) + exp(-x/2)
     let expr = create_complex_expression();
-    println!("Expression: {}", expr);
+    println!("Expression: {expr}");
 
-    let x_values: Vec<f64> = (1..100).map(|i| i as f64 * 0.1).collect();
-    let y_values: Vec<f64> = (1..100).map(|i| i as f64 * 0.1).collect();
+    let x_values: Vec<f64> = (1..100).map(|i| f64::from(i) * 0.1).collect();
+    let y_values: Vec<f64> = (1..100).map(|i| f64::from(i) * 0.1).collect();
 
     // Test grid evaluation performance
     let start = Instant::now();
@@ -99,8 +99,8 @@ fn test_complex_expression_performance() {
     );
 
     // Verify grid results
-    let total_points = grid_results.iter().map(|row| row.len()).sum::<usize>();
-    println!("✓ Grid evaluation completed: {} results", total_points);
+    let total_points = grid_results.iter().map(std::vec::Vec::len).sum::<usize>();
+    println!("✓ Grid evaluation completed: {total_points} results");
     println!();
 }
 
@@ -110,7 +110,7 @@ fn test_jit_performance() {
     println!("------------------------------");
 
     let expr = create_polynomial();
-    let values: Vec<f64> = (0..10000).map(|i| i as f64 * 0.001).collect();
+    let values: Vec<f64> = (0..10000).map(|i| f64::from(i) * 0.001).collect();
 
     // Interpreted evaluation
     let start = Instant::now();
@@ -151,7 +151,7 @@ fn test_jit_performance() {
     );
 
     let speedup = interpreted_time.as_nanos() as f64 / jit_time.as_nanos() as f64;
-    println!("JIT speedup: {:.1}x", speedup);
+    println!("JIT speedup: {speedup:.1}x");
 
     // Verify results are close (allowing for floating point differences)
     let max_diff = interpreted_results
@@ -159,7 +159,7 @@ fn test_jit_performance() {
         .zip(jit_results.iter())
         .map(|(a, b)| (a - b).abs())
         .fold(0.0, f64::max);
-    println!("✓ Maximum difference: {:.2e}", max_diff);
+    println!("✓ Maximum difference: {max_diff:.2e}");
     println!();
 }
 
@@ -177,7 +177,7 @@ fn test_optimization_performance() {
         Expr::variable("x"),
     );
 
-    println!("Original: {}", expr);
+    println!("Original: {expr}");
     println!("Complexity: {} operations", expr.complexity());
 
     // Basic simplification
@@ -185,7 +185,7 @@ fn test_optimization_performance() {
     let basic_simplified = expr.clone().simplify();
     let basic_time = start.elapsed();
 
-    println!("Basic simplified: {}", basic_simplified);
+    println!("Basic simplified: {basic_simplified}");
     println!(
         "Basic complexity: {} operations",
         basic_simplified.complexity()
@@ -203,7 +203,7 @@ fn test_optimization_performance() {
         .unwrap_or_else(|_| expr.clone());
     let opt_time = start.elapsed();
 
-    println!("Egglog optimized: {}", optimized);
+    println!("Egglog optimized: {optimized}");
     println!(
         "Optimized complexity: {} operations",
         optimized.complexity()
@@ -212,7 +212,7 @@ fn test_optimization_performance() {
 
     let complexity_reduction =
         (expr.complexity() - optimized.complexity()) as f64 / expr.complexity() as f64 * 100.0;
-    println!("Complexity reduction: {:.1}%", complexity_reduction);
+    println!("Complexity reduction: {complexity_reduction:.1}%");
     println!();
 }
 
@@ -227,7 +227,7 @@ fn test_scaling_performance() {
     println!("-----------|-------------|--------|--------");
 
     for &size in &sizes {
-        let values: Vec<f64> = (0..size).map(|i| i as f64 * 0.001).collect();
+        let values: Vec<f64> = (0..size).map(|i| f64::from(i) * 0.001).collect();
 
         // Clear cache for fair comparison
         clear_caches();
@@ -307,8 +307,8 @@ fn benchmark_evaluation_methods(expr: &Expr, var_name: &str, values: &[f64]) {
     let batch_speedup = individual_time.as_nanos() as f64 / batch_time.as_nanos() as f64;
     let cache_speedup = individual_time.as_nanos() as f64 / cached_time.as_nanos() as f64;
 
-    println!("Batch speedup: {:.1}x", batch_speedup);
-    println!("Cache speedup: {:.1}x", cache_speedup);
+    println!("Batch speedup: {batch_speedup:.1}x");
+    println!("Cache speedup: {cache_speedup:.1}x");
 
     // Verify results
     assert_eq!(individual_results, batch_results);

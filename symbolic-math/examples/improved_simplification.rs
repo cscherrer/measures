@@ -3,7 +3,7 @@
 //! This example demonstrates the enhanced simplification capabilities
 //! and compares performance with the original implementation.
 //!
-//! Run with: cargo run --example improved_simplification
+//! Run with: cargo run --example `improved_simplification`
 
 use std::collections::HashMap;
 use std::time::Instant;
@@ -45,10 +45,7 @@ fn test_algebraic_identities() {
             0.0
         };
 
-        println!(
-            "{:15} | {} → {} | {:5.1}% reduction",
-            name, expr, simplified, reduction
-        );
+        println!("{name:15} | {expr} → {simplified} | {reduction:5.1}% reduction");
     }
     println!();
 }

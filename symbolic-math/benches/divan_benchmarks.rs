@@ -1,7 +1,7 @@
 //! Divan Benchmarks for Symbolic Math
 //!
-//! Run with: cargo bench --bench divan_benchmarks
-//! Or with features: cargo bench --bench divan_benchmarks --features "jit optimization"
+//! Run with: cargo bench --bench `divan_benchmarks`
+//! Or with features: cargo bench --bench `divan_benchmarks` --features "jit optimization"
 
 use divan::Bencher;
 use std::collections::HashMap;
@@ -75,7 +75,7 @@ fn create_polynomial() -> Expr {
 #[divan::bench]
 fn simplify_polynomial(bencher: Bencher) {
     let expr = create_polynomial();
-    bencher.bench(|| expr.clone().simplify())
+    bencher.bench(|| expr.clone().simplify());
 }
 
 #[divan::bench]
@@ -84,7 +84,7 @@ fn simplify_trigonometric(bencher: Bencher) {
         Expr::pow(Expr::sin(Expr::variable("x")), Expr::constant(2.0)),
         Expr::pow(Expr::cos(Expr::variable("x")), Expr::constant(2.0)),
     );
-    bencher.bench(|| expr.clone().simplify())
+    bencher.bench(|| expr.clone().simplify());
 }
 
 #[divan::bench]
@@ -97,7 +97,7 @@ fn simplify_algebraic_identity(bencher: Bencher) {
         ),
         Expr::variable("x"),
     );
-    bencher.bench(|| expr.clone().simplify())
+    bencher.bench(|| expr.clone().simplify());
 }
 
 // Evaluation benchmarks
@@ -111,7 +111,7 @@ fn evaluate_polynomial_single(bencher: Bencher, size: usize) {
         for _ in 0..size {
             divan::black_box(expr.evaluate(&vars).unwrap());
         }
-    })
+    });
 }
 
 #[divan::bench(args = [1, 10, 100, 1000])]
@@ -121,7 +121,7 @@ fn evaluate_polynomial_batch(bencher: Bencher, size: usize) {
 
     bencher.counter(size).bench(|| {
         divan::black_box(expr.evaluate_batch("x", &values).unwrap());
-    })
+    });
 }
 
 #[divan::bench(args = [1, 10, 100, 1000])]
@@ -135,7 +135,7 @@ fn evaluate_complex_expression(bencher: Bencher, size: usize) {
         for _ in 0..size {
             divan::black_box(expr.evaluate(&vars).unwrap());
         }
-    })
+    });
 }
 
 // Caching benchmarks
@@ -148,7 +148,7 @@ fn evaluate_with_cache_cold(bencher: Bencher) {
     bencher.bench(|| {
         clear_caches();
         divan::black_box(expr.evaluate_cached(&vars).unwrap());
-    })
+    });
 }
 
 #[divan::bench]
@@ -162,7 +162,7 @@ fn evaluate_with_cache_warm(bencher: Bencher) {
 
     bencher.bench(|| {
         divan::black_box(expr.evaluate_cached(&vars).unwrap());
-    })
+    });
 }
 
 #[divan::bench]
@@ -172,7 +172,7 @@ fn simplify_with_cache_cold(bencher: Bencher) {
     bencher.bench(|| {
         clear_caches();
         divan::black_box(expr.clone().simplify_cached());
-    })
+    });
 }
 
 #[divan::bench]
@@ -184,7 +184,7 @@ fn simplify_with_cache_warm(bencher: Bencher) {
 
     bencher.bench(|| {
         divan::black_box(expr.clone().simplify_cached());
-    })
+    });
 }
 
 // Grid evaluation benchmarks
@@ -200,7 +200,7 @@ fn evaluate_grid(bencher: Bencher, grid_size: usize) {
 
     bencher.counter(grid_size * grid_size).bench(|| {
         divan::black_box(expr.evaluate_grid("x", &x_values, "y", &y_values).unwrap());
-    })
+    });
 }
 
 // JIT compilation benchmarks
@@ -216,7 +216,7 @@ fn jit_compile_polynomial(bencher: Bencher) {
                 .compile_expression(&expr, &["x".to_string()], &[], &HashMap::new())
                 .unwrap(),
         );
-    })
+    });
 }
 
 // Advanced optimization benchmarks
@@ -237,7 +237,7 @@ fn egglog_optimize_simple(bencher: Bencher) {
                 .optimize_with_egglog()
                 .unwrap_or_else(|_| expr.clone()),
         );
-    })
+    });
 }
 
 #[cfg(feature = "optimization")]
@@ -254,7 +254,7 @@ fn egglog_optimize_trigonometric(bencher: Bencher) {
                 .optimize_with_egglog()
                 .unwrap_or_else(|_| expr.clone()),
         );
-    })
+    });
 }
 
 // Complexity analysis benchmarks
@@ -271,7 +271,7 @@ fn complexity_scaling(bencher: Bencher, depth: usize) {
 
     bencher.counter(depth).bench(|| {
         divan::black_box(expr.evaluate(&vars).unwrap());
-    })
+    });
 }
 
 // Memory usage benchmarks
@@ -287,5 +287,5 @@ fn memory_usage_large_expressions(bencher: Bencher, terms: usize) {
             expr = Expr::add(expr, term);
         }
         divan::black_box(expr);
-    })
+    });
 }

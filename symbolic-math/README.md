@@ -37,6 +37,47 @@ The symbolic-math crate delivers excellent performance across all operations. Co
 
 For detailed benchmark results and methodology, see [BENCHMARKS.md](docs/BENCHMARKS.md).
 
+## Execution Overhead Analysis
+
+Understanding the performance characteristics is crucial for optimal usage. Our detailed analysis reveals:
+
+### Framework vs Raw Computation
+
+| Expression Type | Framework Time | Raw Rust | Overhead Factor |
+|----------------|----------------|----------|-----------------|
+| Simple polynomial (x² + 2x + 1) | 42.1 ns | 0.17 ns | **247x** |
+| Complex polynomial (degree 4) | 106.8 ns | 0.35 ns | **305x** |
+| Transcendental functions | 79.8 ns | 29.8 ns | **2.7x** |
+
+**Key Insights:**
+- **Framework overhead dominates** for simple algebraic operations (95-99% of execution time)
+- **Transcendental functions** have the best overhead ratio because computation cost is higher
+- **Overhead is consistent** and predictable across expression types
+
+### When to Use Each Approach
+
+#### Framework Overhead Acceptable (Recommended)
+- **Transcendental functions**: Only 2.7x overhead
+- **Complex mathematical modeling**: Flexibility outweighs cost
+- **Batch processing**: 15-18 Mitem/s sustained throughput
+- **Applications with >100ns latency tolerance**
+
+#### Consider Alternatives
+- **Simple arithmetic in tight loops**: 247-305x overhead may be excessive
+- **Sub-nanosecond performance requirements**: Use raw Rust
+- **High-frequency trading**: Framework overhead too high
+
+### Optimization Strategies
+
+| Strategy | When to Use | Performance Gain |
+|----------|-------------|------------------|
+| **Batch processing** | Multiple evaluations | 20-40% improvement |
+| **JIT compilation** | >500 repeated evaluations | 13-84x speedup |
+| **Caching** | Repeated expressions | 30% improvement |
+| **Expression simplification** | Complex expressions | Reduces evaluation cost |
+
+For complete overhead analysis, see [EXECUTION_OVERHEAD_ANALYSIS.md](docs/EXECUTION_OVERHEAD_ANALYSIS.md).
+
 ## Quick Start
 
 ### Basic Expression Building
@@ -145,7 +186,7 @@ symbolic-math = { version = "0.1", features = ["jit", "optimization"] }
 ## Performance Recommendations
 
 ### When to Use JIT Compilation
-- **Repeated evaluations**: >1000 calls per expression
+- **Repeated evaluations**: >500 calls per expression
 - **Performance-critical paths**: Where every nanosecond counts
 - **Complex expressions**: Higher complexity = better speedup ratios
 
@@ -166,6 +207,9 @@ Run the profiling examples to see performance characteristics:
 ```bash
 # Comprehensive profiling across all areas
 cargo run --example profiling_benchmark --features="jit,optimization"
+
+# Execution overhead analysis
+cargo run --example overhead_demonstration --features="jit,optimization"
 
 # Focused micro-benchmarks
 cargo run --example micro_benchmarks --features="jit,optimization"

@@ -6,7 +6,7 @@
 //! - JIT compilation overhead
 //! - Execution performance comparison
 //!
-//! Run with: cargo run --example micro_benchmarks --features="jit,optimization"
+//! Run with: cargo run --example `micro_benchmarks` --features="jit,optimization"
 
 use std::collections::HashMap;
 use std::time::Instant;
@@ -42,7 +42,7 @@ fn benchmark_expression_creation() {
     // Simple expression creation
     let start = Instant::now();
     for i in 0..iterations {
-        let _expr = Expr::add(Expr::variable("x"), Expr::constant(i as f64));
+        let _expr = Expr::add(Expr::variable("x"), Expr::constant(f64::from(i)));
     }
     let simple_time = start.elapsed();
 
@@ -51,7 +51,7 @@ fn benchmark_expression_creation() {
     for i in 0..iterations {
         let _expr = Expr::exp(Expr::neg(Expr::div(
             Expr::pow(
-                Expr::sub(Expr::variable("x"), Expr::constant(i as f64)),
+                Expr::sub(Expr::variable("x"), Expr::constant(f64::from(i))),
                 Expr::constant(2.0),
             ),
             Expr::constant(2.0),
@@ -62,35 +62,26 @@ fn benchmark_expression_creation() {
     // Using builders
     let start = Instant::now();
     for i in 0..iterations {
-        let _expr = builders::normal_log_pdf("x", i as f64, 1.0);
+        let _expr = builders::normal_log_pdf("x", f64::from(i), 1.0);
     }
     let builder_time = start.elapsed();
 
-    println!(
-        "Simple expressions ({} iterations): {:?}",
-        iterations, simple_time
-    );
+    println!("Simple expressions ({iterations} iterations): {simple_time:?}");
     println!(
         "  Per expression: {:.2} ns",
-        simple_time.as_nanos() as f64 / iterations as f64
+        simple_time.as_nanos() as f64 / f64::from(iterations)
     );
 
-    println!(
-        "Complex expressions ({} iterations): {:?}",
-        iterations, complex_time
-    );
+    println!("Complex expressions ({iterations} iterations): {complex_time:?}");
     println!(
         "  Per expression: {:.2} ns",
-        complex_time.as_nanos() as f64 / iterations as f64
+        complex_time.as_nanos() as f64 / f64::from(iterations)
     );
 
-    println!(
-        "Builder expressions ({} iterations): {:?}",
-        iterations, builder_time
-    );
+    println!("Builder expressions ({iterations} iterations): {builder_time:?}");
     println!(
         "  Per expression: {:.2} ns",
-        builder_time.as_nanos() as f64 / iterations as f64
+        builder_time.as_nanos() as f64 / f64::from(iterations)
     );
 
     println!();
@@ -177,7 +168,7 @@ fn benchmark_evaluation() {
         println!(
             "{:15} | {:8.2} ns/call | {:8.2} μs total",
             name,
-            eval_time.as_nanos() as f64 / iterations as f64,
+            eval_time.as_nanos() as f64 / f64::from(iterations),
             eval_time.as_micros()
         );
     }
@@ -243,7 +234,7 @@ fn benchmark_jit_compilation() {
                                 }
                             }
                             _ => {
-                                println!("{:15} | Unsupported signature for benchmarking", name);
+                                println!("{name:15} | Unsupported signature for benchmarking");
                                 continue;
                             }
                         }
@@ -269,18 +260,18 @@ fn benchmark_jit_compilation() {
                             "{:15} | Compile: {:8.2} μs | JIT: {:6.2} ns/call | Interpreted: {:6.2} ns/call | Speedup: {:5.2}x",
                             name,
                             compile_time.as_micros(),
-                            exec_time.as_nanos() as f64 / iterations as f64,
-                            interpreted_time.as_nanos() as f64 / iterations as f64,
+                            exec_time.as_nanos() as f64 / f64::from(iterations),
+                            interpreted_time.as_nanos() as f64 / f64::from(iterations),
                             speedup
                         );
                     }
                     Err(e) => {
-                        println!("{:15} | Compilation failed: {}", name, e);
+                        println!("{name:15} | Compilation failed: {e}");
                     }
                 }
             }
             Err(e) => {
-                println!("{:15} | Compiler creation failed: {}", name, e);
+                println!("{name:15} | Compiler creation failed: {e}");
             }
         }
     }

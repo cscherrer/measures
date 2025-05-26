@@ -5,14 +5,14 @@
 //! 2. JIT compilation (codegen) performance  
 //! 3. Execution performance (interpreted vs JIT)
 //!
-//! Run with: cargo run --example profiling_benchmark --features="jit,optimization"
+//! Run with: cargo run --example `profiling_benchmark` --features="jit,optimization"
 
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use symbolic_math::{Expr, builders};
 
 #[cfg(feature = "jit")]
-use symbolic_math::{CustomSymbolicLogDensity, GeneralJITCompiler};
+use symbolic_math::GeneralJITCompiler;
 
 #[cfg(feature = "optimization")]
 use symbolic_math::EgglogOptimize;
@@ -25,8 +25,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let test_cases = create_test_expressions();
 
     for (name, expr) in &test_cases {
-        println!("📊 Profiling: {}", name);
-        println!("Expression: {}", expr);
+        println!("📊 Profiling: {name}");
+        println!("Expression: {expr}");
         println!("Complexity: {} operations", expr.complexity());
         println!("Variables: {:?}", expr.variables());
         println!();
@@ -131,7 +131,7 @@ fn profile_simplification(expr: &Expr) -> Result<(), Box<dyn std::error::Error>>
     let simplified_basic = expr.clone().simplify();
     let basic_time = start.elapsed();
 
-    println!("    Basic simplify: {:?}", basic_time);
+    println!("    Basic simplify: {basic_time:?}");
     println!(
         "    Complexity reduction: {} → {} operations",
         expr.complexity(),
@@ -147,7 +147,7 @@ fn profile_simplification(expr: &Expr) -> Result<(), Box<dyn std::error::Error>>
 
         match simplified_advanced {
             Ok(optimized) => {
-                println!("    Egglog optimize: {:?}", advanced_time);
+                println!("    Egglog optimize: {advanced_time:?}");
                 println!(
                     "    Advanced complexity reduction: {} → {} operations",
                     expr.complexity(),
@@ -164,7 +164,7 @@ fn profile_simplification(expr: &Expr) -> Result<(), Box<dyn std::error::Error>>
                     (original_result, basic_result, advanced_result)
                 {
                     println!("    Correctness check:");
-                    println!("      Original: {:.6}", orig);
+                    println!("      Original: {orig:.6}");
                     println!(
                         "      Basic:    {:.6} (diff: {:.2e})",
                         basic,
@@ -178,7 +178,7 @@ fn profile_simplification(expr: &Expr) -> Result<(), Box<dyn std::error::Error>>
                 }
             }
             Err(e) => {
-                println!("    Egglog optimize: Failed ({:?}) - {}", advanced_time, e);
+                println!("    Egglog optimize: Failed ({advanced_time:?}) - {e}");
             }
         }
     }
@@ -211,8 +211,8 @@ fn profile_jit_compilation(expr: &Expr) -> Result<(), Box<dyn std::error::Error>
         let jit_function = compiler.compile_expression(expr, &variables, &[], &HashMap::new())?;
         let total_time = start.elapsed();
 
-        println!("    Compiler creation: {:?}", compilation_time);
-        println!("    Expression compilation: {:?}", total_time);
+        println!("    Compiler creation: {compilation_time:?}");
+        println!("    Expression compilation: {total_time:?}");
         println!(
             "    Code size: {} bytes",
             jit_function.compilation_stats.code_size_bytes
@@ -243,8 +243,8 @@ fn profile_jit_compilation(expr: &Expr) -> Result<(), Box<dyn std::error::Error>
     )?;
     let total_time = start.elapsed();
 
-    println!("    Compiler creation: {:?}", compilation_time);
-    println!("    Expression compilation: {:?}", total_time);
+    println!("    Compiler creation: {compilation_time:?}");
+    println!("    Expression compilation: {total_time:?}");
     println!(
         "    Code size: {} bytes",
         jit_function.compilation_stats.code_size_bytes
@@ -330,7 +330,7 @@ fn profile_execution_performance(expr: &Expr) -> Result<(), Box<dyn std::error::
 
                 if interpreted_time.as_nanos() > 0 {
                     let speedup = interpreted_time.as_nanos() as f64 / jit_time.as_nanos() as f64;
-                    println!("    Actual speedup: {:.2}x", speedup);
+                    println!("    Actual speedup: {speedup:.2}x");
                 }
 
                 // Verify correctness
@@ -339,7 +339,7 @@ fn profile_execution_performance(expr: &Expr) -> Result<(), Box<dyn std::error::
                     .zip(jit_results.iter())
                     .map(|(a, b)| (a - b).abs())
                     .fold(0.0, f64::max);
-                println!("    Max difference: {:.2e}", max_diff);
+                println!("    Max difference: {max_diff:.2e}");
             }
         }
     }
@@ -438,8 +438,7 @@ fn run_comparative_benchmark() -> Result<(), Box<dyn std::error::Error>> {
         let (jit_compile_time, jit_ns, speedup) = (0, 0, 0.0);
 
         println!(
-            "| {:14} | {:10} | {:13} | {:16} | {:21} | {:13} | {:7.1}x |",
-            name, complexity, simplify_time, jit_compile_time, interpreted_ns, jit_ns, speedup
+            "| {name:14} | {complexity:10} | {simplify_time:13} | {jit_compile_time:16} | {interpreted_ns:21} | {jit_ns:13} | {speedup:7.1}x |"
         );
     }
 

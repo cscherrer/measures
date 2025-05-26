@@ -30,3 +30,7 @@ divan = "0.1"
 [[bench]]
 name = "divan_benchmarks"
 harness = false
+
+[[bench]]
+name = "execution_overhead_analysis"
+harness = false

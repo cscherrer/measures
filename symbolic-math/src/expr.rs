@@ -38,6 +38,7 @@ pub struct CacheStats {
 
 impl CacheStats {
     /// Get the hit rate for simplification cache
+    #[must_use]
     pub fn simplification_hit_rate(&self) -> f64 {
         let total = self.simplification_hits + self.simplification_misses;
         if total == 0 {
@@ -48,6 +49,7 @@ impl CacheStats {
     }
 
     /// Get the hit rate for evaluation cache
+    #[must_use]
     pub fn evaluation_hit_rate(&self) -> f64 {
         let total = self.evaluation_hits + self.evaluation_misses;
         if total == 0 {
@@ -322,13 +324,13 @@ impl Expr {
         let expr_str = format!("{self}");
 
         // Check cache first
-        if let Ok(cache) = SIMPLIFICATION_CACHE.lock() {
-            if let Some(cached_result) = cache.get(&expr_str) {
-                if let Ok(mut stats) = CACHE_STATS.lock() {
-                    stats.simplification_hits += 1;
-                }
-                return cached_result.clone();
+        if let Ok(cache) = SIMPLIFICATION_CACHE.lock()
+            && let Some(cached_result) = cache.get(&expr_str)
+        {
+            if let Ok(mut stats) = CACHE_STATS.lock() {
+                stats.simplification_hits += 1;
             }
+            return cached_result.clone();
         }
 
         // Cache miss - compute simplification
@@ -353,13 +355,13 @@ impl Expr {
         let cache_key = (expr_str.clone(), vars_str);
 
         // Check cache first
-        if let Ok(cache) = EVALUATION_CACHE.lock() {
-            if let Some(&cached_result) = cache.get(&cache_key) {
-                if let Ok(mut stats) = CACHE_STATS.lock() {
-                    stats.evaluation_hits += 1;
-                }
-                return Ok(cached_result);
+        if let Ok(cache) = EVALUATION_CACHE.lock()
+            && let Some(&cached_result) = cache.get(&cache_key)
+        {
+            if let Ok(mut stats) = CACHE_STATS.lock() {
+                stats.evaluation_hits += 1;
             }
+            return Ok(cached_result);
         }
 
         // Cache miss - compute evaluation
@@ -539,7 +541,7 @@ impl Expr {
     }
 
     /// Format as Python code for numerical evaluation
-    /// TODO: to_julia
+    /// TODO: `to_julia`
     #[must_use]
     pub fn to_python(&self) -> String {
         match self {

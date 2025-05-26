@@ -26,7 +26,7 @@ fn test_expression_creation() {
     // Test simple expression creation
     let start = Instant::now();
     for i in 0..iterations {
-        let _expr = Expr::add(Expr::variable("x"), Expr::constant(i as f64));
+        let _expr = Expr::add(Expr::variable("x"), Expr::constant(f64::from(i)));
     }
     let simple_time = start.elapsed();
 
@@ -34,7 +34,7 @@ fn test_expression_creation() {
     let start = Instant::now();
     for i in 0..iterations {
         let _expr = Expr::exp(Expr::neg(Expr::pow(
-            Expr::sub(Expr::variable("x"), Expr::constant(i as f64)),
+            Expr::sub(Expr::variable("x"), Expr::constant(f64::from(i))),
             Expr::constant(2.0),
         )));
     }
@@ -43,12 +43,12 @@ fn test_expression_creation() {
     println!(
         "Simple expressions: {:?} ({:.2} ns/expr)",
         simple_time,
-        simple_time.as_nanos() as f64 / iterations as f64
+        simple_time.as_nanos() as f64 / f64::from(iterations)
     );
     println!(
         "Complex expressions: {:?} ({:.2} ns/expr)",
         complex_time,
-        complex_time.as_nanos() as f64 / iterations as f64
+        complex_time.as_nanos() as f64 / f64::from(iterations)
     );
     println!();
 }
@@ -147,7 +147,7 @@ fn test_evaluation() {
         println!(
             "{:13} | {:6.2} ns/call | Sample result: {:.6} | Multi-value: {:6.2} μs",
             name,
-            eval_time.as_nanos() as f64 / iterations as f64,
+            eval_time.as_nanos() as f64 / f64::from(iterations),
             results.first().unwrap_or(&0.0),
             multi_eval_time.as_micros()
         );
@@ -164,7 +164,7 @@ fn test_builders() {
     // Test normal log-PDF builder
     let start = Instant::now();
     for i in 0..iterations {
-        let _expr = builders::normal_log_pdf("x", i as f64 % 10.0, 1.0);
+        let _expr = builders::normal_log_pdf("x", f64::from(i) % 10.0, 1.0);
     }
     let normal_time = start.elapsed();
 
@@ -178,24 +178,24 @@ fn test_builders() {
     // Test gaussian kernel builder
     let start = Instant::now();
     for i in 0..iterations {
-        let _expr = builders::gaussian_kernel("x", i as f64 % 5.0, 1.0);
+        let _expr = builders::gaussian_kernel("x", f64::from(i) % 5.0, 1.0);
     }
     let gaussian_time = start.elapsed();
 
     println!(
         "Normal log-PDF: {:?} ({:.2} ns/expr)",
         normal_time,
-        normal_time.as_nanos() as f64 / iterations as f64
+        normal_time.as_nanos() as f64 / f64::from(iterations)
     );
     println!(
         "Polynomial:     {:?} ({:.2} ns/expr)",
         poly_time,
-        poly_time.as_nanos() as f64 / iterations as f64
+        poly_time.as_nanos() as f64 / f64::from(iterations)
     );
     println!(
         "Gaussian kernel: {:?} ({:.2} ns/expr)",
         gaussian_time,
-        gaussian_time.as_nanos() as f64 / iterations as f64
+        gaussian_time.as_nanos() as f64 / f64::from(iterations)
     );
 
     // Test evaluation of built expressions
@@ -220,11 +220,11 @@ fn test_builders() {
     println!("\nEvaluation Performance:");
     println!(
         "Normal log-PDF eval: {:6.2} ns/call",
-        normal_eval_time.as_nanos() as f64 / iterations as f64
+        normal_eval_time.as_nanos() as f64 / f64::from(iterations)
     );
     println!(
         "Polynomial eval:     {:6.2} ns/call",
-        poly_eval_time.as_nanos() as f64 / iterations as f64
+        poly_eval_time.as_nanos() as f64 / f64::from(iterations)
     );
 
     println!();

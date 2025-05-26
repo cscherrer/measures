@@ -5,7 +5,7 @@
 //! - Vectorized evaluation for batch processing
 //! - Performance monitoring and optimization
 //!
-//! Run with: cargo run --example advanced_features
+//! Run with: cargo run --example `advanced_features`
 
 use std::collections::HashMap;
 use std::time::Instant;
@@ -30,7 +30,7 @@ fn test_expression_caching() {
 
     // Create a complex expression that benefits from caching
     let expr = create_complex_expression();
-    println!("Expression: {}", expr);
+    println!("Expression: {expr}");
 
     // First simplification (cache miss)
     let start = Instant::now();
@@ -52,7 +52,7 @@ fn test_expression_caching() {
     );
 
     let speedup = first_time.as_nanos() as f64 / second_time.as_nanos() as f64;
-    println!("Cache speedup: {:.2}x", speedup);
+    println!("Cache speedup: {speedup:.2}x");
 
     // Test evaluation caching
     let mut vars = HashMap::new();
@@ -124,11 +124,11 @@ fn test_vectorized_evaluation() {
     println!("Batch evaluation:   {:6.2} μs", batch_time.as_micros());
 
     let speedup = single_time.as_nanos() as f64 / batch_time.as_nanos() as f64;
-    println!("Batch speedup: {:.2}x", speedup);
+    println!("Batch speedup: {speedup:.2}x");
 
     // Verify results are the same
     assert_eq!(single_results, batch_results);
-    println!("Results: {:?}", batch_results);
+    println!("Results: {batch_results:?}");
     println!();
 }
 
@@ -138,7 +138,7 @@ fn test_batch_processing_performance() {
 
     let expr = create_polynomial_expression();
     let num_points = 1000;
-    let values: Vec<f64> = (0..num_points).map(|i| i as f64 * 0.01).collect();
+    let values: Vec<f64> = (0..num_points).map(|i| f64::from(i) * 0.01).collect();
 
     // Individual evaluations
     let start = Instant::now();
@@ -167,7 +167,7 @@ fn test_batch_processing_performance() {
     );
 
     let speedup = individual_time.as_nanos() as f64 / batch_time.as_nanos() as f64;
-    println!("Performance improvement: {:.2}x", speedup);
+    println!("Performance improvement: {speedup:.2}x");
 
     // Verify results are the same
     assert_eq!(individual_results, batch_results);
@@ -203,7 +203,7 @@ fn test_grid_evaluation() {
     // Print header with x values
     print!("     y\\x  ");
     for &x in &x_values {
-        print!("{:6.1} ", x);
+        print!("{x:6.1} ");
     }
     println!();
 
@@ -211,7 +211,7 @@ fn test_grid_evaluation() {
     for (i, row) in grid_results.iter().enumerate() {
         print!("y={:6.1}  ", y_values[i]);
         for &value in row {
-            print!("{:6.1} ", value);
+            print!("{value:6.1} ");
         }
         println!();
     }
