@@ -1,16 +1,16 @@
 //! JIT Compilation Demo
 //!
-//! Demonstrates the JIT compilation system for exponential family distributions
-//! using custom symbolic IR and Cranelift.
+//! Demonstrates the optimization system for exponential family distributions
+//! using zero-overhead optimization and symbolic math.
 
 use measures::LogDensityBuilder;
 use measures::distributions::continuous::Normal;
-use measures::exponential_family::jit::{CustomJITOptimizer, ZeroOverheadOptimizer};
+use measures::exponential_family::jit::ZeroOverheadOptimizer;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let normal = Normal::new(2.0, 1.5);
-    let test_x = 2.5;
+    let normal = Normal::new(2.0_f64, 1.5_f64);
+    let test_x = 2.5_f64;
     let num_iterations = 1_000_000;
 
     // Standard evaluation (baseline)
@@ -35,48 +35,56 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Zero-overhead: {result_optimized:.10} in {time_optimized:?} ({speedup_optimized:.1}x speedup)"
     );
 
-    // Custom symbolic IR
-    let symbolic = normal.custom_symbolic_log_density();
-    let symbolic_result = symbolic.evaluate_single("x", test_x)?;
-    println!(
-        "Symbolic: {:.10} (complexity: {})",
-        symbolic_result,
-        symbolic.expression.complexity()
-    );
+    // Verify accuracy
+    let error: f64 = (result_optimized - result_standard).abs();
+    println!("Accuracy: error = {error:.2e}");
 
-    // JIT compilation
-    #[cfg(feature = "jit")]
+    // Demonstrate symbolic math functionality
+    #[cfg(feature = "symbolic")]
     {
-        match normal.compile_custom_jit() {
-            Ok(jit_function) => {
-                let stats = &jit_function.compilation_stats;
-                println!(
-                    "JIT compilation: {} bytes, {} CLIF instructions",
-                    stats.code_size_bytes, stats.clif_instructions
-                );
+        use std::collections::HashMap;
+        use symbolic_math::{Expr, jit::GeneralJITCompiler};
 
-                let start = Instant::now();
-                let mut result_jit = 0.0;
-                for _ in 0..num_iterations {
-                    result_jit = jit_function.call_single(test_x);
+        // Create a simple mathematical expression: -0.5 * x^2
+        let expr = Expr::Mul(
+            Box::new(Expr::Const(-0.5)),
+            Box::new(Expr::Pow(
+                Box::new(Expr::Var("x".to_string())),
+                Box::new(Expr::Const(2.0)),
+            )),
+        );
+
+        println!("Symbolic expression: -0.5 * x^2");
+
+        #[cfg(feature = "jit")]
+        {
+            match GeneralJITCompiler::new() {
+                Ok(compiler) => {
+                    match compiler.compile_expression(
+                        &expr,
+                        &["x".to_string()],
+                        &[],
+                        &HashMap::new(),
+                    ) {
+                        Ok(jit_function) => {
+                            let symbolic_result = jit_function.call_single(test_x);
+                            println!("Symbolic JIT result: {symbolic_result:.10}");
+                        }
+                        Err(e) => {
+                            println!("Symbolic JIT compilation failed: {e}");
+                        }
+                    }
                 }
-                let time_jit = start.elapsed();
-                let speedup_jit = time_standard.as_nanos() as f64 / time_jit.as_nanos() as f64;
-
-                println!("JIT: {result_jit:.10} in {time_jit:?} ({speedup_jit:.1}x speedup)");
-
-                let error = (result_jit - result_standard).abs();
-                println!("Accuracy: error = {error:.2e}");
-            }
-            Err(e) => {
-                println!("JIT compilation failed: {e}");
+                Err(e) => {
+                    println!("JIT compiler creation failed: {e}");
+                }
             }
         }
     }
 
-    #[cfg(not(feature = "jit"))]
+    #[cfg(not(feature = "symbolic"))]
     {
-        println!("JIT feature not enabled. Run with --features jit");
+        println!("Symbolic feature not enabled. Run with --features symbolic,jit for full demo");
     }
 
     Ok(())

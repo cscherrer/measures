@@ -314,7 +314,7 @@ mod tests {
     }
 
     #[test]
-    fn test_custom_symbolic_ir_basic() {
+    fn test_custom_symbolic_math_basic() {
         use symbolic_math::Expr;
 
         let expr = Expr::Add(

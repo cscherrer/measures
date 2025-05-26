@@ -73,7 +73,7 @@ src/
 │   ├── continuous/         # Normal, Gamma, etc.
 │   └── discrete/           # Poisson, Binomial, etc.
 ├── exponential_family/     # Exponential family specializations
-├── symbolic_ir/            # Expression system and JIT
+├── symbolic-math/          # Expression system and JIT (separate crate)
 └── bayesian/              # Bayesian modeling tools
 ```
 

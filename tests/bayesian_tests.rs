@@ -3,11 +3,11 @@
 //! These tests focus on semantic invariants and use property-based testing
 //! to ensure robustness across a wide range of inputs.
 
-use measures::bayesian::{
-    Expr, hierarchical_normal, mixture_likelihood, normal_likelihood, normal_prior,
-    posterior_log_density,
+use measures::bayesian::expressions::{
+    hierarchical_normal, mixture_likelihood, normal_likelihood, normal_prior, posterior_log_density,
 };
 use proptest::prelude::*;
+use symbolic_math::Expr;
 
 /// Test that normal likelihood expressions have the expected structure
 #[test]

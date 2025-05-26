@@ -169,7 +169,7 @@ assert!((joint_density - manual_sum).abs() < 1e-10);
 ### Expression Building
 
 ```rust
-use measures::symbolic_ir::Expr;
+use symbolic_math::Expr;
 
 // Build expressions programmatically
 let x = Expr::variable("x");
@@ -191,7 +191,7 @@ let simplified = expr.simplify();
 ```rust
 #[cfg(feature = "jit")]
 {
-    use measures::symbolic_ir::{Expr, GeneralJITCompiler};
+    use symbolic_math::{Expr, jit::GeneralJITCompiler};
     use std::collections::HashMap;
     
     // Create expression: x^2 + 2*x + 1

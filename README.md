@@ -137,7 +137,7 @@ let result = normal.log_density().at(&x);
 Basic symbolic computation for mathematical expressions:
 
 ```rust
-use measures::symbolic_ir::Expr;
+use symbolic_math::{Expr, jit::GeneralJITCompiler};
 
 // Build expressions programmatically
 let expr = Expr::add(
