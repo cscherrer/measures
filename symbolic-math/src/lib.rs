@@ -81,7 +81,8 @@ pub use expr::Expr;
 
 #[cfg(feature = "jit")]
 pub use jit::{
-    CompilationStats, GeneralJITCompiler, GeneralJITFunction, JITError, JITSignature, JITType,
+    CompilationStats, CustomSymbolicLogDensity, GeneralJITCompiler, GeneralJITFunction, JITError,
+    JITSignature, JITType,
 };
 
 #[cfg(feature = "optimization")]

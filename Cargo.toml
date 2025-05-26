@@ -71,3 +71,7 @@ jit = ["symbolic", "symbolic-math?/jit", "dep:cranelift-codegen", "dep:cranelift
 optimization = ["symbolic", "symbolic-math?/optimization"]
 profiling = ["dep:profiling"]
 autodiff = ["dep:ad_trait", "dep:simba"]
+
+[[bin]]
+name = "perf_test"
+path = "src/bin/perf_test.rs"

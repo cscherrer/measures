@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         match normal.compile_custom_jit() {
             Ok(jit_function) => {
-                let stats = jit_function.stats();
+                let stats = &jit_function.compilation_stats;
                 println!(
                     "JIT compilation: {} bytes, {} CLIF instructions",
                     stats.code_size_bytes, stats.clif_instructions
@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let start = Instant::now();
                 let mut result_jit = 0.0;
                 for _ in 0..num_iterations {
-                    result_jit = jit_function.call(test_x);
+                    result_jit = jit_function.call_single(test_x);
                 }
                 let time_jit = start.elapsed();
                 let speedup_jit = time_standard.as_nanos() as f64 / time_jit.as_nanos() as f64;

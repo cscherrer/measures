@@ -324,7 +324,13 @@ fn test_exponential_family_relative_density_optimization() {
         let optimized_result: f64 = optimized_fn(&x);
 
         // Results should be identical
-        assert!((standard_result - optimized_result).abs() < 1e-10);
+        assert!(
+            (standard_result - optimized_result).abs() < 1e-10,
+            "Standard: {:.15}, Optimized: {:.15}, Diff: {:.2e}",
+            standard_result,
+            optimized_result,
+            (standard_result - optimized_result).abs()
+        );
     }
 
     // Without JIT feature, just test standard computation

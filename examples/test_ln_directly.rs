@@ -54,7 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             for &x in &test_values {
                 let rust_result = (x as f64).ln() - x as f64;
-                let jit_result = jit_fn.call(x);
+                let jit_result = jit_fn.call_single(x);
                 let difference = (jit_result - rust_result).abs();
 
                 max_error = max_error.max(difference);
@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let edge_cases = vec![0.1, 0.01, 0.001, 1.0, 1.001, 1.01, 1.1];
             for &x in &edge_cases {
                 let rust_result = (x as f64).ln() - x as f64;
-                let jit_result = jit_fn.call(x);
+                let jit_result = jit_fn.call_single(x);
                 let difference = (jit_result - rust_result).abs();
                 println!("x={:.3}: diff={:.2e}", x, difference);
             }
@@ -104,7 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(jit_fn) => {
             for &x in &[1.0, 2.0, 5.0] {
                 let rust_result = (x as f64).ln() + (x as f64 + 1.0).ln();
-                let jit_result = jit_fn.call(x);
+                let jit_result = jit_fn.call_single(x);
                 let difference = (jit_result - rust_result).abs();
                 println!("x={:.1}: diff={:.2e}", x, difference);
             }
