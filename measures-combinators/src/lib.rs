@@ -61,8 +61,8 @@
 pub mod measures;
 
 // Re-export all measure types for convenience
+pub use measures::derived::{Dirac, FactorialMeasure, WeightedMeasure};
 pub use measures::primitive::{CountingMeasure, LebesgueMeasure};
-pub use measures::derived::{Dirac, WeightedMeasure, FactorialMeasure};
 
 // Re-export measure combinators
 pub use measures::combinators::product::{ProductMeasure, ProductMeasureExt};
@@ -70,4 +70,6 @@ pub use measures::combinators::pushforward::{PushforwardExt, PushforwardMeasure}
 pub use measures::combinators::superposition::{MixtureExt, MixtureMeasure};
 
 // Re-export core traits for convenience
-pub use measures_core::{HasLogDensity, LogDensityBuilder, LogDensityTrait, Measure, PrimitiveMeasure}; 
+pub use measures_core::{
+    HasLogDensity, LogDensityBuilder, LogDensityTrait, Measure, PrimitiveMeasure,
+};

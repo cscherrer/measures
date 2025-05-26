@@ -4,13 +4,13 @@
 //! distribution that expresses the probability of a given number of events occurring
 //! in a fixed interval of time or space.
 
+use measures_combinators::measures::derived::factorial::FactorialMeasure;
 use measures_core::float_constant;
 use measures_core::primitive::counting::CountingMeasure;
 use measures_core::{False, True};
 use measures_core::{Measure, MeasureMarker};
 use measures_exponential_family::ExponentialFamily;
 use num_traits::{Float, FloatConst};
-use measures_combinators::measures::derived::factorial::FactorialMeasure;
 
 /// Poisson distribution with rate parameter λ.
 ///

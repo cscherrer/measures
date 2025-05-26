@@ -122,10 +122,10 @@
 // Re-export subcrates
 pub mod measures {
     pub use measures_combinators::*;
-    
+
     pub mod primitive {
         pub use measures_combinators::{CountingMeasure, LebesgueMeasure};
-        
+
         // Re-export individual modules for compatibility
         pub mod counting {
             pub use measures_combinators::CountingMeasure;
@@ -134,16 +134,16 @@ pub mod measures {
             pub use measures_combinators::LebesgueMeasure;
         }
     }
-    
+
     pub mod derived {
-        pub use measures_combinators::{Dirac, WeightedMeasure, FactorialMeasure};
-        
+        pub use measures_combinators::{Dirac, FactorialMeasure, WeightedMeasure};
+
         // Re-export individual modules for compatibility
         pub mod factorial {
             pub use measures_combinators::FactorialMeasure;
         }
     }
-    
+
     pub mod combinators {
         pub use measures_combinators::measures::combinators::*;
     }
@@ -152,12 +152,12 @@ pub mod measures {
 // Re-export distributions with proper module structure
 pub mod distributions {
     pub use measures_distributions::*;
-    
+
     pub mod continuous {
         pub use measures_distributions::{
-            Beta, Cauchy, ChiSquared, Exponential, Gamma, Normal, StdNormal, StudentT
+            Beta, Cauchy, ChiSquared, Exponential, Gamma, Normal, StdNormal, StudentT,
         };
-        
+
         // Re-export individual modules for compatibility
         pub mod beta {
             pub use measures_distributions::Beta;
@@ -181,12 +181,12 @@ pub mod distributions {
             pub use measures_distributions::StudentT;
         }
     }
-    
+
     pub mod discrete {
         pub use measures_distributions::{
-            Bernoulli, Binomial, Categorical, Geometric, NegativeBinomial, Poisson
+            Bernoulli, Binomial, Categorical, Geometric, NegativeBinomial, Poisson,
         };
-        
+
         // Re-export individual modules for compatibility
         pub mod bernoulli {
             pub use measures_distributions::Bernoulli;
@@ -212,11 +212,11 @@ pub mod distributions {
 // Re-export exponential family with proper module structure
 pub mod exponential_family {
     pub use measures_exponential_family::*;
-    
+
     pub mod traits {
         pub use measures_exponential_family::ExponentialFamily;
     }
-    
+
     #[cfg(feature = "jit")]
     pub mod jit {
         pub use measures_exponential_family::exponential_family::jit::*;
@@ -229,15 +229,15 @@ pub use measures_bayesian as bayesian;
 
 // Re-export core traits and types
 pub use measures_core::{
-    HasLogDensity, LogDensity, LogDensityBuilder, LogDensityTrait, Measure, MeasureMarker,
-    PrimitiveMeasure, False, True, TypeLevelBool, float_constant, safe_convert,
-    DotProduct, HasLogDensityDecomposition,
+    DotProduct, False, HasLogDensity, HasLogDensityDecomposition, LogDensity, LogDensityBuilder,
+    LogDensityTrait, Measure, MeasureMarker, PrimitiveMeasure, True, TypeLevelBool, float_constant,
+    safe_convert,
 };
 
 // Re-export commonly used distributions
 pub use measures_distributions::{
-    Beta, Cauchy, ChiSquared, Exponential, Gamma, Normal, StdNormal, StudentT,
-    Bernoulli, Binomial, Categorical, Geometric, NegativeBinomial, Poisson,
+    Bernoulli, Beta, Binomial, Categorical, Cauchy, ChiSquared, Exponential, Gamma, Geometric,
+    NegativeBinomial, Normal, Poisson, StdNormal, StudentT,
 };
 
 // Re-export exponential family functionality
@@ -245,7 +245,7 @@ pub use measures_exponential_family::{ExponentialFamily, IIDExtension};
 
 // Re-export JIT functionality
 #[cfg(feature = "jit")]
-pub use measures_exponential_family::{JITOptimizer, JITFunction, CustomJITOptimizer, JITError};
+pub use measures_exponential_family::{CustomJITOptimizer, JITError, JITFunction, JITOptimizer};
 
 #[cfg(feature = "jit")]
 pub use measures_exponential_family::exponential_family::jit::ZeroOverheadOptimizer;
@@ -256,8 +256,8 @@ pub use measures_exponential_family::exponential_family::jit;
 
 // Re-export measure combinators
 pub use measures_combinators::{
-    ProductMeasure, ProductMeasureExt, PushforwardExt, PushforwardMeasure,
-    MixtureExt, MixtureMeasure,
+    MixtureExt, MixtureMeasure, ProductMeasure, ProductMeasureExt, PushforwardExt,
+    PushforwardMeasure,
 };
 
 // Re-export symbolic computation types

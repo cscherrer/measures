@@ -17,10 +17,10 @@
 //! let log_density_value: f64 = ld.at(&2.0);
 //! ```
 
-use measures_exponential_family::ExponentialFamily;
 use measures_core::primitive::lebesgue::LebesgueMeasure;
 use measures_core::{False, True};
 use measures_core::{Measure, MeasureMarker};
+use measures_exponential_family::ExponentialFamily;
 use num_traits::Float;
 
 /// Exponential distribution Exp(λ)
@@ -120,7 +120,6 @@ impl<T: Float> measures_core::HasLogDensity<T, T> for Exponential<T> {
 }
 
 #[cfg(feature = "jit")]
-
 // JIT optimization implementation
 #[cfg(feature = "jit")]
 impl<T> measures_exponential_family::JITOptimizer<T, T> for Exponential<T>

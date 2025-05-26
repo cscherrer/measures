@@ -151,7 +151,10 @@ where
         Self::new(probs)
     }
 
-    fn sufficient_statistic(&self, x: &usize) -> <Self as ExponentialFamily<usize, T>>::SufficientStat {
+    fn sufficient_statistic(
+        &self,
+        x: &usize,
+    ) -> <Self as ExponentialFamily<usize, T>>::SufficientStat {
         let k = self.probs.len();
         let mut stats = vec![T::zero(); k - 1];
 
@@ -167,7 +170,9 @@ where
         CountingMeasure::<usize>::new()
     }
 
-    fn natural_and_log_partition(&self) -> (<Self as ExponentialFamily<usize, T>>::NaturalParam, T) {
+    fn natural_and_log_partition(
+        &self,
+    ) -> (<Self as ExponentialFamily<usize, T>>::NaturalParam, T) {
         let natural_params = self.log_odds();
 
         // Log partition: A(η) = log(1 + Σᵢ exp(ηᵢ))
