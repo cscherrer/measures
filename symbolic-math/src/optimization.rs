@@ -1,10 +1,10 @@
-//! Advanced symbolic expression optimization using egglog
+//! Symbolic Expression Optimization
 //!
-//! This module provides sophisticated algebraic simplification using equality graphs (e-graphs)
-//! via the egglog library. It can discover complex mathematical identities and optimizations
-//! that our basic simplification misses.
+//! This module provides optimization for symbolic mathematical expressions using
+//! the EggLog equality saturation engine. It applies mathematical rewrite rules
+//! to simplify expressions while preserving mathematical equivalence.
 
-use crate::exponential_family::symbolic_ir::Expr;
+use crate::Expr;
 use egglog::EGraph;
 
 /// Advanced optimizer using egglog for symbolic expression simplification
@@ -267,49 +267,54 @@ impl EgglogOptimizer {
         }
 
         // Handle binary operations
-        if trimmed.starts_with("(Add ")
-            && trimmed.ends_with(')')
-            && let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len() - 1])
-            && let (Some(left_expr), Some(right_expr)) =
-                (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right))
-        {
-            return Some(Expr::Add(Box::new(left_expr), Box::new(right_expr)));
+        if trimmed.starts_with("(Add ") && trimmed.ends_with(')') {
+            if let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len() - 1]) {
+                if let (Some(left_expr), Some(right_expr)) =
+                    (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right))
+                {
+                    return Some(Expr::Add(Box::new(left_expr), Box::new(right_expr)));
+                }
+            }
         }
 
-        if trimmed.starts_with("(Mul ")
-            && trimmed.ends_with(')')
-            && let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len() - 1])
-            && let (Some(left_expr), Some(right_expr)) =
-                (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right))
-        {
-            return Some(Expr::Mul(Box::new(left_expr), Box::new(right_expr)));
+        if trimmed.starts_with("(Mul ") && trimmed.ends_with(')') {
+            if let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len() - 1]) {
+                if let (Some(left_expr), Some(right_expr)) =
+                    (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right))
+                {
+                    return Some(Expr::Mul(Box::new(left_expr), Box::new(right_expr)));
+                }
+            }
         }
 
-        if trimmed.starts_with("(Sub ")
-            && trimmed.ends_with(')')
-            && let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len() - 1])
-            && let (Some(left_expr), Some(right_expr)) =
-                (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right))
-        {
-            return Some(Expr::Sub(Box::new(left_expr), Box::new(right_expr)));
+        if trimmed.starts_with("(Sub ") && trimmed.ends_with(')') {
+            if let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len() - 1]) {
+                if let (Some(left_expr), Some(right_expr)) =
+                    (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right))
+                {
+                    return Some(Expr::Sub(Box::new(left_expr), Box::new(right_expr)));
+                }
+            }
         }
 
-        if trimmed.starts_with("(Div ")
-            && trimmed.ends_with(')')
-            && let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len() - 1])
-            && let (Some(left_expr), Some(right_expr)) =
-                (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right))
-        {
-            return Some(Expr::Div(Box::new(left_expr), Box::new(right_expr)));
+        if trimmed.starts_with("(Div ") && trimmed.ends_with(')') {
+            if let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len() - 1]) {
+                if let (Some(left_expr), Some(right_expr)) =
+                    (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right))
+                {
+                    return Some(Expr::Div(Box::new(left_expr), Box::new(right_expr)));
+                }
+            }
         }
 
-        if trimmed.starts_with("(Pow ")
-            && trimmed.ends_with(')')
-            && let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len() - 1])
-            && let (Some(left_expr), Some(right_expr)) =
-                (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right))
-        {
-            return Some(Expr::Pow(Box::new(left_expr), Box::new(right_expr)));
+        if trimmed.starts_with("(Pow ") && trimmed.ends_with(')') {
+            if let Some((left, right)) = Self::parse_binary_args(&trimmed[5..trimmed.len() - 1]) {
+                if let (Some(left_expr), Some(right_expr)) =
+                    (Self::egglog_to_expr(&left), Self::egglog_to_expr(&right))
+                {
+                    return Some(Expr::Pow(Box::new(left_expr), Box::new(right_expr)));
+                }
+            }
         }
 
         // Handle unary operations
@@ -397,7 +402,6 @@ impl EgglogOptimize for Expr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::exponential_family::symbolic_ir::Expr;
 
     #[test]
     fn test_egglog_optimizer_creation() {
@@ -440,4 +444,4 @@ mod tests {
         // The optimizer should simplify x + 0 to x
         assert_eq!(optimized, Expr::Var("x".to_string()));
     }
-}
+} 

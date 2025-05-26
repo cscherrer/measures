@@ -67,7 +67,7 @@
 //! ```rust
 //! # #[cfg(feature = "jit")]
 //! # {
-//! use measures::symbolic_ir::{Expr, GeneralJITCompiler};
+//! use symbolic_math::{Expr, jit::GeneralJITCompiler};
 //! use std::collections::HashMap;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -105,12 +105,15 @@
 //! # Bayesian Modeling
 //!
 //! ```rust
+//! # #[cfg(feature = "symbolic")]
+//! # {
 //! use measures::bayesian::expressions::{normal_likelihood, normal_prior, posterior_log_density};
 //!
 //! // Build Bayesian model expressions
 //! let likelihood = normal_likelihood("x", "mu", "sigma");
 //! let prior = normal_prior("mu", 0.0, 1.0);
 //! let posterior = posterior_log_density(likelihood, prior);
+//! # }
 //! ```
 
 #![warn(missing_docs)]
@@ -123,9 +126,6 @@ pub mod exponential_family;
 pub mod measures;
 pub mod statistics;
 pub mod traits;
-
-// General mathematical computation
-pub mod symbolic_ir;
 
 // Bayesian inference and modeling
 pub mod bayesian;
@@ -159,11 +159,12 @@ pub use measures::combinators::superposition::{MixtureExt, MixtureMeasure};
 // Re-export core traits that users need to import
 pub use core::LogDensityBuilder;
 
-// Re-export symbolic computation types
-pub use symbolic_ir::Expr;
+// Re-export symbolic computation types from symbolic-math crate
+#[cfg(feature = "symbolic")]
+pub use symbolic_math::Expr;
 
 #[cfg(feature = "jit")]
-pub use symbolic_ir::{GeneralJITCompiler, GeneralJITFunction, JITError, JITSignature};
+pub use symbolic_math::{GeneralJITCompiler, GeneralJITFunction, JITError, JITSignature};
 
 // Re-export Bayesian functionality
 #[cfg(feature = "jit")]

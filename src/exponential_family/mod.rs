@@ -13,16 +13,10 @@ pub mod implementations;
 pub mod traits;
 
 #[cfg(feature = "jit")]
-pub mod symbolic_ir;
-
-#[cfg(feature = "jit")]
 pub mod jit;
 
 #[cfg(feature = "jit")]
 pub mod auto_jit;
-
-#[cfg(feature = "jit")]
-pub mod egglog_optimizer;
 
 // Re-export core traits
 pub use traits::{
@@ -36,10 +30,7 @@ pub use iid::{IID, IIDExtension};
 // Re-export implementations
 pub use implementations::ExpFam;
 
-// Re-export JIT compilation (if enabled)
-#[cfg(feature = "jit")]
-pub use symbolic_ir::{EvalError, Expr, SymbolicLogDensity as CustomSymbolicLogDensity};
-
+// Re-export JIT compilation (if enabled) - now using symbolic-math crate
 #[cfg(feature = "jit")]
 pub use jit::{CompilationStats, CustomJITOptimizer, JITError, JITFunction, JITOptimizer};
 

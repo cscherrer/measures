@@ -1,6 +1,6 @@
-//! Symbolic Intermediate Representation for Mathematical Expressions
+//! Symbolic Mathematics and JIT Compilation
 //!
-//! This module provides a general-purpose symbolic representation system for mathematical
+//! This crate provides a general-purpose symbolic representation system for mathematical
 //! expressions and Just-In-Time compilation. It's designed to be domain-agnostic and can
 //! be used for any mathematical computation, not just probability distributions.
 //!
@@ -22,7 +22,7 @@
 //!
 //! ### Basic Expression Building
 //! ```rust
-//! use measures::symbolic_ir::expr::Expr;
+//! use symbolic_math::Expr;
 //!
 //! // Build expression: x² + 2x + 1
 //! let x = Expr::Var("x".to_string());
@@ -39,7 +39,7 @@
 //! ```rust
 //! # #[cfg(feature = "jit")]
 //! # {
-//! use measures::symbolic_ir::{Expr, GeneralJITCompiler};
+//! use symbolic_math::{Expr, GeneralJITCompiler};
 //! use std::collections::HashMap;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -64,11 +64,17 @@
 //! # Ok(())
 //! # }
 //! # }
+//! ```
+
+#![warn(missing_docs)]
 
 pub mod expr;
 
 #[cfg(feature = "jit")]
 pub mod jit;
+
+#[cfg(feature = "optimization")]
+pub mod optimization;
 
 // Re-export commonly used types
 pub use expr::Expr;
@@ -78,6 +84,9 @@ pub use jit::{
     CompilationStats, GeneralJITCompiler, GeneralJITFunction, JITError, JITSignature, JITType,
 };
 
+#[cfg(feature = "optimization")]
+pub use optimization::{EgglogOptimize, EgglogOptimizer};
+
 /// Ergonomic macros for building expressions with natural Rust syntax
 pub mod macros {
     /// Create expressions using natural mathematical notation
@@ -85,8 +94,8 @@ pub mod macros {
     /// # Examples
     ///
     /// ```rust
-    /// use measures::expr;
-    /// use measures::symbolic_ir::Expr;
+    /// use symbolic_math::expr;
+    /// use symbolic_math::Expr;
     ///
     /// // Variables
     /// let x = expr!(x);
@@ -111,12 +120,12 @@ pub mod macros {
     macro_rules! expr {
         // Variables (identifiers)
         ($var:ident) => {
-            $crate::symbolic_ir::Expr::variable(stringify!($var))
+            $crate::Expr::variable(stringify!($var))
         };
 
         // Constants (literals)
         ($val:literal) => {
-            $crate::symbolic_ir::Expr::constant($val as f64)
+            $crate::Expr::constant($val as f64)
         };
 
         // Parentheses
@@ -146,32 +155,32 @@ pub mod macros {
 
         // Power (using ^ operator)
         ($base:tt ^ $exp:tt) => {
-            $crate::symbolic_ir::Expr::pow(expr!($base), expr!($exp))
+            $crate::Expr::pow(expr!($base), expr!($exp))
         };
 
         // Natural logarithm
         (ln($e:tt)) => {
-            $crate::symbolic_ir::Expr::ln(expr!($e))
+            $crate::Expr::ln(expr!($e))
         };
 
         // Exponential
         (exp($e:tt)) => {
-            $crate::symbolic_ir::Expr::exp(expr!($e))
+            $crate::Expr::exp(expr!($e))
         };
 
         // Square root
         (sqrt($e:tt)) => {
-            $crate::symbolic_ir::Expr::sqrt(expr!($e))
+            $crate::Expr::sqrt(expr!($e))
         };
 
         // Sine
         (sin($e:tt)) => {
-            $crate::symbolic_ir::Expr::sin(expr!($e))
+            $crate::Expr::sin(expr!($e))
         };
 
         // Cosine
         (cos($e:tt)) => {
-            $crate::symbolic_ir::Expr::cos(expr!($e))
+            $crate::Expr::cos(expr!($e))
         };
 
         // Negation
@@ -184,7 +193,7 @@ pub mod macros {
     #[macro_export]
     macro_rules! var {
         ($name:expr) => {
-            $crate::symbolic_ir::Expr::variable($name)
+            $crate::Expr::variable($name)
         };
     }
 
@@ -192,51 +201,50 @@ pub mod macros {
     #[macro_export]
     macro_rules! const_expr {
         ($val:expr) => {
-            $crate::symbolic_ir::Expr::constant($val)
+            $crate::Expr::constant($val)
         };
     }
 }
 
 /// Enhanced builder functions for common mathematical patterns
 pub mod builders {
-    use super::Expr;
+    use crate::Expr;
 
-    /// Build a normal distribution log-density: -0.5 * ((x - μ) / σ)² - ln(σ√(2π))
+    /// Build a normal log-PDF expression: -0.5 * ln(2π) - ln(σ) - 0.5 * (x - μ)² / σ²
     pub fn normal_log_pdf(x: impl Into<Expr>, mu: impl Into<Expr>, sigma: impl Into<Expr>) -> Expr {
         let x = x.into();
         let mu = mu.into();
         let sigma = sigma.into();
-
-        let diff = x - mu;
-        let standardized = diff.clone() / sigma.clone();
-        let quadratic = standardized.clone() * standardized;
-        let log_norm = Expr::ln(sigma) + Expr::constant(0.5 * (2.0 * std::f64::consts::PI).ln());
-
-        Expr::constant(-0.5) * quadratic - log_norm
+        
+        let two_pi = Expr::constant(2.0 * std::f64::consts::PI);
+        let half = Expr::constant(0.5);
+        
+        let normalization = -(half.clone() * Expr::ln(two_pi) + Expr::ln(sigma.clone()));
+        let quadratic = -half * Expr::pow(x - mu, Expr::constant(2.0)) / Expr::pow(sigma, Expr::constant(2.0));
+        
+        normalization + quadratic
     }
 
-    /// Build a polynomial: a₀ + a₁x + a₂x² + ... + aₙxⁿ
+    /// Build a polynomial expression: a₀ + a₁x + a₂x² + ... + aₙxⁿ
     pub fn polynomial(x: impl Into<Expr>, coefficients: &[f64]) -> Expr {
         let x = x.into();
         let mut result = Expr::constant(0.0);
-
+        
         for (i, &coeff) in coefficients.iter().enumerate() {
-            if coeff != 0.0 {
-                let term = if i == 0 {
-                    Expr::constant(coeff)
-                } else if i == 1 {
-                    Expr::constant(coeff) * x.clone()
-                } else {
-                    Expr::constant(coeff) * Expr::pow(x.clone(), Expr::constant(i as f64))
-                };
-                result = result + term;
-            }
+            let term = if i == 0 {
+                Expr::constant(coeff)
+            } else if i == 1 {
+                Expr::constant(coeff) * x.clone()
+            } else {
+                Expr::constant(coeff) * Expr::pow(x.clone(), Expr::constant(i as f64))
+            };
+            result = result + term;
         }
-
+        
         result
     }
 
-    /// Build a Gaussian kernel: exp(-0.5 * ((x - μ) / σ)²)
+    /// Build a Gaussian kernel: exp(-0.5 * (x - μ)² / σ²)
     pub fn gaussian_kernel(
         x: impl Into<Expr>,
         mu: impl Into<Expr>,
@@ -245,12 +253,10 @@ pub mod builders {
         let x = x.into();
         let mu = mu.into();
         let sigma = sigma.into();
-
-        let diff = x - mu;
-        let standardized = diff.clone() / sigma;
-        let quadratic = standardized.clone() * standardized;
-
-        Expr::exp(Expr::constant(-0.5) * quadratic)
+        
+        let half = Expr::constant(0.5);
+        let exponent = -half * Expr::pow(x - mu, Expr::constant(2.0)) / Expr::pow(sigma, Expr::constant(2.0));
+        Expr::exp(exponent)
     }
 
     /// Build a logistic function: 1 / (1 + exp(-x))
@@ -266,12 +272,12 @@ pub mod builders {
     }
 }
 
-/// Pretty printing utilities for expressions
+/// Display utilities for expressions
 pub mod display {
-    use super::Expr;
+    use crate::Expr;
     use std::fmt;
 
-    /// A wrapper for pretty-printing expressions with mathematical notation
+    /// Pretty-print wrapper for expressions
     pub struct PrettyExpr<'a>(pub &'a Expr);
 
     impl fmt::Display for PrettyExpr<'_> {
@@ -280,25 +286,18 @@ pub mod display {
         }
     }
 
-    /// Format an expression as LaTeX
-    #[must_use]
+    /// Generate LaTeX representation of an expression
     pub fn latex(expr: &Expr) -> String {
-        expr.to_latex()
+        format!("${expr}$")
     }
 
-    /// Format an expression as Python code
-    #[must_use]
+    /// Generate Python code representation of an expression
     pub fn python(expr: &Expr) -> String {
-        format!(
-            "import math\n\ndef f({}):\n    return {}",
-            expr.variables().join(", "),
-            expr.to_python()
-        )
+        format!("lambda vars: {expr}")
     }
 
-    /// Format an expression as a mathematical equation
-    #[must_use]
+    /// Generate a mathematical equation string
     pub fn equation(lhs: &str, expr: &Expr) -> String {
-        format!("{} = {}", lhs, PrettyExpr(expr))
+        format!("{lhs} = {expr}")
     }
 }

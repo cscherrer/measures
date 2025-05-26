@@ -1,14 +1,19 @@
-//! Automatic JIT compilation derivation for exponential family distributions.
+//! Automatic JIT compilation for exponential family distributions
 //!
-//! This module provides automatic derivation of JIT-compiled log-density functions
-//! from the exponential family structure. Instead of manually implementing
-//! `CustomJITOptimizer` for each distribution, this system automatically generates
-//! the symbolic IR and JIT compilation from the exponential family traits.
+//! This module provides automatic JIT compilation that analyzes usage patterns
+//! and decides when to compile distributions to native code for optimal performance.
 
-use crate::exponential_family::jit::{JITError, JITFunction};
-use crate::exponential_family::symbolic_ir::{Expr, SymbolicLogDensity};
-use std::any::TypeId;
+use crate::core::{HasLogDensity, LogDensity, Measure};
+use crate::exponential_family::traits::ExponentialFamily;
+use crate::exponential_family::jit::CustomSymbolicLogDensity;
+#[cfg(feature = "symbolic")]
+use symbolic_math::expr::{Expr, SymbolicLogDensity};
+use crate::traits::DotProduct;
+use num_traits::Float;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use crate::exponential_family::jit::{JITError, JITFunction};
+use std::any::TypeId;
 
 /// Registry of automatic JIT compilation patterns for different distribution types
 pub struct AutoJITRegistry {
@@ -177,7 +182,15 @@ impl AutoJITOptimizer {
     {
         let symbolic = self.generate_symbolic(distribution)?;
         let compiler = crate::exponential_family::jit::JITCompiler::new()?;
-        compiler.compile_custom_expression(&symbolic)
+        
+        // Convert symbolic-math SymbolicLogDensity to CustomSymbolicLogDensity
+        let custom_symbolic = CustomSymbolicLogDensity {
+            expression: symbolic.expression,
+            variables: symbolic.variables,
+            parameters: symbolic.parameters,
+        };
+        
+        compiler.compile_custom_expression(&custom_symbolic)
     }
 }
 
@@ -211,24 +224,13 @@ where
     }
 }
 
-/// Macro for automatically implementing `CustomJITOptimizer` for distributions
+/// Macro to automatically implement JIT compilation for exponential family distributions
 #[macro_export]
 macro_rules! auto_jit_impl {
     ($dist_type:ty) => {
-        impl $crate::exponential_family::jit::CustomJITOptimizer<f64, f64> for $dist_type {
-            fn custom_symbolic_log_density(
-                &self,
-            ) -> $crate::exponential_family::symbolic_ir::SymbolicLogDensity {
-                use $crate::exponential_family::auto_jit::AutoJITExt;
-                self.auto_symbolic().unwrap_or_else(|_| {
-                    // Fallback to zero expression if auto-derivation fails
-                    $crate::exponential_family::symbolic_ir::SymbolicLogDensity::new(
-                        $crate::exponential_family::symbolic_ir::Expr::Const(0.0),
-                        std::collections::HashMap::new(),
-                    )
-                })
-            }
-        }
+        // This macro is now a no-op since AutoJITExt is automatically implemented
+        // for all types that are 'static. The actual JIT compilation is handled
+        // by the pattern registry in AutoJITOptimizer.
     };
 }
 

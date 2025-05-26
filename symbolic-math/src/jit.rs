@@ -24,7 +24,7 @@ use cranelift_jit::{JITBuilder, JITModule};
 #[cfg(feature = "jit")]
 use cranelift_module::{Linkage, Module};
 
-use crate::symbolic_ir::expr::Expr;
+use crate::expr::Expr;
 
 /// Errors that can occur during JIT compilation
 #[derive(Debug)]

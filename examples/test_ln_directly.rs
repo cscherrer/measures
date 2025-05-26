@@ -3,8 +3,13 @@
 //! Creates symbolic expressions that require runtime ln(x) computation
 //! to verify the accuracy of our JIT-compiled ln function.
 
+use measures::core::{HasLogDensity, LogDensity, Measure};
+use measures::distributions::continuous::Normal;
+use measures::exponential_family::jit::CustomSymbolicLogDensity;
+use measures::exponential_family::traits::ExponentialFamily;
+use measures::traits::DotProduct;
 use measures::exponential_family::jit::JITCompiler;
-use measures::exponential_family::symbolic_ir::{Expr, SymbolicLogDensity};
+use symbolic_math::Expr;
 use std::collections::HashMap;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(Expr::Var("x".to_string())),
     );
 
-    let symbolic = SymbolicLogDensity {
+    let symbolic = CustomSymbolicLogDensity {
         expression: expr,
         parameters: HashMap::new(),
         variables: vec!["x".to_string()],
@@ -89,7 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )))),
     );
 
-    let complex_symbolic = SymbolicLogDensity {
+    let complex_symbolic = CustomSymbolicLogDensity {
         expression: complex_expr,
         parameters: HashMap::new(),
         variables: vec!["x".to_string()],

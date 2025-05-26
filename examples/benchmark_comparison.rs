@@ -3,8 +3,12 @@
 //! Compares expression complexity before and after egglog optimization
 //! to measure the effectiveness of mathematical simplification rules.
 
-use measures::exponential_family::egglog_optimizer::EgglogOptimize;
-use measures::exponential_family::symbolic_ir::Expr;
+use measures::core::{HasLogDensity, LogDensity, Measure};
+use measures::distributions::continuous::Normal;
+use measures::exponential_family::jit::CustomSymbolicLogDensity;
+use measures::exponential_family::traits::ExponentialFamily;
+use measures::traits::DotProduct;
+use symbolic_math::{Expr, EgglogOptimize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 

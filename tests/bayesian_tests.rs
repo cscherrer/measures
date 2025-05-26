@@ -3,8 +3,14 @@
 //! These tests focus on semantic invariants and use property-based testing
 //! to ensure robustness across a wide range of inputs.
 
-use measures::bayesian::expressions::*;
-use measures::symbolic_ir::Expr;
+use measures::bayesian::{
+    hierarchical_normal, mixture_likelihood, normal_likelihood, normal_prior, posterior_log_density, Expr,
+};
+use measures::core::{HasLogDensity, LogDensity, Measure};
+use measures::distributions::continuous::Normal;
+use measures::exponential_family::traits::ExponentialFamily;
+use measures::traits::DotProduct;
+use symbolic_math::Expr as SymbolicExpr;
 use proptest::prelude::*;
 
 /// Test that normal likelihood expressions have the expected structure
@@ -12,8 +18,8 @@ use proptest::prelude::*;
 fn test_normal_likelihood_structure() {
     let likelihood = normal_likelihood("x", "mu", "sigma");
 
-    // The likelihood should be a subtraction (log of normal PDF involves subtraction)
-    assert!(matches!(likelihood, Expr::Sub(_, _)));
+    // The likelihood should be an addition (normal_log_pdf returns normalization + quadratic)
+    assert!(matches!(likelihood, Expr::Add(_, _)));
 }
 
 /// Test that normal prior expressions have the expected structure
@@ -21,8 +27,8 @@ fn test_normal_likelihood_structure() {
 fn test_normal_prior_structure() {
     let prior = normal_prior("theta", 0.0, 1.0);
 
-    // The prior should be a subtraction (log of normal PDF)
-    assert!(matches!(prior, Expr::Sub(_, _)));
+    // The prior should be an addition (normal_log_pdf returns normalization + quadratic)
+    assert!(matches!(prior, Expr::Add(_, _)));
 }
 
 /// Test that posterior combination preserves additive structure
@@ -83,7 +89,7 @@ proptest! {
     ) {
         let likelihood = normal_likelihood(&x_var, &mu_var, &sigma_var);
         // Should not panic and should have expected structure
-        assert!(matches!(likelihood, Expr::Sub(_, _)));
+        assert!(matches!(likelihood, Expr::Add(_, _)));
     }
 
     /// Test that normal prior is well-formed for reasonable parameter values
@@ -95,7 +101,7 @@ proptest! {
     ) {
         let prior = normal_prior(&param_var, prior_mean, prior_std);
         // Should not panic and should have expected structure
-        assert!(matches!(prior, Expr::Sub(_, _)));
+        assert!(matches!(prior, Expr::Add(_, _)));
     }
 
     /// Test hierarchical normal model with various parameter combinations
@@ -211,14 +217,14 @@ fn test_hierarchical_normal_zero_parameters() {
 fn test_normal_prior_zero_mean() {
     // Test prior with zero mean (common case)
     let prior = normal_prior("theta", 0.0, 1.0);
-    assert!(matches!(prior, Expr::Sub(_, _)));
+    assert!(matches!(prior, Expr::Add(_, _)));
 }
 
 #[test]
 fn test_normal_prior_unit_variance() {
     // Test prior with unit variance (standard normal prior)
     let prior = normal_prior("theta", 0.0, 1.0);
-    assert!(matches!(prior, Expr::Sub(_, _)));
+    assert!(matches!(prior, Expr::Add(_, _)));
 }
 
 /// Test that expressions don't panic with extreme but valid inputs
@@ -227,15 +233,15 @@ fn test_normal_prior_unit_variance() {
 fn test_extreme_parameter_values() {
     // Very large standard deviation
     let prior_large_std = normal_prior("theta", 0.0, 1000.0);
-    assert!(matches!(prior_large_std, Expr::Sub(_, _)));
+    assert!(matches!(prior_large_std, Expr::Add(_, _)));
 
     // Very small standard deviation
     let prior_small_std = normal_prior("theta", 0.0, 0.001);
-    assert!(matches!(prior_small_std, Expr::Sub(_, _)));
+    assert!(matches!(prior_small_std, Expr::Add(_, _)));
 
     // Large mean values
     let prior_large_mean = normal_prior("theta", 1000.0, 1.0);
-    assert!(matches!(prior_large_mean, Expr::Sub(_, _)));
+    assert!(matches!(prior_large_mean, Expr::Add(_, _)));
 }
 
 #[test]

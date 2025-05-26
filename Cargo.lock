@@ -1483,6 +1483,7 @@ dependencies = [
  "rv",
  "simba",
  "special",
+ "symbolic-math",
  "tracy-client",
 ]
 
@@ -2406,6 +2407,17 @@ dependencies = [
  "crossbeam-utils",
  "foldhash",
  "hashbrown 0.15.3",
+]
+
+[[package]]
+name = "symbolic-math"
+version = "0.1.0"
+dependencies = [
+ "cranelift-codegen",
+ "cranelift-frontend",
+ "cranelift-jit",
+ "cranelift-module",
+ "egglog",
 ]
 
 [[package]]

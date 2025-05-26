@@ -1,0 +1,24 @@
+[package]
+name = "symbolic-math"
+version = "0.1.0"
+edition = "2021"
+description = "General-purpose symbolic mathematics and JIT compilation"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/chad-measures/measures"
+keywords = ["symbolic", "mathematics", "jit", "expressions", "compilation"]
+categories = ["mathematics", "science"]
+
+[dependencies]
+# JIT compilation with Cranelift
+cranelift-codegen = { version = "0.120", optional = true }
+cranelift-jit = { version = "0.120", optional = true }
+cranelift-module = { version = "0.120", optional = true }
+cranelift-frontend = { version = "0.120", optional = true }
+
+# Symbolic optimization with egglog
+egglog = { version = "0.4", optional = true }
+
+[features]
+default = []
+jit = ["dep:cranelift-codegen", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-frontend"]
+optimization = ["dep:egglog"]

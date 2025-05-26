@@ -1,165 +1,219 @@
 //! Bayesian Inference and Modeling
 //!
-//! This module provides experimental functionality for Bayesian statistical modeling,
-//! built on top of the general symbolic IR system. It includes basic tools for:
+//! This module provides tools for Bayesian statistical modeling and inference,
+//! including:
 //!
-//! - Posterior log-density compilation (experimental)
-//! - MCMC optimization support (planned)
-//! - Variational inference support (planned)
-//! - Model comparison utilities (basic)
+//! - Expression building for Bayesian models
+//! - Posterior composition (likelihood + prior)
+//! - Hierarchical model support
+//! - JIT compilation for Bayesian computations
 //!
-//! ## Current Status
+//! ## Quick Start
 //!
-//! - **Posterior Compilation**: Infrastructure exists but uses placeholder implementations
-//! - **Likelihood + Prior**: Basic expression combination available
-//! - **Parameter Inference**: Symbolic representation support
-//! - **Performance Optimization**: Experimental, not production-ready
+//! ```rust
+//! # #[cfg(feature = "symbolic")]
+//! # {
+//! use measures::bayesian::expressions::{normal_likelihood, normal_prior, posterior_log_density};
 //!
-//! ## Usage Example
+//! // Build Bayesian model expressions
+//! let likelihood = normal_likelihood("x", "mu", "sigma");
+//! let prior = normal_prior("mu", 0.0, 1.0);
+//! let posterior = posterior_log_density(likelihood, prior);
+//! # }
+//! ```
+//!
+//! ## JIT Compilation
 //!
 //! ```rust
 //! # #[cfg(feature = "jit")]
 //! # {
+//! use symbolic_math::{Expr, builders, display};
 //! use measures::bayesian::BayesianJITOptimizer;
-//! use measures::symbolic_ir::{Expr, builders, display};
-//! use measures::{var, const_expr};
-//! use std::collections::HashMap;
 //!
-//! // Define a simple Bayesian model using the ergonomic interface
-//! struct SimpleModel {
-//!     data: Vec<f64>,
-//! }
-//!
-//! impl BayesianJITOptimizer for SimpleModel {
-//!     fn compile_posterior_jit(
-//!         &self,
-//!         data: &[f64],
-//!     ) -> Result<measures::symbolic_ir::jit::GeneralJITFunction, measures::symbolic_ir::jit::JITError> {
-//!         // Example: Build a normal likelihood with ergonomic syntax
-//!         let x = var!("x");
-//!         let mu = var!("mu");
-//!         let sigma = var!("sigma");
-//!         
-//!         // Natural syntax for building the likelihood
-//!         let likelihood = builders::normal_log_pdf(x, mu.clone(), sigma.clone());
-//!         let prior = builders::normal_log_pdf(mu, 0.0, 10.0);
-//!         let posterior = likelihood + prior;
-//!         
-//!         println!("Posterior: {}", display::equation("log p(μ|x)", &posterior));
-//!         
-//!         // Note: Actual JIT compilation would go here
-//!         todo!("Posterior compilation not yet implemented")
-//!     }
-//!     
-//!     fn compile_likelihood_jit(&self) -> Result<measures::symbolic_ir::jit::GeneralJITFunction, measures::symbolic_ir::jit::JITError> {
-//!         todo!("Likelihood compilation not yet implemented")
-//!     }
-//!     
-//!     fn compile_prior_jit(&self) -> Result<measures::symbolic_ir::jit::GeneralJITFunction, measures::symbolic_ir::jit::JITError> {
-//!         todo!("Prior compilation not yet implemented")
-//!     }
-//! }
+//! // Build and compile Bayesian models for maximum performance
 //! # }
 //! ```
 
-#[cfg(feature = "jit")]
-use crate::symbolic_ir::jit::{GeneralJITFunction, JITError};
+use std::collections::HashMap;
 
-/// Trait for Bayesian models that can be JIT-compiled for inference
-///
-/// Note: Current implementation uses placeholder code and is not production-ready
-#[cfg(feature = "jit")]
-pub trait BayesianJITOptimizer {
-    /// Compile the posterior log-density function: log p(θ|x) ∝ log p(x|θ) + log p(θ)
-    ///
-    /// Current status: Not implemented, returns todo!()
-    fn compile_posterior_jit(&self, data: &[f64]) -> Result<GeneralJITFunction, JITError>;
-
-    /// Compile the likelihood function with variable parameters: log p(x|θ)
-    ///
-    /// Current status: Not implemented, returns todo!()
-    fn compile_likelihood_jit(&self) -> Result<GeneralJITFunction, JITError>;
-
-    /// Compile the prior log-density function: log p(θ)
-    ///
-    /// Current status: Not implemented, returns todo!()
-    fn compile_prior_jit(&self) -> Result<GeneralJITFunction, JITError>;
-}
-
-/// Utilities for building Bayesian model expressions
+/// Bayesian model expressions and utilities
 pub mod expressions {
-    use crate::symbolic_ir::{Expr, builders};
-    use crate::{const_expr, var};
-
-    /// Build a normal likelihood expression using ergonomic syntax
-    ///
-    /// This is much cleaner than the previous hand-built version!
-    #[must_use]
+    #[cfg(feature = "symbolic")]
+    use symbolic_math::Expr;
+    
+    /// Create a normal likelihood expression: -0.5 * ln(2π) - ln(σ) - 0.5 * (x - μ)² / σ²
+    #[cfg(feature = "symbolic")]
     pub fn normal_likelihood(x_var: &str, mu_var: &str, sigma_var: &str) -> Expr {
-        let x = var!(x_var);
-        let mu = var!(mu_var);
-        let sigma = var!(sigma_var);
-
-        builders::normal_log_pdf(x, mu, sigma)
+        symbolic_math::builders::normal_log_pdf(
+            Expr::variable(x_var),
+            Expr::variable(mu_var), 
+            Expr::variable(sigma_var)
+        )
     }
 
-    /// Build a normal prior expression using ergonomic syntax
-    #[must_use]
+    /// Create a normal prior expression: -0.5 * ln(2π) - ln(σ₀) - 0.5 * (μ - μ₀)² / σ₀²
+    #[cfg(feature = "symbolic")]
     pub fn normal_prior(param_var: &str, prior_mean: f64, prior_std: f64) -> Expr {
-        let param = var!(param_var);
-        builders::normal_log_pdf(param, prior_mean, prior_std)
+        symbolic_math::builders::normal_log_pdf(
+            Expr::variable(param_var),
+            Expr::constant(prior_mean),
+            Expr::constant(prior_std)
+        )
     }
 
-    /// Combine likelihood and prior into posterior (up to normalization constant)
-    #[must_use]
+    /// Combine likelihood and prior into posterior log-density
+    #[cfg(feature = "symbolic")]
     pub fn posterior_log_density(likelihood: Expr, prior: Expr) -> Expr {
-        likelihood + prior
+        Expr::add(likelihood, prior)
     }
 
-    /// Build a more complex hierarchical model
-    #[must_use]
+    /// Create a hierarchical normal model
+    #[cfg(feature = "symbolic")]
     pub fn hierarchical_normal(
         x_var: &str,
-        mu_var: &str,
+        mu_var: &str, 
         sigma_var: &str,
         tau_var: &str,
-        alpha: f64,
-        beta: f64,
+        mu_prior_mean: f64,
+        tau_prior_scale: f64,
     ) -> Expr {
-        let x = var!(x_var);
-        let mu = var!(mu_var);
-        let sigma = var!(sigma_var);
-        let tau = var!(tau_var);
-
-        // Likelihood: x ~ Normal(μ, σ)
-        let likelihood = builders::normal_log_pdf(x, mu.clone(), sigma.clone());
-
-        // Prior on μ: μ ~ Normal(0, τ)
-        let mu_prior = builders::normal_log_pdf(mu, 0.0, tau.clone());
-
-        // Prior on σ: log(σ) ~ Normal(α, β) (log-normal prior)
-        let log_sigma = sigma.natural_log();
-        let sigma_prior = builders::normal_log_pdf(log_sigma, alpha, beta);
-
-        // Combine all components
-        likelihood + mu_prior + sigma_prior
+        let likelihood = normal_likelihood(x_var, mu_var, sigma_var);
+        let mu_prior = normal_prior(mu_var, mu_prior_mean, tau_prior_scale);
+        let tau_prior = normal_prior(tau_var, 0.0, tau_prior_scale);
+        likelihood + mu_prior + tau_prior
     }
 
-    /// Build a mixture model likelihood
-    #[must_use]
-    pub fn mixture_likelihood(x_var: &str, weights: &[f64], means: &[f64], stds: &[f64]) -> Expr {
-        assert_eq!(weights.len(), means.len());
-        assert_eq!(means.len(), stds.len());
-
-        let x = var!(x_var);
-        let mut mixture = const_expr!(0.0);
-
-        for ((&weight, &mean), &std) in weights.iter().zip(means).zip(stds) {
-            let component = const_expr!(weight) * builders::gaussian_kernel(x.clone(), mean, std);
-            mixture = mixture + component;
+    /// Create a mixture model likelihood (legacy API for backward compatibility)
+    #[cfg(feature = "symbolic")]
+    pub fn mixture_likelihood_old(components: &[(f64, Expr)]) -> Expr {
+        if components.is_empty() {
+            return Expr::constant(f64::NEG_INFINITY);
         }
 
-        mixture.natural_log()
+        let mut log_sum_exp = Expr::constant(0.0);
+        for (weight, component) in components {
+            let log_weight = Expr::constant(weight.ln());
+            let weighted_component = log_weight + component.clone();
+            log_sum_exp = log_sum_exp + Expr::exp(weighted_component);
+        }
+        
+        Expr::ln(log_sum_exp)
+    }
+
+    /// Create a mixture model likelihood with separate arrays (for test compatibility)
+    #[cfg(feature = "symbolic")]
+    pub fn mixture_likelihood(
+        x_var: &str,
+        weights: &[f64],
+        means: &[f64], 
+        stds: &[f64],
+    ) -> Expr {
+        assert_eq!(weights.len(), means.len());
+        assert_eq!(means.len(), stds.len());
+        
+        if weights.is_empty() {
+            return Expr::constant(f64::NEG_INFINITY);
+        }
+
+        let mut log_sum_exp = Expr::constant(0.0);
+        for i in 0..weights.len() {
+            let log_weight = Expr::constant(weights[i].ln());
+            let component = symbolic_math::builders::normal_log_pdf(
+                Expr::variable(x_var),
+                Expr::constant(means[i]),
+                Expr::constant(stds[i])
+            );
+            let weighted_component = log_weight + component;
+            log_sum_exp = log_sum_exp + Expr::exp(weighted_component);
+        }
+        
+        Expr::ln(log_sum_exp)
+    }
+}
+
+/// JIT compilation for Bayesian models
+#[cfg(feature = "jit")]
+pub struct BayesianJITOptimizer {
+    /// Compiled posterior function
+    posterior_fn: Option<symbolic_math::GeneralJITFunction>,
+    /// Compiled likelihood function  
+    likelihood_fn: Option<symbolic_math::GeneralJITFunction>,
+    /// Compiled prior function
+    prior_fn: Option<symbolic_math::GeneralJITFunction>,
+}
+
+#[cfg(feature = "jit")]
+impl BayesianJITOptimizer {
+    /// Create a new Bayesian JIT optimizer
+    pub fn new() -> Self {
+        Self {
+            posterior_fn: None,
+            likelihood_fn: None,
+            prior_fn: None,
+        }
+    }
+
+    /// Compile the posterior log-density function
+    pub fn compile_posterior_jit(
+        &mut self,
+        posterior_expr: &symbolic_math::Expr,
+        data_vars: &[String],
+        param_vars: &[String],
+        constants: &HashMap<String, f64>,
+    ) -> Result<(), symbolic_math::JITError> {
+        let compiler = symbolic_math::GeneralJITCompiler::new()?;
+        let jit_fn = compiler.compile_expression(posterior_expr, data_vars, param_vars, constants)?;
+        self.posterior_fn = Some(jit_fn);
+        Ok(())
+    }
+
+    /// Compile the likelihood function
+    pub fn compile_likelihood_jit(
+        &mut self,
+        likelihood_expr: &symbolic_math::Expr,
+        data_vars: &[String], 
+        param_vars: &[String],
+        constants: &HashMap<String, f64>,
+    ) -> Result<(), symbolic_math::JITError> {
+        let compiler = symbolic_math::GeneralJITCompiler::new()?;
+        let jit_fn = compiler.compile_expression(likelihood_expr, data_vars, param_vars, constants)?;
+        self.likelihood_fn = Some(jit_fn);
+        Ok(())
+    }
+
+    /// Compile the prior function
+    pub fn compile_prior_jit(
+        &mut self,
+        prior_expr: &symbolic_math::Expr,
+        param_vars: &[String],
+        constants: &HashMap<String, f64>,
+    ) -> Result<(), symbolic_math::JITError> {
+        let compiler = symbolic_math::GeneralJITCompiler::new()?;
+        let jit_fn = compiler.compile_expression(prior_expr, &[], param_vars, constants)?;
+        self.prior_fn = Some(jit_fn);
+        Ok(())
+    }
+
+    /// Evaluate the compiled posterior function
+    pub fn evaluate_posterior(&self, data: &[f64], params: &[f64]) -> Option<f64> {
+        self.posterior_fn.as_ref().map(|f| f.call_batch(data, params))
+    }
+
+    /// Evaluate the compiled likelihood function
+    pub fn evaluate_likelihood(&self, data: &[f64], params: &[f64]) -> Option<f64> {
+        self.likelihood_fn.as_ref().map(|f| f.call_batch(data, params))
+    }
+
+    /// Evaluate the compiled prior function
+    pub fn evaluate_prior(&self, params: &[f64]) -> Option<f64> {
+        self.prior_fn.as_ref().map(|f| f.call_batch(&[], params))
+    }
+}
+
+#[cfg(feature = "jit")]
+impl Default for BayesianJITOptimizer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -170,17 +224,18 @@ mod tests {
     #[test]
     fn test_normal_likelihood_expression() {
         let likelihood = normal_likelihood("x", "mu", "sigma");
-        // Just test that it builds without panicking
+        // normal_log_pdf returns normalization + quadratic, which is an Add expression
         assert!(matches!(
             likelihood,
-            crate::symbolic_ir::expr::Expr::Sub(_, _)
+            symbolic_math::expr::Expr::Add(_, _)
         ));
     }
 
     #[test]
     fn test_normal_prior_expression() {
         let prior = normal_prior("mu", 0.0, 1.0);
-        assert!(matches!(prior, crate::symbolic_ir::expr::Expr::Sub(_, _)));
+        // normal_log_pdf returns normalization + quadratic, which is an Add expression
+        assert!(matches!(prior, symbolic_math::expr::Expr::Add(_, _)));
     }
 
     #[test]
@@ -190,7 +245,69 @@ mod tests {
         let posterior = posterior_log_density(likelihood, prior);
         assert!(matches!(
             posterior,
-            crate::symbolic_ir::expr::Expr::Add(_, _)
+            symbolic_math::expr::Expr::Add(_, _)
         ));
     }
+}
+
+// Re-export commonly used functions
+#[cfg(feature = "symbolic")]
+pub use expressions::{
+    hierarchical_normal, mixture_likelihood, normal_likelihood, normal_prior, posterior_log_density,
+};
+
+// Re-export Expr for convenience
+#[cfg(feature = "symbolic")]
+pub use symbolic_math::Expr;
+
+/// Create a variable expression
+#[cfg(feature = "symbolic")]
+pub fn variable(name: &str) -> Expr {
+    Expr::variable(name)
+}
+
+/// Create a likelihood expression (alias for normal_likelihood)
+#[cfg(feature = "symbolic")]
+pub fn likelihood(x_var: &str, mu_var: &str, sigma_var: &str) -> Expr {
+    normal_likelihood(x_var, mu_var, sigma_var)
+}
+
+/// Create a prior expression (alias for normal_prior)
+#[cfg(feature = "symbolic")]
+pub fn prior(param_var: &str, prior_mean: f64, prior_std: f64) -> Expr {
+    normal_prior(param_var, prior_mean, prior_std)
+}
+
+/// Create a posterior expression (alias for posterior_log_density)
+#[cfg(feature = "symbolic")]
+pub fn posterior(likelihood: Expr, prior: Expr) -> Expr {
+    posterior_log_density(likelihood, prior)
+}
+
+/// Bayesian modeling example
+///
+/// This example demonstrates how to build Bayesian models using the expression system.
+///
+/// # Example
+///
+/// ```rust
+/// # #[cfg(feature = "symbolic")]
+/// # {
+/// use measures::bayesian::{normal_likelihood, normal_prior, posterior_log_density};
+/// use symbolic_math::{Expr, builders, display};
+/// use std::collections::HashMap;
+///
+/// // Create likelihood: log p(x | μ, σ)
+/// let likelihood = normal_likelihood("x", "mu", "sigma");
+///
+/// // Create prior: log p(μ)
+/// let prior = normal_prior("mu", 0.0, 1.0);
+///
+/// // Combine into posterior: log p(μ | x, σ) ∝ log p(x | μ, σ) + log p(μ)
+/// let posterior = posterior_log_density(likelihood, prior);
+/// # }
+/// ```
+#[cfg(feature = "symbolic")]
+pub fn bayesian_example() {
+    // This function serves as documentation for the example above
 }
