@@ -175,15 +175,35 @@ impl Expr {
 
     /// Evaluate the expression with given variable values
     pub fn evaluate(&self, vars: &HashMap<String, f64>) -> Result<f64, EvalError> {
+        // Fast path for simple expressions to reduce overhead
         match self {
+            // Inline constants - no function call overhead
             Expr::Const(value) => Ok(*value),
-            Expr::Var(name) => vars
-                .get(name)
-                .copied()
-                .ok_or_else(|| EvalError::UndefinedVariable(name.clone())),
-            Expr::Add(left, right) => Ok(left.evaluate(vars)? + right.evaluate(vars)?),
+
+            // Optimized variable lookup - avoid closure allocation
+            Expr::Var(name) => match vars.get(name) {
+                Some(&value) => Ok(value),
+                None => Err(EvalError::UndefinedVariable(name.clone())),
+            },
+
+            // Fast path for simple binary operations with constants
+            Expr::Add(left, right) => match (left.as_ref(), right.as_ref()) {
+                (Expr::Const(a), Expr::Const(b)) => Ok(a + b),
+                (Expr::Const(0.0), expr) => expr.evaluate(vars),
+                (expr, Expr::Const(0.0)) => expr.evaluate(vars),
+                _ => Ok(left.evaluate(vars)? + right.evaluate(vars)?),
+            },
+
+            Expr::Mul(left, right) => match (left.as_ref(), right.as_ref()) {
+                (Expr::Const(a), Expr::Const(b)) => Ok(a * b),
+                (Expr::Const(0.0), _) | (_, Expr::Const(0.0)) => Ok(0.0),
+                (Expr::Const(1.0), expr) => expr.evaluate(vars),
+                (expr, Expr::Const(1.0)) => expr.evaluate(vars),
+                _ => Ok(left.evaluate(vars)? * right.evaluate(vars)?),
+            },
+
+            // Standard evaluation for other operations
             Expr::Sub(left, right) => Ok(left.evaluate(vars)? - right.evaluate(vars)?),
-            Expr::Mul(left, right) => Ok(left.evaluate(vars)? * right.evaluate(vars)?),
             Expr::Div(left, right) => {
                 let denominator = right.evaluate(vars)?;
                 if denominator == 0.0 {
@@ -214,6 +234,218 @@ impl Expr {
             Expr::Cos(expr) => Ok(expr.evaluate(vars)?.cos()),
             Expr::Neg(expr) => Ok(-expr.evaluate(vars)?),
         }
+    }
+
+    /// Ultra-fast evaluation for single-variable expressions
+    /// Avoids `HashMap` overhead by passing the variable value directly
+    pub fn evaluate_single_var(&self, var_name: &str, value: f64) -> Result<f64, EvalError> {
+        match self {
+            Expr::Const(c) => Ok(*c),
+            Expr::Var(name) => {
+                if name == var_name {
+                    Ok(value)
+                } else {
+                    Err(EvalError::UndefinedVariable(name.clone()))
+                }
+            }
+            Expr::Add(left, right) => Ok(left.evaluate_single_var(var_name, value)?
+                + right.evaluate_single_var(var_name, value)?),
+            Expr::Sub(left, right) => Ok(left.evaluate_single_var(var_name, value)?
+                - right.evaluate_single_var(var_name, value)?),
+            Expr::Mul(left, right) => Ok(left.evaluate_single_var(var_name, value)?
+                * right.evaluate_single_var(var_name, value)?),
+            Expr::Div(left, right) => {
+                let denominator = right.evaluate_single_var(var_name, value)?;
+                if denominator == 0.0 {
+                    Err(EvalError::DivisionByZero)
+                } else {
+                    Ok(left.evaluate_single_var(var_name, value)? / denominator)
+                }
+            }
+            Expr::Pow(base, exponent) => Ok(base
+                .evaluate_single_var(var_name, value)?
+                .powf(exponent.evaluate_single_var(var_name, value)?)),
+            Expr::Ln(expr) => {
+                let val = expr.evaluate_single_var(var_name, value)?;
+                if val <= 0.0 {
+                    Err(EvalError::InvalidLogarithm(val))
+                } else {
+                    Ok(val.ln())
+                }
+            }
+            Expr::Exp(expr) => Ok(expr.evaluate_single_var(var_name, value)?.exp()),
+            Expr::Sqrt(expr) => {
+                let val = expr.evaluate_single_var(var_name, value)?;
+                if val < 0.0 {
+                    Err(EvalError::InvalidSquareRoot(val))
+                } else {
+                    Ok(val.sqrt())
+                }
+            }
+            Expr::Sin(expr) => Ok(expr.evaluate_single_var(var_name, value)?.sin()),
+            Expr::Cos(expr) => Ok(expr.evaluate_single_var(var_name, value)?.cos()),
+            Expr::Neg(expr) => Ok(-expr.evaluate_single_var(var_name, value)?),
+        }
+    }
+
+    /// Optimized batch evaluation that reuses allocations
+    pub fn evaluate_batch_optimized(
+        &self,
+        var_name: &str,
+        values: &[f64],
+    ) -> Result<Vec<f64>, EvalError> {
+        // Pre-allocate result vector
+        let mut results = Vec::with_capacity(values.len());
+
+        // Check if this is a single-variable expression for ultra-fast path
+        let vars = self.variables();
+        if vars.len() == 1 && vars[0] == var_name {
+            // Ultra-fast path: no HashMap needed
+            for &value in values {
+                results.push(self.evaluate_single_var(var_name, value)?);
+            }
+        } else {
+            // Standard path with HashMap reuse
+            let mut var_map = HashMap::with_capacity(vars.len());
+
+            // Pre-populate with any constants or other variables (if needed)
+            for var in &vars {
+                if var != var_name {
+                    var_map.insert(var.clone(), 0.0); // Will be overwritten if needed
+                }
+            }
+
+            for &value in values {
+                var_map.insert(var_name.to_string(), value);
+                results.push(self.evaluate(&var_map)?);
+            }
+        }
+
+        Ok(results)
+    }
+
+    /// Specialized evaluation for polynomial expressions: ax^n + bx^(n-1) + ... + c
+    /// This is much faster than general evaluation for polynomial patterns
+    #[must_use]
+    pub fn evaluate_polynomial(&self, var_name: &str, value: f64) -> Option<f64> {
+        match self {
+            // Constant term
+            Expr::Const(c) => Some(*c),
+
+            // Variable term
+            Expr::Var(name) if name == var_name => Some(value),
+
+            // Linear term: ax
+            Expr::Mul(coeff, var) => match (coeff.as_ref(), var.as_ref()) {
+                (Expr::Const(a), Expr::Var(name)) if name == var_name => Some(a * value),
+                (Expr::Var(name), Expr::Const(a)) if name == var_name => Some(a * value),
+                _ => None,
+            },
+
+            // Power term: x^n or ax^n
+            Expr::Pow(base, exp) => match (base.as_ref(), exp.as_ref()) {
+                (Expr::Var(name), Expr::Const(n)) if name == var_name => Some(value.powf(*n)),
+                _ => None,
+            },
+
+            // Addition: combine polynomial terms
+            Expr::Add(left, right) => {
+                if let (Some(left_val), Some(right_val)) = (
+                    left.evaluate_polynomial(var_name, value),
+                    right.evaluate_polynomial(var_name, value),
+                ) {
+                    Some(left_val + right_val)
+                } else {
+                    None
+                }
+            }
+
+            // Subtraction: combine polynomial terms
+            Expr::Sub(left, right) => {
+                if let (Some(left_val), Some(right_val)) = (
+                    left.evaluate_polynomial(var_name, value),
+                    right.evaluate_polynomial(var_name, value),
+                ) {
+                    Some(left_val - right_val)
+                } else {
+                    None
+                }
+            }
+
+            _ => None,
+        }
+    }
+
+    /// Specialized evaluation for linear expressions: ax + b
+    /// Returns (a, b) coefficients if this is a linear expression, None otherwise
+    #[must_use]
+    pub fn extract_linear_coefficients(&self, var_name: &str) -> Option<(f64, f64)> {
+        match self {
+            // Constant: 0x + b
+            Expr::Const(b) => Some((0.0, *b)),
+
+            // Variable: 1x + 0
+            Expr::Var(name) if name == var_name => Some((1.0, 0.0)),
+
+            // ax (coefficient * variable)
+            Expr::Mul(coeff, var) => match (coeff.as_ref(), var.as_ref()) {
+                (Expr::Const(a), Expr::Var(name)) if name == var_name => Some((*a, 0.0)),
+                (Expr::Var(name), Expr::Const(a)) if name == var_name => Some((*a, 0.0)),
+                _ => None,
+            },
+
+            // ax + b
+            Expr::Add(left, right) => {
+                if let (Some((a1, b1)), Some((a2, b2))) = (
+                    left.extract_linear_coefficients(var_name),
+                    right.extract_linear_coefficients(var_name),
+                ) {
+                    Some((a1 + a2, b1 + b2))
+                } else {
+                    None
+                }
+            }
+
+            // ax - b
+            Expr::Sub(left, right) => {
+                if let (Some((a1, b1)), Some((a2, b2))) = (
+                    left.extract_linear_coefficients(var_name),
+                    right.extract_linear_coefficients(var_name),
+                ) {
+                    Some((a1 - a2, b1 - b2))
+                } else {
+                    None
+                }
+            }
+
+            _ => None,
+        }
+    }
+
+    /// Ultra-fast evaluation for linear expressions
+    #[must_use]
+    pub fn evaluate_linear(&self, var_name: &str, value: f64) -> Option<f64> {
+        if let Some((a, b)) = self.extract_linear_coefficients(var_name) {
+            Some(a * value + b)
+        } else {
+            None
+        }
+    }
+
+    /// Smart evaluation that chooses the fastest method based on expression structure
+    pub fn evaluate_smart(&self, var_name: &str, value: f64) -> Result<f64, EvalError> {
+        // Try linear evaluation first (fastest)
+        if let Some(result) = self.evaluate_linear(var_name, value) {
+            return Ok(result);
+        }
+
+        // Try polynomial evaluation (fast for polynomial patterns)
+        if let Some(result) = self.evaluate_polynomial(var_name, value) {
+            return Ok(result);
+        }
+
+        // Fall back to single-variable evaluation (faster than HashMap)
+        self.evaluate_single_var(var_name, value)
     }
 
     /// Simplify the expression using algebraic rules

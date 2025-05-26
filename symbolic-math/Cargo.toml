@@ -34,3 +34,7 @@ harness = false
 [[bench]]
 name = "execution_overhead_analysis"
 harness = false
+
+[[bench]]
+name = "overhead_reduction_benchmarks"
+harness = false

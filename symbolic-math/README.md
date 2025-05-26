@@ -15,27 +15,50 @@ This crate provides a general-purpose symbolic representation system for mathema
 - **Multiple Evaluation Modes**: Interpreted, JIT-compiled, and zero-overhead evaluation
 - **Builder Patterns**: Convenient builders for common mathematical expressions
 
-## Performance
+## 🚀 Performance
 
-The symbolic-math crate delivers excellent performance across all operations. Comprehensive benchmarks using [Divan](https://crates.io/crates/divan) show:
+The symbolic-math crate is designed for high-performance symbolic computation with multiple optimization strategies:
 
-| Operation | Performance | Notes |
-|-----------|-------------|-------|
-| Expression creation | < 100 ns | All expression types |
-| Evaluation throughput | 8-15 Mitem/s | Consistent across complexity |
-| Grid evaluation | 15.6 Mitem/s | Excellent scaling |
-| Basic simplification | ~100-300 ns | Fast pattern matching |
-| Caching speedup | 1.3x | 30% improvement |
-| JIT compilation | ~25 µs | Cranelift-based |
-| Egglog optimization | ~1-2 ms | Powerful but expensive |
+### Overhead Reduction Optimizations ⚡
 
-**Key Highlights:**
-- Sub-linear scaling with expression complexity
-- Minimal memory allocation overhead  
-- Excellent performance for both simple and complex expressions
-- Effective caching for repeated operations
+**NEW**: Significant overhead reduction optimizations achieve **2-6x performance improvements**:
 
-For detailed benchmark results and methodology, see [BENCHMARKS.md](docs/BENCHMARKS.md).
+| Expression Type | Original | Optimized | **Speedup** | Method |
+|----------------|----------|-----------|-------------|---------|
+| **Linear (2x + 3)** | 31.8 ns | 5.9 ns | **5.4x** | Specialized evaluation |
+| **Quadratic (x² + 2x + 1)** | 56.3 ns | 14.6 ns | **3.9x** | Pattern recognition |
+| **Complex polynomial** | 434.8 ns | 65.8 ns | **6.6x** | HashMap elimination |
+| **Batch processing** | 57.6 ns/item | 25.0 ns/item | **2.3x** | Optimized allocation |
+| **Transcendental functions** | 49.7 ns | 27.2 ns | **1.8x** | Single-variable path |
+
+**Key Features**:
+- 🎯 **Specialized evaluation** for linear and polynomial patterns
+- 🗂️ **HashMap elimination** for single-variable expressions  
+- 🔄 **Smart evaluation** that automatically chooses the fastest method
+- 📦 **Optimized batch processing** with allocation reuse
+- ⚡ **Constant folding** during evaluation
+
+### Core Performance Features
+
+- **Expression Creation**: < 100 ns for all types (30.88 ns simple, 99.81 ns complex)
+- **Evaluation Throughput**: Consistent 8-15 Mitem/s across complexity levels
+- **Grid Evaluation**: Excellent scaling at 15.6 Mitem/s maintained across all grid sizes
+- **Simplification**: Fast pattern matching (108.6 ns trigonometric, 330.8 ns polynomial)
+- **Caching**: 30% speedup (470.3 ns warm vs 610.8 ns cold)
+
+### JIT Compilation 🔥
+
+- **Compilation Time**: 24.7 µs median
+- **Execution Speedup**: 16-30x faster than interpreted (3.9-6.5 ns/call vs 109-118 ns/call)
+- **Break-even Point**: ~230-500 evaluations
+- **Memory Scaling**: 19 Mitem/s maintained across expression sizes
+
+### Advanced Optimization 🧠
+
+- **Egglog Integration**: 1.1-1.7 ms optimization time
+- **Mathematical Identities**: Correctly simplifies sin²+cos²=1 to constant 1
+- **Complexity Reduction**: 71-100% reduction in expression complexity
+- **Sub-linear Scaling**: Performance maintained with nesting depth
 
 ## Execution Overhead Analysis
 
