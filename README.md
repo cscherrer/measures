@@ -261,12 +261,3 @@ cargo run --example general_density_computation
 # Run with features
 cargo run --features="jit,autodiff" --example benchmark_comparison
 ```
-
-## Contributing
-
-This library follows mathematical rigor and type safety principles. When contributing:
-
-1. Ensure mathematical correctness of implementations
-2. Maintain type safety guarantees
-3. Include comprehensive tests for new features
-4. Document mathematical foundations in code comments
