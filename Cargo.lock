@@ -1508,6 +1508,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "mathjit"
+version = "0.1.0"
+dependencies = [
+ "approx 0.5.1",
+ "cranelift-codegen",
+ "cranelift-frontend",
+ "cranelift-jit",
+ "cranelift-module",
+ "criterion 0.5.1",
+ "divan",
+ "egglog",
+ "num-traits",
+ "serde",
+]
+
+[[package]]
 name = "matrixmultiply"
 version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"

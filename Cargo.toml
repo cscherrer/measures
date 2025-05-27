@@ -2,6 +2,7 @@
 members = [
     ".", 
     "symbolic-math", 
+    "mathjit",
     "measures-core",
     "measures-distributions",
     "measures-exponential-family", 
