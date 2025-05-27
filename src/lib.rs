@@ -266,9 +266,6 @@ pub use symbolic_math::Expr;
 #[cfg(feature = "jit")]
 pub use symbolic_math::jit::{GeneralJITCompiler, GeneralJITFunction};
 
-// Statistics module (local)
-pub mod statistics;
-
 // Re-export mixture macro
 pub use measures_combinators::mixture;
 
@@ -277,7 +274,7 @@ pub use measures_core::{log_density_at, log_density_batch, safe_convert_or, safe
 
 /// Convenience module for final tagless exponential family operations
 pub mod final_tagless {
-    pub use super::exponential_family::final_tagless::*;
+    pub use measures_exponential_family::final_tagless::*;
     pub use symbolic_math::final_tagless::{DirectEval, MathExpr, PrettyPrint};
 
     // JITEval is only available with the jit feature

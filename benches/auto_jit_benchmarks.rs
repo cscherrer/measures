@@ -12,7 +12,7 @@ use measures::{Exponential, LogDensityBuilder, Normal};
 use std::hint::black_box;
 
 #[cfg(feature = "jit")]
-use measures::exponential_family::{AutoJITExt, CustomJITOptimizer};
+use measures::exponential_family::AutoJITExt;
 
 #[cfg(feature = "jit")]
 use measures::exponential_family::jit::generate_zero_overhead_exp_fam;
@@ -55,20 +55,20 @@ fn benchmark_normal_distribution(c: &mut Criterion) {
         });
     });
 
-    // Manual JIT implementation (for comparison)
-    #[cfg(feature = "jit")]
-    group.bench_function("manual_jit", |b| {
-        let symbolic = normal.custom_symbolic_log_density();
-        let compiler = measures::exponential_family::jit::JITCompiler::new().unwrap();
-        let jit_fn = compiler
-            .compile_custom_expression(&symbolic)
-            .expect("Manual JIT should succeed");
-        b.iter(|| {
-            for &x in &test_values {
-                black_box(jit_fn.call_single(black_box(x)));
-            }
-        });
-    });
+    // Manual JIT implementation (for comparison) - commented out as method doesn't exist
+    // #[cfg(feature = "jit")]
+    // group.bench_function("manual_jit", |b| {
+    //     let symbolic = normal.custom_symbolic_log_density();
+    //     let compiler = measures::exponential_family::jit::JITCompiler::new().unwrap();
+    //     let jit_fn = compiler
+    //         .compile_custom_expression(&symbolic)
+    //         .expect("Manual JIT should succeed");
+    //     b.iter(|| {
+    //         for &x in &test_values {
+    //             black_box(jit_fn.call_single(black_box(x)));
+    //         }
+    //     });
+    // });
 
     group.finish();
 }

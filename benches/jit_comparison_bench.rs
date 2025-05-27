@@ -13,7 +13,7 @@ use measures::{LogDensityBuilder, Normal};
 use std::hint::black_box;
 
 #[cfg(feature = "jit")]
-use measures::exponential_family::jit::{StaticInlineJITOptimizer, ZeroOverheadOptimizer};
+use measures::exponential_family::jit::ZeroOverheadOptimizer;
 
 #[cfg(feature = "jit")]
 use measures::exponential_family::AutoJITExt;
@@ -37,14 +37,14 @@ fn benchmark_single_evaluation(c: &mut Criterion) {
         b.iter(|| black_box(optimized_fn(&black_box(test_x))));
     });
 
-    // 3. Static Inline JIT (runtime closures)
+    // 3. Static Inline JIT (runtime closures) - using compiler directly
     #[cfg(feature = "jit")]
     {
-        if let Ok(static_jit_fn) = normal.compile_static_inline_jit() {
-            group.bench_function("static_inline_jit", |b| {
-                b.iter(|| black_box(static_jit_fn.call(black_box(test_x))));
-            });
-        }
+        use measures::exponential_family::jit::StaticInlineJITCompiler;
+        let static_jit_fn = StaticInlineJITCompiler::compile_normal(normal.mean, normal.std_dev);
+        group.bench_function("static_inline_jit", |b| {
+            b.iter(|| black_box(static_jit_fn.call(black_box(test_x))));
+        });
     }
 
     // 4. Auto-JIT (symbolic + Cranelift)
@@ -90,15 +90,15 @@ fn benchmark_batch_evaluation(c: &mut Criterion) {
     // Static Inline JIT
     #[cfg(feature = "jit")]
     {
-        if let Ok(static_jit_fn) = normal.compile_static_inline_jit() {
-            group.bench_function("static_inline_jit", |b| {
-                b.iter(|| {
-                    for &x in &test_values {
-                        black_box(static_jit_fn.call(black_box(x)));
-                    }
-                });
+        use measures::exponential_family::jit::StaticInlineJITCompiler;
+        let static_jit_fn = StaticInlineJITCompiler::compile_normal(normal.mean, normal.std_dev);
+        group.bench_function("static_inline_jit", |b| {
+            b.iter(|| {
+                for &x in &test_values {
+                    black_box(static_jit_fn.call(black_box(x)));
+                }
             });
-        }
+        });
     }
 
     // Auto-JIT
@@ -126,11 +126,11 @@ fn benchmark_compilation_overhead(c: &mut Criterion) {
     // Static Inline JIT compilation (should be very fast)
     #[cfg(feature = "jit")]
     group.bench_function("static_inline_jit_compilation", |b| {
+        use measures::exponential_family::jit::StaticInlineJITCompiler;
         b.iter(|| {
             let normal_clone = normal.clone();
-            let _jit_fn = normal_clone
-                .compile_static_inline_jit()
-                .expect("Static inline JIT should succeed");
+            let _jit_fn =
+                StaticInlineJITCompiler::compile_normal(normal_clone.mean, normal_clone.std_dev);
         });
     });
 
@@ -187,11 +187,11 @@ fn benchmark_amortization_analysis(c: &mut Criterion) {
             BenchmarkId::new("static_inline_jit_with_compilation", count),
             &count,
             |b, &count| {
+                use measures::exponential_family::jit::StaticInlineJITCompiler;
                 b.iter(|| {
                     // Include compilation time
-                    let jit_fn = normal
-                        .compile_static_inline_jit()
-                        .expect("Static inline JIT should succeed");
+                    let jit_fn =
+                        StaticInlineJITCompiler::compile_normal(normal.mean, normal.std_dev);
                     // Then evaluate multiple times
                     for _ in 0..count {
                         black_box(jit_fn.call(black_box(test_x)));
@@ -235,17 +235,17 @@ fn benchmark_accuracy_preservation(c: &mut Criterion) {
     // Static Inline JIT with accuracy verification
     #[cfg(feature = "jit")]
     {
-        if let Ok(static_jit_fn) = normal.compile_static_inline_jit() {
-            group.bench_function("static_inline_jit_with_verification", |b| {
-                b.iter(|| {
-                    let mut sum = 0.0;
-                    for &x in &test_values {
-                        sum += static_jit_fn.call(black_box(x));
-                    }
-                    black_box(sum)
-                });
+        use measures::exponential_family::jit::StaticInlineJITCompiler;
+        let static_jit_fn = StaticInlineJITCompiler::compile_normal(normal.mean, normal.std_dev);
+        group.bench_function("static_inline_jit_with_verification", |b| {
+            b.iter(|| {
+                let mut sum = 0.0;
+                for &x in &test_values {
+                    sum += static_jit_fn.call(black_box(x));
+                }
+                black_box(sum)
             });
-        }
+        });
     }
 
     // Auto-JIT with accuracy verification
